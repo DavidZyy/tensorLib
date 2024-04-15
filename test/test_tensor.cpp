@@ -37,6 +37,73 @@ int test_construct() {
     return 0;
 }
 
+
+// Function to test the getData method of the Tensor class
+int test_getData() {
+    // Define a shape for the tensor (e.g., 2x3x4)
+    // std::vector<int> shape = {2, 3, 4};
+    std::vector<int> shape = {2, 3, 4};
+
+    // Create a tensor with the specified shape
+    Tensor<int> tensor(shape);
+
+    // Fill the tensor with some test data (e.g., sequential numbers)
+    int value = 0;
+    for (int i = 0; i < shape[0]; ++i) {
+        for (int j = 0; j < shape[1]; ++j) {
+            for (int k = 0; k < shape[2]; ++k) {
+                tensor.data_[i * shape[1] * shape[2] + j * shape[2] + k] = value++;
+            }
+        }
+    }
+
+    // Test the getData method by retrieving specific elements and checking the values
+    // Expected values: tensor.getData({0, 0, 0}) = 0, tensor.getData({1, 2, 3}) = 23, etc.
+    int expected_value = 0;
+    for (int i = 0; i < shape[0]; ++i) {
+        for (int j = 0; j < shape[1]; ++j) {
+            for (int k = 0; k < shape[2]; ++k) {
+                std::vector<int> indices = {i, j, k};
+                int actual_value = tensor.getData(indices);
+                if (actual_value != expected_value) {
+                    std::cerr << "Error: Incorrect value retrieved at indices "
+                              << "[" << i << "][" << j << "][" << k << "]. "
+                              << "Expected: " << expected_value << ", Actual: " << actual_value << std::endl;
+                    return 1; // Return failure
+                }
+                expected_value++;
+            }
+        }
+    }
+
+    std::cout << "getData method test passed!" << std::endl;
+    return 0; // Return success
+}
+
+void test_setData() {
+    // Create a Tensor object with a specific shape
+    // std::vector<int> shape = {2, 3};
+    std::vector<int> shape = {};
+    Tensor<int> tensor(shape);
+
+    // Set data at specific indices
+    // tensor.setData({0, 0}, 1);
+    // tensor.setData({0, 1}, 2);
+    // tensor.setData({0, 2}, 3);
+    // tensor.setData({1, 0}, 4);
+    // tensor.setData({1, 1}, 5);
+    // tensor.setData({1, 2}, 6);
+
+    for(auto i=0; i<tensor.num_elements; i++)
+        tensor.data_[i] = i;
+
+    // Print the tensor to verify the data
+    std::cout << "Tensor after setData:" << std::endl;
+    std::cout << tensor << std::endl;
+}
+
 int main() {
     test_construct();
+    // test_getData();
+    // test_setData();
 }

@@ -7,6 +7,9 @@ template class Tensor<int>;
 // Explicit instantiation for double
 template class Tensor<double>;
 
+// Explicit instantiation for float
+template class Tensor<float>;
+
 template <typename dtype>
 Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape_(shape) {
         // Calculate the total number of elements in the tensor
@@ -38,7 +41,73 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape
 
 template <typename dtype>
 Tensor<dtype>::~Tensor() {
-    // Implement destructor logic here
-    // Automatically release allocated memory
+
 }
 
+template <typename dtype>
+const dtype& Tensor<dtype>::getData(const std::vector<int>& indices) const {
+    if (indices.size() != shape_.size()) {
+        throw std::invalid_argument("Error: Indices size does not match tensor dimension");
+    }
+
+    // Calculate linear index from indices
+    size_t linear_index = 0;
+    for (size_t i = 0; i < indices.size(); ++i) {
+        if (indices[i] < 0 || indices[i] >= shape_[i]) {
+            throw std::out_of_range("Error: Index out of range");
+        }
+        linear_index += indices[i] * stride_[i];
+    }
+
+    return data_[linear_index];
+}
+
+
+// Implementation of setData method
+template <typename dtype>
+void Tensor<dtype>::setData(const std::vector<int>& indices, const dtype& value) {
+    if (indices.size() != ndim) {
+        throw std::invalid_argument("Error: Invalid number of indices for tensor access");
+    }
+
+    int idx = 0;
+    for (int i = 0; i < ndim; ++i) {
+        if (indices[i] < 0 || indices[i] >= shape_[i]) {
+            throw std::out_of_range("Error: Index out of range for tensor access");
+        }
+        idx += indices[i] * stride_[i];
+    }
+
+    data_[idx] = value;
+}
+
+template <typename dtype>
+void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int> indices) const {
+    if (depth == ndim - 1) {
+        os << "[";
+        auto idx = 0;
+        for (auto& dim: indices)
+            idx += dim;
+
+        for (int i = 0; i < shape_[depth]; ++i) {
+            if (i > 0) os << ", ";
+            os << data_[idx + i];
+        }
+        os << "]";
+    } else {
+        os << "[";
+        for (int i = 0; i < shape_[depth]; ++i) {
+            if (i > 0) {
+                for (auto i=0; i<ndim-1-depth; i++)
+                    os << std::endl;
+                for (auto i=0; i<depth+1; i++)
+                    os << " ";
+            } 
+            // os << std::endl << " ";
+            indices.push_back(i * stride_[depth]);
+            printTensor(os, depth + 1, indices);
+            indices.pop_back();
+        }
+        os << "]";
+    }
+}

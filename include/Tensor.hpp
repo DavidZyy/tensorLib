@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <vector>
 #include <ostream>
@@ -27,16 +28,26 @@ public:
         return data_;
     }
 
+    const dtype& getData(const std::vector<int>& indices) const;
+
+    void setData(const std::vector<int>& indices, const dtype& value);
+
+
     std::vector<dtype> data_;
     int num_elements;
+
 private:
     std::unique_ptr<int[]> offset_;
     std::unique_ptr<int[]> stride_;
     int ndim;
     std::vector<int> shape_;
+
+    // helper method for operator<<
+    void printTensor(std::ostream& os, size_t depth, std::vector<int> indices) const;
+
 };
 
- // Overload operator<< to print Tensor
+// Overload operator<< to print Tensor
 template <typename dtype>
 std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
     const auto& shape = tensor.shape();
@@ -44,73 +55,9 @@ std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
 
     if (shape.size() == 0) {
         os << "[]";
-    } else if (shape.size() == 1) {
-        // 1D Tensor
-        os << "[";
-        for (size_t i = 0; i < shape[0]; ++i) {
-            if (i > 0) os << ", ";
-            os << data[i];
-        }
-        os << "]";
-    } else if (shape.size() == 2) {
-        // 2D Tensor
-        os << "[";
-        for (size_t i = 0; i < shape[0]; ++i) {
-            if (i > 0) os << std::endl << " ";
-            os << "[";
-            for (size_t j = 0; j < shape[1]; ++j) {
-                if (j > 0) os << ", ";
-                os << data[i * shape[1] + j];
-            }
-            os << "]";
-        }
-        os << "]";
-    } else if (shape.size() == 3) {
-        // 3D Tensor
-        os << "[";
-        for (size_t i = 0; i < shape[0]; ++i) {
-            if (i > 0) os << std::endl << " ";
-            os << "[";
-            for (size_t j = 0; j < shape[1]; ++j) {
-                if (j > 0) os << ", ";
-                os << "[";
-                for (size_t k = 0; k < shape[2]; ++k) {
-                    if (k > 0) os << ", ";
-                    os << data[(i * shape[1] + j) * shape[2] + k];
-                }
-                os << "]";
-            }
-            os << "]";
-        }
-        os << "]";
-    } else if (shape.size() == 4) {
-        // 4D Tensor
-        os << "[";
-        for (size_t i = 0; i < shape[0]; ++i) {
-            if (i > 0) os << std::endl << " ";
-            os << "[";
-            for (size_t j = 0; j < shape[1]; ++j) {
-                if (j > 0) os << std::endl << "  ";
-                os << "[";
-                for (size_t k = 0; k < shape[2]; ++k) {
-                    if (k > 0) os << ", ";
-                    os << "[";
-                    for (size_t l = 0; l < shape[3]; ++l) {
-                        if (l > 0) os << ", ";
-                        os << data[((i * shape[1] + j) * shape[2] + k) * shape[3] + l];
-                    }
-                    os << "]";
-                }
-                os << "]";
-            }
-            os << "]";
-        }
-        os << "]";
     } else {
-        // Unsupported higher dimensions
-        os << "Unsupported dimension";
+        tensor.printTensor(os, 0, {});
     }
-    os<<std::endl;
 
     return os;
 }

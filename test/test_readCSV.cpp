@@ -1,4 +1,5 @@
 #include "../include/readCSV.hpp"
+#include <iostream>
 
 int main() {
     // Specify the path to the CSV file
@@ -26,6 +27,7 @@ int main() {
         //     }
         //     std::cout << std::endl;
         // }
+    std::cout << csvData[0][0] << std::endl; 
 
     } catch (const std::runtime_error& e) {
         std::cerr << "Error: " << e.what() << std::endl;
