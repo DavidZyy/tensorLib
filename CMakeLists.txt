@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(MyProject)
 
-# Set C++ standard to C++11
-set(CMAKE_CXX_STANDARD 11)
+# Set C++ standard to C++17
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Set debug build type
@@ -12,9 +12,12 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 
 # Add executable target
-add_executable(a a.cpp)
-
+# add_executable(a a.cpp)
 add_executable(b b.cpp)
+add_executable(test_tensor test/test_tensor.cpp src/Tensor.cpp)
+
+# Add include directories
+include_directories(include)
 
 # Find the zlib library
 find_package(ZLIB REQUIRED)
