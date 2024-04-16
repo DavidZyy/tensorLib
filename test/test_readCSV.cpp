@@ -1,33 +1,29 @@
 #include "../include/readCSV.hpp"
 #include <iostream>
+#include <iterator>
+#include "../include/Tensor.hpp"
 
 int main() {
     // Specify the path to the CSV file
-    std::string csvFilePath = "/home/zhuyangyang/Course/CMU10_414/homework/hw0/src/theta.csv";
+    const std::string csvFilePath = "/home/zhuyangyang/Course/CMU10_414/homework/hw0/src/theta.csv";
 
     try {
-        // Read CSV file into a vector of vectors of doubles
-        std::vector<std::vector<double>> csvData = readCSV(csvFilePath);
+        Tensor<float> csvData = readCSV<float>(csvFilePath);
 
-        // std::cout<< "out func" << &csvData << std::endl;
+        // std::cout<<"tensor address: "<<&csvData<<" tensor data address: "<<&csvData.data_<<std::endl;
 
         // Display the read data
-        std::cout << "CSV data dimensions: " << csvData.size() << " rows x ";
-        if (!csvData.empty()) {
-            std::cout << csvData[0].size() << " columns" << std::endl;
-        } else {
-            std::cout << "0 columns" << std::endl;
+        std::cout << "CSV data dimensions: ";
+        
+        for (size_t i = 0; i < csvData.shape().size(); ++i) {
+            std::cout << csvData.shape()[i];
+            if (i < csvData.shape().size() - 1) {
+                std::cout << " x ";
+            }
         }
 
-        // Access and process the data as needed
-        // Example: Print the content of the CSV file
-        // for (const auto& row : csvData) {
-        //     for (double value : row) {
-        //         std::cout << value << " ";
-        //     }
-        //     std::cout << std::endl;
-        // }
-    std::cout << csvData[0][0] << std::endl; 
+        std::cout<<std::endl;
+        // std::cout << csvData << std::endl; 
 
     } catch (const std::runtime_error& e) {
         std::cerr << "Error: " << e.what() << std::endl;

@@ -1,4 +1,5 @@
 #include "../include/Tensor.hpp"
+#include <cstddef>
 #include <vector>
 
 // Explicit instantiation for int
@@ -9,6 +10,8 @@ template class Tensor<double>;
 
 // Explicit instantiation for float
 template class Tensor<float>;
+
+template class Tensor<uint8_t>;
 
 template <typename dtype>
 Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape_(shape) {
@@ -23,10 +26,9 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape
         }
 
         // Allocate memory for data, offset, and stride arrays
-        // data_ = std::make_unique<double[]>(num_elements);
         data_ = std::vector<dtype>(num_elements);
-        offset_ = std::make_unique<int[]>(ndim);
-        stride_ = std::make_unique<int[]>(ndim);
+        offset_ = std::vector<int>(ndim);
+        stride_ = std::vector<int>(ndim);
 
         // Initialize offset and stride arrays
         if(ndim > 0) {
@@ -45,12 +47,12 @@ Tensor<dtype>::~Tensor() {
 }
 
 template <typename dtype>
-const dtype& Tensor<dtype>::getData(const std::vector<int>& indices) const {
-    if (indices.size() != shape_.size()) {
+size_t Tensor<dtype>::calculateLinearIndex(const std::vector<int>& indices) const{
+    // doulble check
+    if (indices.size() != shape_.size() || indices.size() != ndim) {
         throw std::invalid_argument("Error: Indices size does not match tensor dimension");
     }
 
-    // Calculate linear index from indices
     size_t linear_index = 0;
     for (size_t i = 0; i < indices.size(); ++i) {
         if (indices[i] < 0 || indices[i] >= shape_[i]) {
@@ -59,6 +61,13 @@ const dtype& Tensor<dtype>::getData(const std::vector<int>& indices) const {
         linear_index += indices[i] * stride_[i];
     }
 
+    return linear_index;
+}
+
+template <typename dtype>
+const dtype& Tensor<dtype>::getData(const std::vector<int>& indices) const {
+    size_t linear_index = calculateLinearIndex(indices);
+
     return data_[linear_index];
 }
 
@@ -66,19 +75,18 @@ const dtype& Tensor<dtype>::getData(const std::vector<int>& indices) const {
 // Implementation of setData method
 template <typename dtype>
 void Tensor<dtype>::setData(const std::vector<int>& indices, const dtype& value) {
-    if (indices.size() != ndim) {
-        throw std::invalid_argument("Error: Invalid number of indices for tensor access");
-    }
+    size_t linear_index = calculateLinearIndex(indices); 
 
-    int idx = 0;
-    for (int i = 0; i < ndim; ++i) {
-        if (indices[i] < 0 || indices[i] >= shape_[i]) {
-            throw std::out_of_range("Error: Index out of range for tensor access");
-        }
-        idx += indices[i] * stride_[i];
-    }
+    data_[linear_index] = value;
+}
 
-    data_[idx] = value;
+// Accessor implementation (non-const version)
+template <typename dtype>
+dtype& Tensor<dtype>::operator()(const std::vector<int>& indices) {
+    // Calculate linear index from multi-dimensional indices
+    size_t linear_index = calculateLinearIndex(indices);
+    
+    return data_[linear_index];
 }
 
 template <typename dtype>

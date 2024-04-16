@@ -82,8 +82,8 @@ int test_getData() {
 
 void test_setData() {
     // Create a Tensor object with a specific shape
-    // std::vector<int> shape = {2, 3};
-    std::vector<int> shape = {};
+    std::vector<int> shape = {5, 4, 3, 2};
+    // std::vector<int> shape = {};
     Tensor<int> tensor(shape);
 
     // Set data at specific indices
@@ -102,8 +102,53 @@ void test_setData() {
     std::cout << tensor << std::endl;
 }
 
+void test_parenthesis() {
+    // Create a Tensor object with a specific shape
+    std::vector<int> shape = {5, 4, 3, 2};
+    Tensor<int> tensor(shape);
+
+    int value = 0;
+    for (int i = 0; i < shape[0]; ++i) {
+        for (int j = 0; j < shape[1]; ++j) {
+            for (int k = 0; k < shape[2]; ++k) {
+                for(int t = 0; t < shape[3]; ++t) {
+                    tensor({i, j, k, t}) = value++;
+                }
+            }
+        }
+    }
+
+    std::cout << "Tensor after setData:" << std::endl;
+    std::cout << tensor << std::endl;
+}
+
+// void test_square_brackets() {
+//     // Create a Tensor object with a specific shape
+//     std::vector<int> shape = {5, 4, 3, 2};
+//     Tensor<int> tensor(shape);
+// 
+//     int value = 0;
+//     for (int i = 0; i < shape[0]; ++i) {
+//         for (int j = 0; j < shape[1]; ++j) {
+//             for (int k = 0; k < shape[2]; ++k) {
+//                 for(int t = 0; t < shape[3]; ++t) {
+//                     // tensor({i, j, k, t}) = value++;
+//                     tensor[i][j][k][t] = value++;
+//                 }
+//             }
+//         }
+//     }
+//     auto a = tensor[1][2][3][0];
+// 
+//     std::cout << "Tensor after setData:" << std::endl;
+//     std::cout << tensor << std::endl;
+//     // std::cout << tensor[1][2][3][0] << std::endl;
+// }
+
 int main() {
     test_construct();
     // test_getData();
     // test_setData();
+    // test_parenthesis();
+    // test_square_brackets();
 }
