@@ -1,6 +1,7 @@
 #include "../include/Tensor.hpp"
 #include <cstddef>
 #include <vector>
+#include <iomanip>
 
 // Explicit instantiation for int
 template class Tensor<int>;
@@ -27,6 +28,35 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape
 
         // Allocate memory for data, offset, and stride arrays
         data_ = std::vector<dtype>(num_elements);
+        offset_ = std::vector<int>(ndim);
+        stride_ = std::vector<int>(ndim);
+
+        // Initialize offset and stride arrays
+        if(ndim > 0) {
+            // offset_[ndim - 1] = 1;
+            stride_[ndim - 1] = 1;
+            for (int i = ndim - 2; i >= 0; --i) {
+                // offset_[i] = offset_[i + 1] * shape_[i + 1];
+                stride_[i] = stride_[i + 1] * shape_[i + 1];
+            }
+        }
+}
+
+template <typename dtype>
+Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::vector<dtype>& data) 
+    : ndim(shape.size()), shape_(shape), data_(data) {
+        // Calculate the total number of elements in the tensor
+        if(shape.empty()) {
+            num_elements = 0;
+        } else {
+            num_elements = 1;
+            for (int dim : shape) {
+                num_elements *= dim;
+            }
+        }
+
+        // Allocate memory for data, offset, and stride arrays
+        // data_ = std::vector<dtype>(num_elements);
         offset_ = std::vector<int>(ndim);
         stride_ = std::vector<int>(ndim);
 
@@ -99,7 +129,7 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
 
         for (int i = 0; i < shape_[depth]; ++i) {
             if (i > 0) os << ", ";
-            os << data_[idx + i];
+            os << std::setw(3) << data_[idx + i];
         }
         os << "]";
     } else {
@@ -175,6 +205,52 @@ Tensor<int> Tensor<dtype>::argmax(int dim, bool keepdim) const{
         }
         result.setData({i}, max_index);
     }
+
+    return result;
+}
+
+/**
+ * can not just compare this->data_ and other.data_, because this just means the data_
+ * in physical is equal, not the logical.
+ * @tparam dtype 
+ */
+template <typename dtype>
+Tensor<int> Tensor<dtype>::operator==(const Tensor<dtype>& other) const {
+    if (this->shape() != other.shape()) {
+        throw std::invalid_argument("This shape and other shape is not equal.");
+    }
+
+    assert(shape_.size() == 1);
+
+    Tensor<int> result(this->shape());
+
+    for (int i = 0; i < shape_[0]; i++) {
+        if (this->data_[i] == other.data_[i]) {
+            result.setData({i}, 1);
+        } else {
+            result.setData({i}, 0);
+        }
+    }
+
+    return result;
+}
+
+
+/**
+ * view use the same data as the original tensor, and reshape copy the data.
+ * @tparam dtype 
+ */
+template <typename dtype>
+Tensor<dtype> Tensor<dtype>::view(const std::vector<int>& shape) const {
+    if(!is_contiguous(*this)) {
+        throw std::invalid_argument("This tensor is not contiguous.");
+    }
+
+    /**
+     * but it seems that this constructor execute a deep copy, not a shadow copy. 
+     * it maybe optimized it later.
+     */
+    Tensor<dtype> result(shape, this->data());
 
     return result;
 }

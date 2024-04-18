@@ -29,7 +29,7 @@ int main() {
 
     Tensor<int> correct = pred == label;
 
-    Tensor<float> meanValue = correct.mean();
+    auto meanValue = correct.mean();
 
     std::cout << meanValue << std::endl;
 }

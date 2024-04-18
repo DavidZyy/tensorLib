@@ -170,11 +170,38 @@ int test_matmul() {
     return 0;
 }
 
+Tensor<int> originTensor(const std::vector<int>& shape) {
+    Tensor<int> tensor(shape);
+
+    for(auto i=0; i<tensor.num_elements; i++)
+        tensor.data_[i] = i;
+
+    return tensor;
+}
+
+
+void test_view() {
+    Tensor<int> a = originTensor({2, 3, 4, 5});
+    auto b = a.view({2, 12, 5});
+    auto c = b.view({5, 24});
+
+    std::cout << "a: " << std::endl << a << std::endl;
+    std::cout << "b: " << std::endl << b << std::endl;
+    std::cout << "c: " << std::endl << c << std::endl;
+
+    /* test whether the data is shared, 
+        whether the constructor make a deep copy or shadow copy. */
+    std::cout << "address of a.data " << &a.data_[0] << std::endl;
+    std::cout << "address of b.data " << &b.data_[0] << std::endl;
+    std::cout << "address of c.data " << &c.data_[0] << std::endl;
+}
+
 int main() {
     // test_construct();
     // test_getData();
     // test_setData();
     // test_parenthesis();
     // test_square_brackets();
-    test_matmul();
+    // test_matmul();
+    test_view();
 }

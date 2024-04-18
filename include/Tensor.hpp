@@ -39,6 +39,9 @@ class Tensor {
 public:
     // Constructor
     Tensor(const std::vector<int>& shape);
+    // the data may be another's Tensor's data, allocated in heap, or a temporary vector, in stack,
+    // maybe cause error.
+    Tensor(const std::vector<int>& shape, const std::vector<dtype>& data);
 
     // Destructor
     ~Tensor();
@@ -81,7 +84,11 @@ public:
     Tensor<dtype> matmul(const Tensor<dtype>& other) const;
     // Tensor<dtype> argmax(int axis) const;
     Tensor<int> argmax(int dim, bool keepdim = false) const;
-    Tensor<float> mean(int dim = -1, bool keepdim = false) const;
+
+    template<typename T = float>
+    Tensor<T> mean(int dim = -1, bool keepdim = false) const;
+
+    Tensor<dtype> view(const std::vector<int>& shape) const;
 
 private:
     std::vector<int> offset_;
@@ -93,6 +100,8 @@ private:
     void printTensor(std::ostream& os, size_t depth, std::vector<int> indices) const;
     // Helper function to calculate linear index from multi-dimensional indices
     size_t calculateLinearIndex(const std::vector<int>& indices) const;
+    // helper function for view
+    bool is_contiguous(const Tensor<dtype>& t) const;
 };
 
 
@@ -111,34 +120,11 @@ std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
     return os;
 }
 
-/**
- * can not just compare this->data_ and other.data_, because this just means the data_
- * in physical is equal, not the logical.
- * @tparam dtype 
- */
-template <typename dtype>
-Tensor<int> Tensor<dtype>::operator==(const Tensor<dtype>& other) const {
-    if (this->shape() != other.shape()) {
-        throw std::invalid_argument("This shape and other shape is not equal.");
-    }
-
-    assert(shape_.size() == 1);
-
-    Tensor<int> result(this->shape());
-
-    for (int i = 0; i < shape_[0]; i++) {
-        if (this->data_[i] == other.data_[i]) {
-            result.setData({i}, 1);
-        } else {
-            result.setData({i}, 0);
-        }
-    }
-
-    return result;
-}
 
 template <typename dtype>
-Tensor<float> Tensor<dtype>::mean(int dim, bool keepdim) const {
+template <typename T>
+// Tensor<float> Tensor<dtype>::mean(int dim, bool keepdim) const {
+Tensor<T> Tensor<dtype>::mean(int dim, bool keepdim) const {
 //     if (shape_.size() != 2) {
 //         throw std::invalid_argument("Only support 2d.");
 //     }
@@ -167,14 +153,27 @@ Tensor<float> Tensor<dtype>::mean(int dim, bool keepdim) const {
         throw std::invalid_argument("Only support 1d.");
     }
 
-    Tensor<float> result(std::vector<int>{1});
+    Tensor<T> result(std::vector<int>{1});
 
     dtype sum = 0;
     for (auto value : data_) {
         sum += value;
     }
 
-    result.setData({0}, (float)sum / (float)shape_[0]);
+    result.setData({0}, (T)sum / (T)shape_[0]);
 
     return result;
 }
+
+
+template <typename dtype>
+bool Tensor<dtype>::is_contiguous(const Tensor<dtype>& t) const {
+    int stride = 1;
+    for(int i = t.ndim - 1; i >= 0; --i) {
+        if(stride != t.stride_[i])
+            return false;
+        stride *= t.shape_[i];
+    }
+    return true;
+}
+
