@@ -145,10 +145,36 @@ void test_parenthesis() {
 //     // std::cout << tensor[1][2][3][0] << std::endl;
 // }
 
+int test_matmul() {
+    std::vector<int> shape1 = {2, 3};
+    std::vector<int> shape2 = {3, 2};
+    Tensor<int> tensor1(shape1);
+    Tensor<int> tensor2(shape2);
+
+    // Fill the tensors with some test data
+    for (int i = 0; i < shape1[0]; ++i) {
+        for (int j = 0; j < shape1[1]; ++j) {
+            tensor1({i, j}) = 1;
+        }
+    }
+
+    for (int i = 0; i < shape2[0]; ++i) {
+        for (int j = 0; j < shape2[1]; ++j) {
+            tensor2({i, j}) = 1;
+        }
+    }
+
+    Tensor<int> result = tensor1.matmul(tensor2);
+    std::cout << "Result of matrix multiplication:" << std::endl;
+    std::cout << result << std::endl;
+    return 0;
+}
+
 int main() {
-    test_construct();
+    // test_construct();
     // test_getData();
     // test_setData();
     // test_parenthesis();
     // test_square_brackets();
+    test_matmul();
 }

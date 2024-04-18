@@ -12,11 +12,10 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 
 # Add executable target
-# add_executable(a a.cpp)
-# add_executable(b b.cpp)
-add_executable(test_readMNIST test/test_readMNIST.cpp src/readMNIST.cpp src/Tensor.cpp)
-add_executable(test_tensor test/test_tensor.cpp src/Tensor.cpp)
-add_executable(test_readCSV test/test_readCSV.cpp src/readCSV.cpp src/Tensor.cpp)
+# add_executable(test_readMNIST test/test_readMNIST.cpp src/readMNIST.cpp src/Tensor.cpp)
+# add_executable(test_tensor test/test_tensor.cpp src/Tensor.cpp)
+# add_executable(test_readCSV test/test_readCSV.cpp src/readCSV.cpp src/Tensor.cpp)
+add_executable(forward_MNIST app/forward_MNIST.cpp src/readMNIST.cpp src/Tensor.cpp src/readCSV.cpp)
 
 # Add include directories
 include_directories(include)
@@ -28,7 +27,8 @@ if (ZLIB_FOUND)
     include_directories(${ZLIB_INCLUDE_DIRS})
 
     # Link against the zlib library
-    target_link_libraries(test_readMNIST ${ZLIB_LIBRARIES})
+    # target_link_libraries(test_readMNIST ${ZLIB_LIBRARIES})
+    target_link_libraries(forward_MNIST ${ZLIB_LIBRARIES})
 else()
-    message(FATAL_ERROR "Zlib library not found.")
+    message(FATAL_ERROR "Zlib library not found in the system, please install it first.")
 endif()

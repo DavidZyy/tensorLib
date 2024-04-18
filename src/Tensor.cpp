@@ -75,7 +75,7 @@ const dtype& Tensor<dtype>::getData(const std::vector<int>& indices) const {
 // Implementation of setData method
 template <typename dtype>
 void Tensor<dtype>::setData(const std::vector<int>& indices, const dtype& value) {
-    size_t linear_index = calculateLinearIndex(indices); 
+    size_t linear_index = calculateLinearIndex(indices);
 
     data_[linear_index] = value;
 }
@@ -110,7 +110,7 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
                     os << std::endl;
                 for (auto i=0; i<depth+1; i++)
                     os << " ";
-            } 
+            }
             // os << std::endl << " ";
             indices.push_back(i * stride_[depth]);
             printTensor(os, depth + 1, indices);
@@ -118,4 +118,63 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
         }
         os << "]";
     }
+}
+
+/**
+ * Matrix multiplication method implementation
+ */
+template <typename dtype>
+Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
+    // Check dimensions for compatibility
+    if (shape_.size() != 2 || other.shape().size() != 2 || shape_[1] != other.shape()[0]) {
+        throw std::invalid_argument("Matrix dimensions are not compatible for multiplication");
+    }
+
+    // Dimensions of the resulting matrix
+    std::vector<int> result_shape = {shape_[0], other.shape()[1]};
+    Tensor<dtype> result(result_shape);
+
+    // Perform matrix multiplication
+    for (int i = 0; i < shape_[0]; ++i) {
+        for (int j = 0; j < other.shape()[1]; ++j) {
+            dtype sum = 0;
+            for (int k = 0; k < shape_[1]; ++k) {
+                sum += this->getData({i, k}) * other.getData({k, j});
+            }
+            result.setData({i, j}, sum);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Returns the indices of the maximum values along an axis.
+ * @param dim the dimension to reduce.
+ */
+template <typename dtype>
+Tensor<int> Tensor<dtype>::argmax(int dim, bool keepdim) const{
+    if (shape_.size() != 2) {
+        throw std::invalid_argument("Only support 2d.");
+    }
+
+    int reduce_shape = shape_[1 - dim];
+    Tensor<int> result(std::vector<int>{reduce_shape});
+
+    int off = stride_[1-dim];
+    int stride = stride_[dim];
+
+    for (int i = 0; i < reduce_shape; ++i) {
+        int max_index = 0;
+        dtype max_value = data_[i*off];
+        for (int j = 0; j < shape_[dim]; ++j) {
+            if (data_[i*off + j*stride] > max_value) {
+                max_value = data_[i*off + j*stride];
+                max_index = j;
+            }
+        }
+        result.setData({i}, max_index);
+    }
+
+    return result;
 }

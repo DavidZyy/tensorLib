@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <memory>
 #include <vector>
@@ -65,6 +66,8 @@ public:
     // Accessor for tensor elements (const version)
     const dtype& operator()(const std::vector<int>& indices) const;
 
+    Tensor<int> operator==(const Tensor<dtype>& other) const;
+
     // Overloaded operator[] to return TensorProxy for nested indexing
     // need to return a new thensor with different shape_, stride_, offset_, ndim, but have the same data_ area.
     // TensorProxy<dtype> operator[](int idx) {
@@ -73,6 +76,12 @@ public:
 
     std::vector<dtype> data_;
     int num_elements;
+
+    // Matrix multiplication method
+    Tensor<dtype> matmul(const Tensor<dtype>& other) const;
+    // Tensor<dtype> argmax(int axis) const;
+    Tensor<int> argmax(int dim, bool keepdim = false) const;
+    Tensor<float> mean(int dim = -1, bool keepdim = false) const;
 
 private:
     std::vector<int> offset_;
@@ -100,4 +109,72 @@ std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
     }
 
     return os;
+}
+
+/**
+ * can not just compare this->data_ and other.data_, because this just means the data_
+ * in physical is equal, not the logical.
+ * @tparam dtype 
+ */
+template <typename dtype>
+Tensor<int> Tensor<dtype>::operator==(const Tensor<dtype>& other) const {
+    if (this->shape() != other.shape()) {
+        throw std::invalid_argument("This shape and other shape is not equal.");
+    }
+
+    assert(shape_.size() == 1);
+
+    Tensor<int> result(this->shape());
+
+    for (int i = 0; i < shape_[0]; i++) {
+        if (this->data_[i] == other.data_[i]) {
+            result.setData({i}, 1);
+        } else {
+            result.setData({i}, 0);
+        }
+    }
+
+    return result;
+}
+
+template <typename dtype>
+Tensor<float> Tensor<dtype>::mean(int dim, bool keepdim) const {
+//     if (shape_.size() != 2) {
+//         throw std::invalid_argument("Only support 2d.");
+//     }
+// 
+//     int reduce_shape = shape_[1 - dim];
+//     Tensor<int> result(std::vector<int>{reduce_shape});
+// 
+//     int off = stride_[1-dim];
+//     int stride = stride_[dim];
+// 
+//     for (int i = 0; i < reduce_shape; ++i) {
+//         int max_index = 0;
+//         dtype max_value = data_[i*off];
+//         for (int j = 0; j < shape_[dim]; ++j) {
+//             if (data_[i*off + j*stride] > max_value) {
+//                 max_value = data_[i*off + j*stride];
+//                 max_index = j;
+//             }
+//         }
+//         result.setData({i}, max_index);
+//     }
+// 
+//     return result;
+    
+    if (shape_.size() != 1) {
+        throw std::invalid_argument("Only support 1d.");
+    }
+
+    Tensor<float> result(std::vector<int>{1});
+
+    dtype sum = 0;
+    for (auto value : data_) {
+        sum += value;
+    }
+
+    result.setData({0}, (float)sum / (float)shape_[0]);
+
+    return result;
 }
