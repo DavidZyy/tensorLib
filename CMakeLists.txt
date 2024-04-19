@@ -16,6 +16,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 add_executable(test_tensor test/test_tensor.cpp src/Tensor.cpp)
 # add_executable(test_readCSV test/test_readCSV.cpp src/readCSV.cpp src/Tensor.cpp)
 add_executable(forward_MNIST app/forward_MNIST.cpp src/readMNIST.cpp src/Tensor.cpp src/readCSV.cpp)
+add_executable(test_modules test/nn/test_modules.cpp src/nn/modules.cpp src/Tensor.cpp)
 
 # Add include directories
 include_directories(include)

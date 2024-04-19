@@ -90,6 +90,9 @@ public:
 
     Tensor<dtype> view(const std::vector<int>& shape) const;
 
+    template<typename T>
+    friend Tensor<T> maximum(Tensor<T> a, Tensor<T> b);
+
 private:
     std::vector<int> offset_;
     std::vector<int> stride_;
@@ -112,12 +115,27 @@ std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
     const auto& data = tensor.data();
 
     if (shape.size() == 0) {
-        os << "[]";
+        // os << "[]";
+        os << tensor.data_[0];
     } else {
         tensor.printTensor(os, 0, {});
     }
 
     return os;
+}
+
+
+template <typename T>
+Tensor<T> maximum(Tensor<T> a, Tensor<T> b) {
+    // assume b is a scala.
+    assert(b.shape().empty());
+
+    Tensor<T> result(a.shape());
+    for (auto i = 0; i < a.num_elements; ++i) {
+        result.data_[i] = std::max(a.data_[i], b.data_[0]);
+    }
+
+    return result;
 }
 
 

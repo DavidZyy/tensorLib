@@ -37,4 +37,20 @@ Tensor<dtype> Linear<dtype>::forward(const Tensor<dtype>& input) {
     return input.matmul(weight);
 }
 
+
+template <typename dtype>
+class ReLU {
+public:
+    ReLU() = default;
+    ~ReLU() = default;
+    Tensor<dtype> forward(const Tensor<dtype>& input); // maximum method
+};
+
+template <typename dtype>
+Tensor<dtype> ReLU<dtype>::forward(const Tensor<dtype>& input) {
+    Tensor<int> temp({});
+    temp.setData({}, 0);
+    return maximum(input, temp);
+}
+
 }

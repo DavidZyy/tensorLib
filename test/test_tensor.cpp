@@ -7,6 +7,7 @@ int test_construct() {
     std::vector<std::vector<int>> shapes = {
         {},
         {1},
+        {2},
         {2, 3},        // 2D tensor with shape (2, 3)
         {3, 4, 2},     // 3D tensor with shape (3, 4, 2)
         {2, 2, 2, 2}   // 4D tensor with shape (2, 2, 2, 2)
@@ -18,7 +19,7 @@ int test_construct() {
 
         // Assign values to the tensor
         for (size_t i = 0; i < tensor.num_elements; ++i) {
-            tensor.data_[i] = static_cast<int>(i);
+            tensor.data_[i] = static_cast<int>(i+1);
         }
 
         // Print the tensor
@@ -196,6 +197,18 @@ void test_view() {
     std::cout << "address of c.data " << &c.data_[0] << std::endl;
 }
 
+void test_maximum() {
+    Tensor<int> a = originTensor({2, 3});
+
+    Tensor<int> temp({});
+
+    temp.setData({}, 3);
+    auto b = maximum(a, temp);
+
+    std::cout << "a: " << std::endl << a << std::endl;
+    std::cout << "b: " << std::endl << b << std::endl;
+}
+
 int main() {
     // test_construct();
     // test_getData();
@@ -203,5 +216,6 @@ int main() {
     // test_parenthesis();
     // test_square_brackets();
     // test_matmul();
-    test_view();
+    // test_view();
+    test_maximum();
 }

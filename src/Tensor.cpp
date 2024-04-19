@@ -17,14 +17,14 @@ template class Tensor<uint8_t>;
 template <typename dtype>
 Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape_(shape) {
         // Calculate the total number of elements in the tensor
-        if(shape.empty()) {
-            num_elements = 0;
-        } else {
-            num_elements = 1;
+        // if(shape.empty()) {
+        //     num_elements = 0;
+        // } else {
+            num_elements = 1; // even shape is empty, it should have 1 elem, means a scala.
             for (int dim : shape) {
                 num_elements *= dim;
             }
-        }
+        // }
 
         // Allocate memory for data, offset, and stride arrays
         data_ = std::vector<dtype>(num_elements);
@@ -46,14 +46,14 @@ template <typename dtype>
 Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::vector<dtype>& data) 
     : ndim(shape.size()), shape_(shape), data_(data) {
         // Calculate the total number of elements in the tensor
-        if(shape.empty()) {
-            num_elements = 0;
-        } else {
+        // if(shape.empty()) {
+        //     num_elements = 0;
+        // } else {
             num_elements = 1;
             for (int dim : shape) {
                 num_elements *= dim;
             }
-        }
+        // }
 
         // Allocate memory for data, offset, and stride arrays
         // data_ = std::vector<dtype>(num_elements);
