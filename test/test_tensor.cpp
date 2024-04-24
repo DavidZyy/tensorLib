@@ -209,6 +209,39 @@ void test_maximum() {
     std::cout << "b: " << std::endl << b << std::endl;
 }
 
+void test_zeros() {
+    auto a = zeros<int>({2, 3, 3,3});
+    std::cout << "a: " << std::endl << a << std::endl;
+}
+
+void test_slice() {
+    Tensor<int> a = originTensor({2, 3, 4, 5});
+    // Tensor<int> b = a.slice(0, 1, 0);
+    // Tensor<int> c = a.slice(0, 1, 1);
+    // Tensor<int> d = a.slice(0, 2, 2);
+    // Tensor<int> e = a.slice(0, 1, 3);
+    // Tensor<int> f = a.slice(1, 2, 3);
+    // Tensor<int> g = f.slice(1, 2, 2);
+    // Tensor<int> h = g.slice(1, 2, 1);
+    Tensor<int> i = a.slice(0, 1, 0).slice(0, 3, 2).slice(1, 4, 3);
+    Tensor<int> j = a.slice(1, 2, 0).slice(1, 4, 2).slice(2, 5, 3);
+
+
+    std::cout << "a: " << std::endl << a << std::endl;
+    // std::cout << "b: " << std::endl << b << std::endl;
+    // std::cout << "c: " << std::endl << c << std::endl;
+    // std::cout << "e: " << std::endl << e << std::endl;
+    // std::cout << "f: " << std::endl << f << std::endl;
+    // std::cout << "g: " << std::endl << g << std::endl;
+    // std::cout << "h: " << std::endl << h << std::endl;
+    std::cout << "i: " << std::endl << i << std::endl;
+    std::cout << "j: " << std::endl << j << std::endl;
+
+    j.setData({0, 0, 0, 0}, 100);
+    j.setData({0, 1, 1, 1}, 90);
+    std::cout << "j: " << std::endl << j << std::endl;
+}
+
 int main() {
     // test_construct();
     // test_getData();
@@ -217,5 +250,7 @@ int main() {
     // test_square_brackets();
     // test_matmul();
     // test_view();
-    test_maximum();
+    // test_maximum();
+    // test_zeros();
+    test_slice();
 }

@@ -71,14 +71,13 @@ public:
 
     Tensor<int> operator==(const Tensor<dtype>& other) const;
 
+    Tensor<dtype> operator*(const Tensor<dtype>& other) const;
+
     // Overloaded operator[] to return TensorProxy for nested indexing
     // need to return a new thensor with different shape_, stride_, offset_, ndim, but have the same data_ area.
     // TensorProxy<dtype> operator[](int idx) {
     //     return TensorProxy(*this, {idx});
     // }
-
-    std::vector<dtype> data_;
-    int num_elements;
 
     // Matrix multiplication method
     Tensor<dtype> matmul(const Tensor<dtype>& other) const;
@@ -90,11 +89,22 @@ public:
 
     Tensor<dtype> view(const std::vector<int>& shape) const;
 
+    // startIdx <= idx < endIdx
+    Tensor<dtype> slice(int startIdx, int endIdx, int dim) const;
+
     template<typename T>
     friend Tensor<T> maximum(Tensor<T> a, Tensor<T> b);
 
+    template<typename T>
+    friend Tensor<T> zeros(const std::vector<int>& shape);
+
+
+    /* data is managed by copy on write */
+    std::vector<dtype> data_;
+    int num_elements;
 private:
-    std::vector<int> offset_;
+    // the offset of data_, used for slice method to share the same memory area of data_.
+    int offset_;
     std::vector<int> stride_;
     int ndim;
     std::vector<int> shape_;
@@ -138,6 +148,14 @@ Tensor<T> maximum(Tensor<T> a, Tensor<T> b) {
     return result;
 }
 
+template <typename dtype>
+Tensor<dtype> zeros(const std::vector<int>& shape) {
+    Tensor<dtype> result = Tensor<dtype>(shape);
+    for(auto i = 0; i < result.num_elements; ++i) {
+        result.data_[i] = 0;
+    }
+    return result;
+}
 
 template <typename dtype>
 template <typename T>

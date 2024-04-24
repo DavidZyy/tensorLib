@@ -15,28 +15,20 @@ template class Tensor<float>;
 template class Tensor<uint8_t>;
 
 template <typename dtype>
-Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape_(shape) {
-        // Calculate the total number of elements in the tensor
-        // if(shape.empty()) {
-        //     num_elements = 0;
-        // } else {
-            num_elements = 1; // even shape is empty, it should have 1 elem, means a scala.
-            for (int dim : shape) {
-                num_elements *= dim;
-            }
-        // }
+Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape_(shape), offset_(0) {
+        num_elements = 1; // even shape is empty, it should have 1 elem, means a scala.
+        for (int dim : shape) {
+            num_elements *= dim;
+        }
 
         // Allocate memory for data, offset, and stride arrays
         data_ = std::vector<dtype>(num_elements);
-        offset_ = std::vector<int>(ndim);
         stride_ = std::vector<int>(ndim);
 
         // Initialize offset and stride arrays
-        if(ndim > 0) {
-            // offset_[ndim - 1] = 1;
+        if (ndim > 0) {
             stride_[ndim - 1] = 1;
             for (int i = ndim - 2; i >= 0; --i) {
-                // offset_[i] = offset_[i + 1] * shape_[i + 1];
                 stride_[i] = stride_[i + 1] * shape_[i + 1];
             }
         }
@@ -44,28 +36,20 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape
 
 template <typename dtype>
 Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::vector<dtype>& data) 
-    : ndim(shape.size()), shape_(shape), data_(data) {
+    : ndim(shape.size()), shape_(shape), data_(data), offset_(0) {
         // Calculate the total number of elements in the tensor
-        // if(shape.empty()) {
-        //     num_elements = 0;
-        // } else {
-            num_elements = 1;
-            for (int dim : shape) {
-                num_elements *= dim;
-            }
-        // }
+        num_elements = 1;
+        for (int dim : shape) {
+            num_elements *= dim;
+        }
 
         // Allocate memory for data, offset, and stride arrays
-        // data_ = std::vector<dtype>(num_elements);
-        offset_ = std::vector<int>(ndim);
         stride_ = std::vector<int>(ndim);
 
         // Initialize offset and stride arrays
-        if(ndim > 0) {
-            // offset_[ndim - 1] = 1;
+        if (ndim > 0) {
             stride_[ndim - 1] = 1;
             for (int i = ndim - 2; i >= 0; --i) {
-                // offset_[i] = offset_[i + 1] * shape_[i + 1];
                 stride_[i] = stride_[i + 1] * shape_[i + 1];
             }
         }
@@ -91,7 +75,7 @@ size_t Tensor<dtype>::calculateLinearIndex(const std::vector<int>& indices) cons
         linear_index += indices[i] * stride_[i];
     }
 
-    return linear_index;
+    return linear_index + offset_;
 }
 
 template <typename dtype>
@@ -120,6 +104,14 @@ dtype& Tensor<dtype>::operator()(const std::vector<int>& indices) {
 }
 
 template <typename dtype>
+const dtype& Tensor<dtype>::operator()(const std::vector<int>& indices) const {
+    // Calculate linear index from multi-dimensional indices
+    size_t linear_index = calculateLinearIndex(indices);
+    
+    return data_[linear_index];
+}
+
+template <typename dtype>
 void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int> indices) const {
     if (depth == ndim - 1) {
         os << "[";
@@ -129,7 +121,8 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
 
         for (int i = 0; i < shape_[depth]; ++i) {
             if (i > 0) os << ", ";
-            os << std::setw(3) << data_[idx + i];
+            // os << std::setw(3) << data_[idx + i];
+            os << std::setw(3) << data_[idx + i + offset_];
         }
         os << "]";
     } else {
@@ -235,6 +228,52 @@ Tensor<int> Tensor<dtype>::operator==(const Tensor<dtype>& other) const {
     return result;
 }
 
+/**
+ * a recursive method from chatgpt to deal with Tensor of any dimension
+ * the select method should be finshed, and should be shallow copy.
+ * but maybe not efficient compare to directly mul.
+ */
+
+// template <typename dtype>
+// Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const {
+//     if (this->shape() != other.shape()) {
+//         throw std::invalid_argument("Shapes of tensors are not equal.");
+//     }
+// 
+//     Tensor<dtype> result(this->shape());
+//     multiplyRecursive(*this, other, result, 0);
+//     return result;
+// }
+// 
+// template <typename dtype>
+// void Tensor<dtype>::multiplyRecursive(const Tensor<dtype>& tensor1, const Tensor<dtype>& tensor2, Tensor<dtype>& result, int dim) const {
+//     if (dim == tensor1.dimensions() - 1) {
+//         // Base case: compute element-wise multiplication for the last dimension
+//         for (int i = 0; i < tensor1.shape(dim); i++) {
+//             result[i] = tensor1[i] * tensor2[i];
+//         }
+//     } else {
+//         // Recursive case: multiply along the current dimension
+//         for (int i = 0; i < tensor1.shape(dim); i++) {
+//             multiplyRecursive(tensor1.select(dim, i), tensor2.select(dim, i), result.select(dim, i), dim + 1);
+//         }
+//     }
+// }
+
+
+/**
+ * operator *
+ */
+// template <typename dtype>
+// Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const {
+//     if (this->shape() != other.shape()) {
+//         throw std::invalid_argument("This shape and other shape is not equal.");
+//     }
+// 
+//     Tensor<dtype> result(this->shape());
+//     
+// }
+
 
 /**
  * view use the same data as the original tensor, and reshape copy the data.
@@ -251,6 +290,26 @@ Tensor<dtype> Tensor<dtype>::view(const std::vector<int>& shape) const {
      * it maybe optimized it later.
      */
     Tensor<dtype> result(shape, this->data());
+
+    return result;
+}
+
+// startIdx <= idx < endIdx
+template <typename dtype>
+Tensor<dtype> Tensor<dtype>::slice(int startIdx, int endIdx, int dim) const {
+    if (dim >= this->ndim) {
+        throw std::invalid_argument("Dimension out of range.");
+    }
+
+    if (startIdx < 0 || endIdx > this->shape_[dim] || startIdx > endIdx) {
+        throw std::invalid_argument("Invalid slice range.");
+    }
+
+    // copy
+    Tensor<dtype> result = *this;
+    result.shape_[dim] = endIdx - startIdx;
+
+    result.offset_ = this->offset_ + startIdx * this->stride_[dim];
 
     return result;
 }
