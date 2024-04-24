@@ -56,23 +56,29 @@ Tensor<dtype> ReLU<dtype>::forward(const Tensor<dtype>& input) {
 template <typename dtype>
 class Conv2d {
 public:
-    Conv2d(int in_channels, int out_channels, int kernel_size, int stride = 1, int padding = 0);
+    Conv2d(int in_channels, int out_channels, int kernel_size, int stride, int padding, Tensor<dtype>&& weight);
     ~Conv2d() = default;
 
     Tensor<dtype> forward(const Tensor<dtype>& input);
-private:
+
+// private:
+protected:
     int in_channels;
     int out_channels;
     int kernel_size;
     int stride;
     int padding;
-    Tensor<dtype> kernel;
+    Tensor<dtype> weight;
 };
 
 template <typename dtype>
-Conv2d<dtype>::Conv2d(int in_channels, int out_channels, int kernel_size, int stride, int padding)
-        : in_channels(in_channels), out_channels(out_channels), kernel_size(kernel_size), stride(stride), padding(padding) {
-    kernel = Tensor<dtype>(std::vector<int>{in_channels, kernel_size, kernel_size, out_channels});
+Conv2d<dtype>::Conv2d(int in_channels, int out_channels, int kernel_size, int stride, int padding, Tensor<dtype>&& weight) : 
+    in_channels(in_channels), out_channels(out_channels), kernel_size(kernel_size), stride(stride), padding(padding), weight(std::move(weight)) {
+    
+    // get error when construct a conv layer.
+    // weight = Tensor<dtype>({in_channels, kernel_size, kernel_size, out_channels});
+    // Tensor<dtype> a({in_channels, kernel_size, kernel_size, out_channels});
+    // weight({in_channels, kernel_size, kernel_size, out_channels});
 }
 
 /**
@@ -84,7 +90,9 @@ template <typename dtype>
 Tensor<dtype> Conv2d<dtype>::forward(const Tensor<dtype>& input) {
     assert(input.shape().size() == 4 && input.shape()[1] == in_channels);
 
-    auto output_shape = std::vector<int>{input.shape()[0], out_channels, (input.shape()[2] + 2 * padding - kernel_size) / stride + 1, (input.shape()[3] + 2 * padding - kernel_size) / stride + 1};
+    auto output_height = (input.shape()[2] + 2 * padding - kernel_size) / stride + 1;
+    auto output_width = (input.shape()[3] + 2 * padding - kernel_size) / stride + 1;
+    auto output_shape = std::vector<int>{input.shape()[0], out_channels, output_height, output_width};
 
     auto input_padded = zeros<dtype>({input.shape()[0], input.shape()[1], input.shape()[2] + 2 * padding, input.shape()[3] + 2 * padding});
     for (int i = 0; i < input.shape()[0]; i++) {
@@ -100,17 +108,19 @@ Tensor<dtype> Conv2d<dtype>::forward(const Tensor<dtype>& input) {
     auto output = Tensor<dtype>(output_shape);
 
     // conv
-    for (int i = 0; i < output_shape[0]; i++) {
-        for (int j = 0; j < output_shape[1]; j++) {
-            for (int k = 0; k < output_shape[2]; k++) {
-                for (int t = 0; t < output_shape[3]; t++) {
-                    output.setData({i, j, k, t}, 
-                    sum(elem_mul(input_padded.slice({i, j, k * stride, t * stride, k * stride + kernel_size, t * stride + kernel_size}), kernel.slice({j, 0, 0, 0, kernel_size, kernel_size}))));
+    for (int idxn = 0; idxn < output_shape[0]; idxn++) {
+        for (int idxc = 0; idxc < output_shape[1]; idxc++) {
+            for (int idxh = 0; idxh < output_shape[2]; idxh++) {
+                for (int idxw = 0; idxw < output_shape[3]; idxw++) {
+                    // weight select channel idxc, input_padded select data idxn.
+                    auto convTensor = weight.slice(idxc, idxc+1, 3) * input_padded.slice(idxn, idxn+1, 0).slice(idxh*stride, idxh*stride+kernel_size, 2).slice(idxw*stride, idxw*stride+kernel_size, 3);
+                    output.setData({idxn, idxc, idxh, idxw}, convTensor.sum());
                 }
             }
         }
     }
 
+    return output;
 }
 
 }

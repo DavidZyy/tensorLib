@@ -308,6 +308,36 @@ void test_elementwise_mul() {
     std::cout << "b * c: " << std::endl << b*c << std::endl;
 }
 
+void test_select() {
+    Tensor<int> a = originTensor({2, 3, 4, 5});
+    // Tensor<int> b = a.slice(0, 1, 0);
+    // Tensor<int> c = a.slice(0, 1, 1);
+    // Tensor<int> d = a.slice(0, 2, 2);
+    // Tensor<int> e = a.slice(0, 1, 3);
+    // Tensor<int> f = a.slice(1, 2, 3);
+    // Tensor<int> g = f.slice(1, 2, 2);
+    // Tensor<int> h = g.slice(1, 2, 1);
+    Tensor<int> i = a.select(3, 1);
+    Tensor<int> j = i.select(0, 1);
+    Tensor<int> k = j.select(1, 2);
+
+    std::cout << "a: " << std::endl << a << std::endl;
+    // std::cout << "b: " << std::endl << b << std::endl;
+    // std::cout << "c: " << std::endl << c << std::endl;
+    // std::cout << "e: " << std::endl << e << std::endl;
+    // std::cout << "f: " << std::endl << f << std::endl;
+    // std::cout << "g: " << std::endl << g << std::endl;
+    // std::cout << "h: " << std::endl << h << std::endl;
+    std::cout << "i: " << std::endl << i << std::endl;
+    std::cout << "j: " << std::endl << j << std::endl;
+
+    j.setData({0, 0}, 100);
+    j.setData({0, 1}, 90);
+    std::cout << "j: " << std::endl << j << std::endl;
+
+    std::cout << "k: " << std::endl << k << std::endl;
+}
+
 int main() {
     // test_construct();
     // test_getData();
@@ -320,5 +350,6 @@ int main() {
     // test_zeros();
     // test_slice();
     // test_sum();
-    test_elementwise_mul();
+    // test_elementwise_mul();
+    test_select();
 }

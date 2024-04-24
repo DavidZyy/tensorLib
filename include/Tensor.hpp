@@ -92,6 +92,10 @@ public:
     // startIdx <= idx < endIdx
     Tensor<dtype> slice(int startIdx, int endIdx, int dim) const;
 
+    /* Slices the input tensor along the selected dimension at the given index. 
+        This function returns a view of the original tensor with the given dimension removed.*/
+    Tensor<dtype> select(int dim, int index) const;
+
     dtype sum(bool keepdims = false) const;
 
     template<typename T>

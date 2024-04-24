@@ -126,7 +126,8 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
         for (int i = 0; i < shape_[depth]; ++i) {
             if (i > 0) os << ", ";
             // os << std::setw(3) << data_[idx + i];
-            os << std::setw(3) << data_[idx + i + offset_];
+            // os << std::setw(3) << data_[idx + i + offset_];
+            os << std::setw(3) << data_[idx + i*stride_[depth] + offset_];
         }
         os << "]";
     } else {
@@ -286,26 +287,6 @@ Tensor<dtype> Tensor<dtype>::view(const std::vector<int>& shape) const {
     return result;
 }
 
-// startIdx <= idx < endIdx
-template <typename dtype>
-Tensor<dtype> Tensor<dtype>::slice(int startIdx, int endIdx, int dim) const {
-    if (dim >= this->ndim) {
-        throw std::invalid_argument("Dimension out of range.");
-    }
-
-    if (startIdx < 0 || endIdx > this->shape_[dim] || startIdx > endIdx) {
-        throw std::invalid_argument("Invalid slice range.");
-    }
-
-    // copy
-    Tensor<dtype> result = *this;
-    result.shape_[dim] = endIdx - startIdx;
-    result.num_elements = result.num_elements / this->shape_[dim] * result.shape_[dim];
-
-    result.offset_ = this->offset_ + startIdx * this->stride_[dim];
-
-    return result;
-}
 
 /**
  * only support 4d Tensor sum up.
@@ -354,6 +335,70 @@ Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const {
             }
         }
     }
+
+    return result;
+}
+
+/**
+ * startIdx <= idx < endIdx, not modify the dimension of the tensor.
+ * if endIdx = startIdx+1, slice method's behavior is like select, but it not reduce the dimension,
+ * the dimension will be 1.
+ * 
+ * for tesor1[:, :, 0:1] in python, 
+ * it can be expressed:  tensor1.slice(0, 1, 2)
+ * */ 
+template <typename dtype>
+Tensor<dtype> Tensor<dtype>::slice(int startIdx, int endIdx, int dim) const {
+    if (dim >= this->ndim) {
+        throw std::invalid_argument("Dimension out of range.");
+    }
+
+    if (startIdx < 0 || endIdx > this->shape_[dim] || startIdx > endIdx) {
+        throw std::invalid_argument("Invalid slice range.");
+    }
+
+    // copy
+    Tensor<dtype> result = *this;
+    result.shape_[dim] = endIdx - startIdx;
+    result.num_elements = result.num_elements / this->shape_[dim] * result.shape_[dim];
+
+    result.offset_ = this->offset_ + startIdx * this->stride_[dim];
+
+    return result;
+}
+
+/**
+ * the dimension will be removed, and the total dimension will be reduce 1.
+ * @tparam dtype 
+ */
+template <typename dtype>
+Tensor<dtype> Tensor<dtype>::select(int dim, int index) const {
+    if (dim >= this->ndim) {
+        throw std::invalid_argument("Dimension out of range.");
+    }
+
+    if (index >= this->shape_[dim]) {
+        throw std::invalid_argument("Invalid slice range.");
+    }
+
+    // one dimension is removed
+    std::vector<int> new_shape(this->shape().size()-1);
+    std::vector<int> new_stride(this->shape().size()-1);
+
+    for (int i=0; i < new_shape.size(); i++) {
+        if (i < dim) {
+            new_shape[i] = this->shape_[i];
+            new_stride[i] = this->stride_[i];
+        } else {
+            new_shape[i] = this->shape_[i+1];
+            new_stride[i] = this->stride_[i+1];
+        }
+    }
+
+    Tensor<dtype> result(new_shape);
+    result.data_ = this->data_;
+    result.offset_ = this->offset_ + this->stride_[dim] * index;
+    result.stride_ = new_stride;
 
     return result;
 }
