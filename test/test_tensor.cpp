@@ -242,6 +242,72 @@ void test_slice() {
     std::cout << "j: " << std::endl << j << std::endl;
 }
 
+/**
+ * @brief only support thensor that have 4 dims
+ */
+int sum_up(Tensor<int> t) {
+    assert(t.shape().size() == 4);
+    int sum = 0;
+    for (int i=0; i < t.shape()[0]; i++) {
+        for (int j=0; j < t.shape()[1]; j++) {
+            for (int k=0; k < t.shape()[2]; k++) {
+                for (int l=0; l < t.shape()[3]; l++) {
+                    sum += t.getData({i, j, k, l});
+                }
+            }
+        }
+    }
+
+    return sum;
+}
+
+void test_sum() {
+    Tensor<int> a = originTensor({2, 3, 4, 5});
+    // Tensor<int> b = a.slice(0, 1, 0);
+    // Tensor<int> c = a.slice(0, 1, 1);
+    // Tensor<int> d = a.slice(0, 2, 2);
+    // Tensor<int> e = a.slice(0, 1, 3);
+    // Tensor<int> f = a.slice(1, 2, 3);
+    // Tensor<int> g = f.slice(1, 2, 2);
+    // Tensor<int> h = g.slice(1, 2, 1);
+    Tensor<int> i = a.slice(0, 1, 0).slice(0, 3, 2).slice(1, 4, 3);
+    Tensor<int> j = a.slice(1, 2, 0).slice(1, 4, 2).slice(2, 5, 3);
+
+
+    assert(a.sum() == sum_up(a));
+    std::cout << "a: " << std::endl << a << std::endl << "sum: " << a.sum() << " sum_up " << sum_up(a) << std::endl;
+    // std::cout << "b: " << std::endl << b << std::endl;
+    // std::cout << "c: " << std::endl << c << std::endl;
+    // std::cout << "e: " << std::endl << e << std::endl;
+    // std::cout << "f: " << std::endl << f << std::endl;
+    // std::cout << "g: " << std::endl << g << std::endl;
+    // std::cout << "h: " << std::endl << h << std::endl;
+    assert(i.sum() == sum_up(i));
+    std::cout << "i: " << std::endl << i << std::endl << "sum: " << i.sum() << " sum_up " << sum_up(i) << std::endl;
+    assert(j.sum() == sum_up(j));
+    std::cout << "j: " << std::endl << j << std::endl << "sum: " << j.sum() << " sum_up " << sum_up(j) << std::endl;
+
+    j.setData({0, 0, 0, 0}, 100);
+    j.setData({0, 1, 1, 1}, 90);
+    assert(j.sum() == sum_up(j));
+    std::cout << "j: " << std::endl << j << std::endl << "sum: " << j.sum() << " sum_up " << sum_up(j) << std::endl;
+}
+
+/**
+ * @brief test elementwise mul, overload *.
+ */
+void test_elementwise_mul() {
+    Tensor<int> a = originTensor({2, 3, 4, 5});
+
+    Tensor<int> b = a.slice(0, 1, 0).slice(0, 1, 1);
+    Tensor<int> c = a.slice(1, 2, 0).slice(2, 3, 1);
+
+    // std::cout << "a: " << std::endl << a << std::endl;
+    std::cout << "b: " << std::endl << b << std::endl;
+    std::cout << "c: " << std::endl << c << std::endl;
+    std::cout << "b * c: " << std::endl << b*c << std::endl;
+}
+
 int main() {
     // test_construct();
     // test_getData();
@@ -252,5 +318,7 @@ int main() {
     // test_view();
     // test_maximum();
     // test_zeros();
-    test_slice();
+    // test_slice();
+    // test_sum();
+    test_elementwise_mul();
 }

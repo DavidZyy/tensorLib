@@ -92,6 +92,8 @@ public:
     // startIdx <= idx < endIdx
     Tensor<dtype> slice(int startIdx, int endIdx, int dim) const;
 
+    dtype sum(bool keepdims = false) const;
+
     template<typename T>
     friend Tensor<T> maximum(Tensor<T> a, Tensor<T> b);
 

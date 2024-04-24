@@ -78,6 +78,10 @@ size_t Tensor<dtype>::calculateLinearIndex(const std::vector<int>& indices) cons
     return linear_index + offset_;
 }
 
+/**
+ * maybe should return a Tensor wrapped the data, which is done by pytorch.
+ * @tparam dtype 
+ */
 template <typename dtype>
 const dtype& Tensor<dtype>::getData(const std::vector<int>& indices) const {
     size_t linear_index = calculateLinearIndex(indices);
@@ -137,6 +141,9 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
             // os << std::endl << " ";
             indices.push_back(i * stride_[depth]);
             printTensor(os, depth + 1, indices);
+            if(i != shape_[depth]-1) {
+                os << ",";
+            }
             indices.pop_back();
         }
         os << "]";
@@ -260,21 +267,6 @@ Tensor<int> Tensor<dtype>::operator==(const Tensor<dtype>& other) const {
 //     }
 // }
 
-
-/**
- * operator *
- */
-// template <typename dtype>
-// Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const {
-//     if (this->shape() != other.shape()) {
-//         throw std::invalid_argument("This shape and other shape is not equal.");
-//     }
-// 
-//     Tensor<dtype> result(this->shape());
-//     
-// }
-
-
 /**
  * view use the same data as the original tensor, and reshape copy the data.
  * @tparam dtype 
@@ -308,8 +300,61 @@ Tensor<dtype> Tensor<dtype>::slice(int startIdx, int endIdx, int dim) const {
     // copy
     Tensor<dtype> result = *this;
     result.shape_[dim] = endIdx - startIdx;
+    result.num_elements = result.num_elements / this->shape_[dim] * result.shape_[dim];
 
     result.offset_ = this->offset_ + startIdx * this->stride_[dim];
 
     return result;
 }
+
+/**
+ * only support 4d Tensor sum up.
+ * @tparam dtype 
+ */
+template<typename dtype>
+dtype Tensor<dtype>::sum(bool keepdim) const {
+    if (shape_.size() != 4) {
+        throw std::invalid_argument("Only support 4d.");
+    }
+
+    dtype sum = 0;
+    for (int i=0; i < this->shape()[0]; i++) {
+        for (int j=0; j < this->shape()[1]; j++) {
+            for (int k=0; k < this->shape()[2]; k++) {
+                for (int l=0; l < this->shape()[3]; l++) {
+                    sum += this->getData({i, j, k, l});
+                }
+            }
+        }
+    }
+    return sum;
+}
+
+/**
+ * operator *
+ */
+template <typename dtype>
+Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const {
+    if (shape_.size() != 4) {
+        throw std::invalid_argument("Only support 4d.");
+    }
+
+    if (this->shape() != other.shape()) {
+        throw std::invalid_argument("This shape and other shape is not equal.");
+    }
+
+    Tensor<dtype> result(this->shape());
+
+    for (int i=0; i < this->shape()[0]; i++) {
+        for (int j=0; j < this->shape()[1]; j++) {
+            for (int k=0; k < this->shape()[2]; k++) {
+                for (int l=0; l < this->shape()[3]; l++) {
+                    result.setData({i, j, k, l}, this->getData({i, j, k, l}) * other.getData({i, j, k, l}));
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
