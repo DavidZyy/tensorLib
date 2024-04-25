@@ -14,8 +14,9 @@ const std::string csvFilePath = "/home/zhuyangyang/Course/CMU10_414/homework/hw0
 
 int main() {
     Tensor<float> csvData = readCSV<float>(csvFilePath);
+    csvData = csvData.transpose(0, 1);
 
-    nn::Linear<float> fc1(csvData.shape()[0], csvData.shape()[1], std::move(csvData));
+    nn::Linear<float> fc1(csvData.shape()[1], csvData.shape()[0], std::move(csvData));
 
     Tensor<float> X_te = readMNISTImages<float>(testImgPath);
 

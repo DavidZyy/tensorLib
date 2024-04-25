@@ -1,8 +1,10 @@
 #include "../include/Tensor.hpp"
 #include <cstddef>
+#include <memory>
 #include <utility>
 #include <vector>
 #include <iomanip>
+#include "iostream"
 
 // Explicit instantiation for int
 template class Tensor<int>;
@@ -23,7 +25,12 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape
         }
 
         // Allocate memory for data, offset, and stride arrays
-        data_ = std::vector<dtype>(num_elements);
+        // data_ = std::vector<dtype>(num_elements);
+
+        // data_ = std::make_shared<dtype[]>(num_elements); // cpp 20 or later
+        std::shared_ptr<dtype[]> temp(new dtype[num_elements]);
+        data_ = temp;
+
         stride_ = std::vector<int>(ndim);
 
         // Initialize offset and stride arrays
@@ -36,7 +43,8 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape
 }
 
 template <typename dtype>
-Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::vector<dtype>& data) 
+// Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::vector<dtype>& data) 
+Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data) 
     : ndim(shape.size()), shape_(shape), data_(data), offset_(0) {
         // Calculate the total number of elements in the tensor
         num_elements = 1;
@@ -431,6 +439,7 @@ Tensor<dtype> Tensor<dtype>::select(int dim, int index) const {
     result.offset_ = this->offset_ + this->stride_[dim] * index;
     result.stride_ = new_stride;
 
+    // std::cout<<"result data address: "<<&result.data_[0]<<" this data address: "<<&this->data_[0]<<std::endl;
     return result;
 }
 

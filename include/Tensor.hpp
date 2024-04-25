@@ -41,7 +41,8 @@ public:
     Tensor(const std::vector<int>& shape);
     // the data may be another's Tensor's data, allocated in heap, or a temporary vector, in stack,
     // maybe cause error.
-    Tensor(const std::vector<int>& shape, const std::vector<dtype>& data);
+    // Tensor(const std::vector<int>& shape, const std::vector<dtype>& data);
+    Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data);
 
     // Destructor
     ~Tensor();
@@ -56,7 +57,8 @@ public:
     }
 
     // Method to get data (double is used as an example type)
-    const std::vector<dtype> data() const {
+    // const std::vector<dtype> data() const {
+    const std::shared_ptr<dtype[]> data() const {
         return data_;
     }
 
@@ -108,8 +110,9 @@ public:
 
     Tensor<dtype> permute(const std::vector<int>& dims) const;
 
-    /* data is managed by copy on write */
-    std::vector<dtype> data_;
+    /* data is managed by copy on write (COW) later */
+    // std::vector<dtype> data_;
+    std::shared_ptr<dtype[]> data_;
     int num_elements;
 private:
     // the offset of data_, used for slice method to share the same memory area of data_.
@@ -201,8 +204,12 @@ Tensor<T> Tensor<dtype>::mean(int dim, bool keepdim) const {
     Tensor<T> result(std::vector<int>{1});
 
     dtype sum = 0;
-    for (auto value : data_) {
-        sum += value;
+    // for (auto value : data_) {
+    //     sum += value;
+    // }
+
+    for(auto i = 0; i < this->num_elements; ++i) {
+        sum += this->data_[i];
     }
 
     result.setData({0}, (T)sum / (T)shape_[0]);

@@ -2,6 +2,8 @@
 
 #include "../Tensor.hpp"
 #include <cassert>
+#include <chrono>
+#include "iostream"
 
 namespace nn {
 
@@ -28,8 +30,8 @@ template <typename dtype>
 Linear<dtype>::Linear(int in_features, int out_features, Tensor<dtype>&& weight)
         : in_features(in_features), out_features(out_features), weight(std::move(weight)) {
     // Optionally perform some sanity checks on the weight tensor shape
-    // assert(weight.shape().size() == 2 && weight.shape()[0] == out_features && weight.shape()[1] == in_features);
-    assert(weight.shape().size() == 2 && weight.shape()[1] == out_features && weight.shape()[0] == in_features);
+    assert(weight.shape().size() == 2 && weight.shape()[0] == out_features && weight.shape()[1] == in_features);
+    // assert(weight.shape().size() == 2 && weight.shape()[1] == out_features && weight.shape()[0] == in_features);
 }
 
 /**
@@ -40,7 +42,15 @@ Linear<dtype>::Linear(int in_features, int out_features, Tensor<dtype>&& weight)
  */
 template <typename dtype>
 Tensor<dtype> Linear<dtype>::forward(const Tensor<dtype>& input) {
-    return input.matmul(weight.transpose(0, 1));
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    auto result = input.matmul(weight.transpose(0, 1));
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration_seconds = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
+    std::cout << "Linear Execution time: " << duration_seconds << " seconds" << std::endl;
+
+    return result;
 }
 
 
@@ -95,6 +105,8 @@ Conv2d<dtype>::Conv2d(int in_channels, int out_channels, int kernel_size, int st
  */
 template <typename dtype>
 Tensor<dtype> Conv2d<dtype>::forward(const Tensor<dtype>& input) {
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     assert(input.shape().size() == 4 && input.shape()[1] == in_channels);
 
     auto output_height = (input.shape()[2] + 2 * padding - kernel_size) / stride + 1;
@@ -116,6 +128,7 @@ Tensor<dtype> Conv2d<dtype>::forward(const Tensor<dtype>& input) {
 
     // conv
     for (int idxn = 0; idxn < output_shape[0]; idxn++) {
+        // printf("idxn: %d\n", idxn);
         for (int idxc = 0; idxc < output_shape[1]; idxc++) {
             for (int idxh = 0; idxh < output_shape[2]; idxh++) {
                 for (int idxw = 0; idxw < output_shape[3]; idxw++) {
@@ -127,6 +140,10 @@ Tensor<dtype> Conv2d<dtype>::forward(const Tensor<dtype>& input) {
         }
     }
 
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration_seconds = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
+    std::cout << "Conv Execution time: " << duration_seconds << " seconds" << std::endl;
+    
     return output;
 }
 
