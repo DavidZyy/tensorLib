@@ -23,8 +23,8 @@ void test_ReLU() {
 void test_Conv2d() {
     // N * C * H * W
     Tensor<int> input = originTensor({1,2, 5, 5});
-    // c_in * kernel_size * kernel_size * c_cout
-    Tensor<int> weight = originTensor({2, 3, 3, 3});
+    // c_cout * c_in * kernel_size * kernel_size
+    Tensor<int> weight = originTensor({3, 2, 3, 3});
 
     nn::Conv2d<int> conv2d(2, 3, 3, 1, 0, std::move(weight));
     Tensor<int> output = conv2d.forward(input);

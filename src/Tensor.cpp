@@ -1,5 +1,6 @@
 #include "../include/Tensor.hpp"
 #include <cstddef>
+#include <utility>
 #include <vector>
 #include <iomanip>
 
@@ -274,8 +275,16 @@ Tensor<int> Tensor<dtype>::operator==(const Tensor<dtype>& other) const {
  */
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::view(const std::vector<int>& shape) const {
-    if(!is_contiguous(*this)) {
+    if (!is_contiguous(*this)) {
         throw std::invalid_argument("This tensor is not contiguous.");
+    }
+
+    int num = 1;
+    for (auto i=0; i<shape.size(); i++) {
+        num *= shape[i];
+    }
+    if (num != this->num_elements) {
+        throw std::invalid_argument("The number of elements is not equal.");
     }
 
     /**
@@ -289,34 +298,46 @@ Tensor<dtype> Tensor<dtype>::view(const std::vector<int>& shape) const {
 
 
 /**
- * only support 4d Tensor sum up.
+ * only support 4d or 3d Tensor sum up.
  * @tparam dtype 
  */
 template<typename dtype>
 dtype Tensor<dtype>::sum(bool keepdim) const {
-    if (shape_.size() != 4) {
+    if (!(shape_.size() == 4 || shape_.size() == 3)) {
         throw std::invalid_argument("Only support 4d.");
     }
 
     dtype sum = 0;
-    for (int i=0; i < this->shape()[0]; i++) {
-        for (int j=0; j < this->shape()[1]; j++) {
-            for (int k=0; k < this->shape()[2]; k++) {
-                for (int l=0; l < this->shape()[3]; l++) {
-                    sum += this->getData({i, j, k, l});
+
+    if (shape_.size() == 4) {
+        for (int i=0; i < this->shape()[0]; i++) {
+            for (int j=0; j < this->shape()[1]; j++) {
+                for (int k=0; k < this->shape()[2]; k++) {
+                    for (int l=0; l < this->shape()[3]; l++) {
+                        sum += this->getData({i, j, k, l});
+                    }
+                }
+            }
+        }
+    } else {
+        for (int i=0; i < this->shape()[0]; i++) {
+            for (int j=0; j < this->shape()[1]; j++) {
+                for (int k=0; k < this->shape()[2]; k++) {
+                    sum += this->getData({i, j, k});
                 }
             }
         }
     }
+
     return sum;
 }
 
 /**
- * operator *
+ * operator * only support 4d and 3d.
  */
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const {
-    if (shape_.size() != 4) {
+    if (!(shape_.size() == 4 || shape_.size() == 3)) {
         throw std::invalid_argument("Only support 4d.");
     }
 
@@ -326,11 +347,21 @@ Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const {
 
     Tensor<dtype> result(this->shape());
 
-    for (int i=0; i < this->shape()[0]; i++) {
-        for (int j=0; j < this->shape()[1]; j++) {
-            for (int k=0; k < this->shape()[2]; k++) {
-                for (int l=0; l < this->shape()[3]; l++) {
-                    result.setData({i, j, k, l}, this->getData({i, j, k, l}) * other.getData({i, j, k, l}));
+    if (shape_.size() == 4) {
+        for (int i=0; i < this->shape()[0]; i++) {
+            for (int j=0; j < this->shape()[1]; j++) {
+                for (int k=0; k < this->shape()[2]; k++) {
+                    for (int l=0; l < this->shape()[3]; l++) {
+                        result.setData({i, j, k, l}, this->getData({i, j, k, l}) * other.getData({i, j, k, l}));
+                    }
+                }
+            }
+        }
+    } else {
+        for (int i=0; i < this->shape()[0]; i++) {
+            for (int j=0; j < this->shape()[1]; j++) {
+                for (int k=0; k < this->shape()[2]; k++) {
+                        result.setData({i, j, k}, this->getData({i, j, k}) * other.getData({i, j, k}));
                 }
             }
         }
@@ -403,3 +434,12 @@ Tensor<dtype> Tensor<dtype>::select(int dim, int index) const {
     return result;
 }
 
+template <typename dtype>
+Tensor<dtype> Tensor<dtype>::transpose(int dim0, int dim1) const {
+    Tensor<dtype> result = *this;
+
+    std::swap(result.shape_[dim0], result.shape_[dim1]);
+    std::swap(result.stride_[dim0], result.stride_[dim1]);
+
+    return result;
+}

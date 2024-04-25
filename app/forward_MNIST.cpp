@@ -27,7 +27,7 @@ int main() {
 
     // std::cout << pred << std::endl;
 
-    Tensor<int> correct = pred == label;
+    Tensor<int> correct = (pred == label);
 
     auto meanValue = correct.mean();
 

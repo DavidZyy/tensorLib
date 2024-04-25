@@ -104,6 +104,9 @@ public:
     template<typename T>
     friend Tensor<T> zeros(const std::vector<int>& shape);
 
+    Tensor<dtype> transpose(int dim0, int dim1) const;
+
+    Tensor<dtype> permute(const std::vector<int>& dims) const;
 
     /* data is managed by copy on write */
     std::vector<dtype> data_;

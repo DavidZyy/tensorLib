@@ -32,9 +32,15 @@ Linear<dtype>::Linear(int in_features, int out_features, Tensor<dtype>&& weight)
     assert(weight.shape().size() == 2 && weight.shape()[1] == out_features && weight.shape()[0] == in_features);
 }
 
+/**
+ * input:  (N, in_features)
+ * weight: (out_features, in_features)
+ * output: (N, out_features)
+ * output = input.matmul(weight.T)
+ */
 template <typename dtype>
 Tensor<dtype> Linear<dtype>::forward(const Tensor<dtype>& input) {
-    return input.matmul(weight);
+    return input.matmul(weight.transpose(0, 1));
 }
 
 
@@ -68,6 +74,7 @@ protected:
     int kernel_size;
     int stride;
     int padding;
+    // c_cout * c_in * kernel_size * kernel_size
     Tensor<dtype> weight;
 };
 
@@ -82,9 +89,9 @@ Conv2d<dtype>::Conv2d(int in_channels, int out_channels, int kernel_size, int st
 }
 
 /**
- * input shape: N x C x H x W 
- * need Tensor op: slice, elem_mul, sum
- * @tparam dtype 
+ * input shape:  N x c_in x H x W 
+ * weight shape: c_cout * c_in * kernel_size * kernel_size
+ * output shape: N x c_cout x H_out x W_out
  */
 template <typename dtype>
 Tensor<dtype> Conv2d<dtype>::forward(const Tensor<dtype>& input) {
@@ -113,7 +120,7 @@ Tensor<dtype> Conv2d<dtype>::forward(const Tensor<dtype>& input) {
             for (int idxh = 0; idxh < output_shape[2]; idxh++) {
                 for (int idxw = 0; idxw < output_shape[3]; idxw++) {
                     // weight select channel idxc, input_padded select data idxn.
-                    auto convTensor = weight.slice(idxc, idxc+1, 3) * input_padded.slice(idxn, idxn+1, 0).slice(idxh*stride, idxh*stride+kernel_size, 2).slice(idxw*stride, idxw*stride+kernel_size, 3);
+                    auto convTensor = weight.select(0, idxc) * input_padded.select(0, idxn).slice(idxh*stride, idxh*stride+kernel_size, 1).slice(idxw*stride, idxw*stride+kernel_size, 2);
                     output.setData({idxn, idxc, idxh, idxw}, convTensor.sum());
                 }
             }

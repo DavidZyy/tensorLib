@@ -320,6 +320,8 @@ void test_select() {
     Tensor<int> i = a.select(3, 1);
     Tensor<int> j = i.select(0, 1);
     Tensor<int> k = j.select(1, 2);
+    Tensor<int> t = i.slice(0, 2, 1);
+
 
     std::cout << "a: " << std::endl << a << std::endl;
     // std::cout << "b: " << std::endl << b << std::endl;
@@ -336,6 +338,7 @@ void test_select() {
     std::cout << "j: " << std::endl << j << std::endl;
 
     std::cout << "k: " << std::endl << k << std::endl;
+    std::cout << "t: " << std::endl << t << std::endl;
 }
 
 int main() {
