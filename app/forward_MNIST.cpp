@@ -1,7 +1,7 @@
-#include "../include/Tensor.hpp"
-#include "../include/readCSV.hpp"
-#include "../include/nn/modules.hpp"
-#include "../include/readMNIST.hpp"
+#include "Tensor.hpp"
+#include "readCSV.hpp"
+#include "nn/modules.hpp"
+#include "readMNIST.hpp"
 #include <cstddef>
 #include "iostream"
 

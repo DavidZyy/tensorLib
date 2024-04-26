@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Tensor.hpp"
+#include "Tensor.hpp"
 #include <cassert>
 #include <chrono>
 #include "iostream"
@@ -64,7 +64,7 @@ public:
 
 template <typename dtype>
 Tensor<dtype> ReLU<dtype>::forward(const Tensor<dtype>& input) {
-    Tensor<int> temp({});
+    Tensor<dtype> temp({});
     temp.setData({}, 0);
     return maximum(input, temp);
 }

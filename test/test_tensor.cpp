@@ -1,4 +1,4 @@
-#include "../include/Tensor.hpp"
+#include "Tensor.hpp"
 #include <cstddef>
 #include "iostream"
 

@@ -1,4 +1,4 @@
-#include "../include/readMNIST.hpp"
+#include "readMNIST.hpp"
 
 
 int main() {
@@ -9,7 +9,7 @@ int main() {
 
         // Read MNIST images and labels
         Tensor<float> X_tr = readMNISTImages<float>(imagesPath);
-        Tensor<uint8_t> y_tr = readMNISTLabels(labelsPath);
+        Tensor<int> y_tr = readMNISTLabels<int>(labelsPath);
 
         // Display information about the loaded data
         std::cout << "Number of images: " << X_tr.shape()[0] << std::endl;

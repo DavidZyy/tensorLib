@@ -1,5 +1,5 @@
-#include "../../include/Tensor.hpp"
-#include "../../include/nn/modules.hpp"
+#include "Tensor.hpp"
+#include "nn/modules.hpp"
 #include <iostream>
 
 Tensor<int> originTensor(const std::vector<int>& shape) {

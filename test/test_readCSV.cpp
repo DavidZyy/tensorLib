@@ -1,7 +1,7 @@
-#include "../include/readCSV.hpp"
+#include "readCSV.hpp"
+#include "Tensor.hpp"
 #include <iostream>
 #include <iterator>
-#include "../include/Tensor.hpp"
 
 int main() {
     // Specify the path to the CSV file
