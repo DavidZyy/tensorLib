@@ -5,6 +5,7 @@
 #include <vector>
 #include <iomanip>
 #include "iostream"
+#include "math.h"
 
 // Explicit instantiation for int
 template class Tensor<int>;
@@ -170,18 +171,25 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
         throw std::invalid_argument("Matrix dimensions are not compatible for multiplication");
     }
 
+    // make this and other matrix contiguous, which is more efficient when accessing memory for elements.
+    auto left = is_contiguous(*this) ? *this : this->contiguous();
+    auto right = is_contiguous(other) ? other : other.contiguous();
+
+
     // Dimensions of the resulting matrix
-    std::vector<int> result_shape = {shape_[0], other.shape()[1]};
+    std::vector<int> result_shape = {left.shape_[0], right.shape_[1]};
     Tensor<dtype> result(result_shape);
 
     // Perform matrix multiplication
-    for (int i = 0; i < shape_[0]; ++i) {
-        for (int j = 0; j < other.shape()[1]; ++j) {
+    for (int i = 0; i < left.shape_[0]; ++i) {
+        for (int j = 0; j < right.shape_[1]; ++j) {
             dtype sum = 0;
-            for (int k = 0; k < shape_[1]; ++k) {
-                sum += this->getData({i, k}) * other.getData({k, j});
+            for (int k = 0; k < left.shape_[1]; ++k) {
+                // sum += left.getData({i, k}) * right.getData({k, j});
+                sum += left.data_[i * left.stride_[0] + k * left.stride_[1]] * right.data_[k * right.stride_[0] + j * right.stride_[1]];
             }
-            result.setData({i, j}, sum);
+            // result.setData({i, j}, sum);
+            result.data_[i * result.stride_[0] + j * result.stride_[1]] = sum;
         }
     }
 
@@ -449,6 +457,66 @@ Tensor<dtype> Tensor<dtype>::transpose(int dim0, int dim1) const {
 
     std::swap(result.shape_[dim0], result.shape_[dim1]);
     std::swap(result.stride_[dim0], result.stride_[dim1]);
+
+    return result;
+}
+
+template <typename dtype>
+Tensor<dtype> Tensor<dtype>::contiguous() const {
+    if (this->shape_.size() != 2) {
+        throw std::invalid_argument("only support 2d tensor now");
+    }
+
+    Tensor<dtype> result(this->shape());
+
+    for (int i=0; i < this->shape()[0]; i++) {
+        for (int j=0; j < this->shape()[1]; j++) {
+            result.setData({i, j}, this->getData({i, j}));
+        }
+    }
+
+    return result;
+}
+
+
+/**
+ * quantize dtype(in most case is float) to int8_t, but store it in int now 
+ * in case of overflow when perform matmul.
+ * @tparam dtype 
+ */
+template <typename dtype>
+Tensor<int> Tensor<dtype>::quantize() const {
+    Tensor<int> result(this->shape());
+
+    // int8 quantization -127 ~ 127
+    dtype Q_MAX = 127.0f;
+
+    // find the max absolute value in the tensor
+    dtype wmax = 0.0;
+    for (int i=0; i < this->num_elements; i++) {
+        dtype val = fabs(this->data_[i]);
+        if (val > wmax) {
+            wmax = val;
+        }
+    }
+
+    result.scale = wmax / Q_MAX;
+
+    for (int i=0; i < this->num_elements; i++) {
+        result.data_[i] = (int)(this->data_[i] / result.scale);
+    }
+
+    return result;
+}
+
+
+template <typename dtype>
+Tensor<float> Tensor<dtype>::dequantize() const {
+    Tensor<float> result(this->shape());
+
+    for (int i=0; i < this->num_elements; i++) {
+        result.data_[i] = this->data_[i] * this->scale;
+    }
 
     return result;
 }

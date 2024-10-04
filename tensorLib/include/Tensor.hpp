@@ -110,10 +110,23 @@ public:
 
     Tensor<dtype> permute(const std::vector<int>& dims) const;
 
+    // return a new tensor with the same shape and data, 
+    // but with a different memory layout which is contiguous.
+    Tensor<dtype> contiguous() const;
+
+    // int8_t quantize, but use int32_t store value now in case of overflow when perform mutmul.
+    Tensor<int> quantize() const;
+
+    Tensor<float> dequantize() const;
+
     /* data is managed by copy on write (COW) later */
     // std::vector<dtype> data_;
     std::shared_ptr<dtype[]> data_;
     int num_elements;
+
+    // used for quantize
+    // int group_size;  // seem as one group now for simple
+    float scale;
 private:
     // the offset of data_, used for slice method to share the same memory area of data_.
     int offset_;
