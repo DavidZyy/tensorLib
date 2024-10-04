@@ -1,4 +1,3 @@
-// #include "../include/Tensor.hpp"
 #include "Tensor.hpp"
 #include "readCSV.hpp"
 #include "nn/modules.hpp"
@@ -7,16 +6,14 @@
 #include "iostream"
 #include <chrono>
 
-std::string testImgPath = "/home/zhuyangyang/Course/CMU10_414/homework/hw0/data/t10k-images-idx3-ubyte.gz";
-std::string testLabelsPath = "/home/zhuyangyang/Course/CMU10_414/homework/hw0/data/t10k-labels-idx1-ubyte.gz";
+std::string testImgPath = "../dataset/MNIST/raw/t10k-images-idx3-ubyte.gz";
+std::string testLabelsPath = "../dataset/MNIST/raw/t10k-labels-idx1-ubyte.gz";
 
-std::string trainImgPath = "/home/zhuyangyang/Course/CMU10_414/homework/hw0/data/train-images-idx3-ubyte.gz";
-std::string trainLabelsPath = "/home/zhuyangyang/Course/CMU10_414/homework/hw0/data/train-labels-idx1-ubyte.gz";
+std::string trainImgPath = "../dataset/MNIST/raw/train-images-idx3-ubyte.gz";
+std::string trainLabelsPath = "../dataset/MNIST/raw/train-labels-idx1-ubyte.gz";
 
-// const std::string conv1WeightPath = "/home/zhuyangyang/project/test/conv1_weight.csv";
-const std::string conv1WeightPath = "/home/zhuyangyang/project/test/src/language/python/conv1_weight.csv";
-// const std::string fcWeightPath = "/home/zhuyangyang/project/test/fc_weight.csv";
-const std::string fcWeightPath = "/home/zhuyangyang/project/test/src/language/python/fc_weight.csv";
+const std::string conv1WeightPath = "../weights/conv1_weight.csv";
+const std::string fcWeightPath = "../weights/fc_weight.csv";
 
 int main() {
 

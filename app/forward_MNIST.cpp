@@ -5,17 +5,18 @@
 #include <cstddef>
 #include "iostream"
 
-std::string testImgPath = "/home/zhuyangyang/Course/CMU10_414/homework/hw0/data/t10k-images-idx3-ubyte.gz";
-std::string trainImgPath = "/home/zhuyangyang/Course/CMU10_414/homework/hw0/data/train-images-idx3-ubyte.gz";
-std::string trainLabelsPath = "/home/zhuyangyang/Course/CMU10_414/homework/hw0/data/train-labels-idx1-ubyte.gz";
-std::string testLabelsPath = "/home/zhuyangyang/Course/CMU10_414/homework/hw0/data/t10k-labels-idx1-ubyte.gz";
 
-const std::string csvFilePath = "/home/zhuyangyang/Course/CMU10_414/homework/hw0/src/theta.csv";
+std::string testImgPath = "../dataset/MNIST/raw/t10k-images-idx3-ubyte.gz";
+std::string testLabelsPath = "../dataset/MNIST/raw/t10k-labels-idx1-ubyte.gz";
+
+std::string trainImgPath = "../dataset/MNIST/raw/train-images-idx3-ubyte.gz";
+std::string trainLabelsPath = "../dataset/MNIST/raw/train-labels-idx1-ubyte.gz";
+
+
+const std::string csvFilePath = "../weights/fc_weight.csv";
 
 int main() {
     Tensor<float> csvData = readCSV<float>(csvFilePath);
-    csvData = csvData.transpose(0, 1);
-
     nn::Linear<float> fc1(csvData.shape()[1], csvData.shape()[0], std::move(csvData));
 
     Tensor<float> X_te = readMNISTImages<float>(testImgPath);
