@@ -32,7 +32,8 @@ int main() {
     Tensor<float> X_te = readMNISTImages<float>(testImgPath);
     X_te = X_te.view({10000, 1,28, 28});
 
-    int slice_N = 100;
+    // int slice_N = 100;
+    int slice_N = 1000;
     X_te = X_te.slice(0, slice_N, 0);
 
     Tensor<float> result1 = conv1.forward(X_te);

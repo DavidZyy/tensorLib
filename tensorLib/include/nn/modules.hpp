@@ -113,6 +113,7 @@ Tensor<dtype> Conv2d<dtype>::forward(const Tensor<dtype>& input) {
     auto output_width = (input.shape()[3] + 2 * padding - kernel_size) / stride + 1;
     auto output_shape = std::vector<int>{input.shape()[0], out_channels, output_height, output_width};
 
+    // padding
     auto input_padded = zeros<dtype>({input.shape()[0], input.shape()[1], input.shape()[2] + 2 * padding, input.shape()[3] + 2 * padding});
     for (int i = 0; i < input.shape()[0]; i++) {
         for (int j = 0; j < input.shape()[1]; j++) {
@@ -126,6 +127,7 @@ Tensor<dtype> Conv2d<dtype>::forward(const Tensor<dtype>& input) {
 
     auto output = Tensor<dtype>(output_shape);
 
+    // auto start_time = std::chrono::high_resolution_clock::now();
     // conv
     for (int idxn = 0; idxn < output_shape[0]; idxn++) {
         // printf("idxn: %d\n", idxn);
