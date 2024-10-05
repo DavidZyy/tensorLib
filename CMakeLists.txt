@@ -11,6 +11,14 @@ set(CMAKE_BUILD_TYPE Debug)
 # Add debug flags to the compiler options
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 
+# Add OpenMP support
+find_package(OpenMP REQUIRED)
+
+if(OpenMP_CXX_FOUND)
+    # Append OpenMP flags to the compiler
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
 # Add executable target
 # add_executable(test_readMNIST tensorLib/test/test_readMNIST.cpp tensorLib/src/readMNIST.cpp tensorLib/src/Tensor.cpp)
 # add_executable(test_tensor tensorLib/test/test_tensor.cpp tensorLib/src/Tensor.cpp)
@@ -32,9 +40,9 @@ if (ZLIB_FOUND)
 
     # Link against the zlib library
     # target_link_libraries(test_readMNIST ${ZLIB_LIBRARIES})
-    target_link_libraries(forward_MNIST ${ZLIB_LIBRARIES})
-    target_link_libraries(forward_MNIST_conv ${ZLIB_LIBRARIES})
-    target_link_libraries(forward_MNIST_quantize ${ZLIB_LIBRARIES})
+    target_link_libraries(forward_MNIST ${ZLIB_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
+    target_link_libraries(forward_MNIST_conv ${ZLIB_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
+    target_link_libraries(forward_MNIST_quantize ${ZLIB_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
 else()
     message(FATAL_ERROR "Zlib library not found in the system, please install it first.")
 endif()

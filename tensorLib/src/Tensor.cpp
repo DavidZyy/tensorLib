@@ -6,6 +6,7 @@
 #include <iomanip>
 #include "iostream"
 #include "math.h"
+#include "omp.h"
 
 // Explicit instantiation for int
 template class Tensor<int>;
@@ -180,7 +181,8 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
     std::vector<int> result_shape = {left.shape_[0], right.shape_[1]};
     Tensor<dtype> result(result_shape);
 
-    // Perform matrix multiplication
+    // Parallelized matrix multiplication
+    #pragma omp parallel for collapse(2)
     for (int i = 0; i < left.shape_[0]; ++i) {
         for (int j = 0; j < right.shape_[1]; ++j) {
             dtype sum = 0;
