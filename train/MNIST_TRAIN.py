@@ -13,9 +13,10 @@ class CNN(nn.Module):
         # self.relu = nn.ReLU()
         # self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
         # self.fc = nn.Linear(1 * 14 * 14, 10, bias=False)  # Fully connected layer for classification
-        self.fc1 = nn.Linear(1 * 28 * 28, 1*28*28//2, bias=False)  # Fully connected layer for classification
-        self.fc2 = nn.Linear(1*28*28//2, 1 * 28 * 28, bias=False)  # Fully connected layer for classification
+        self.fc1 = nn.Linear(1 * 28 * 28, 10, bias=False)  # Fully connected layer for classification
+        self.fc2 = nn.Linear(10, 1 * 28 * 28, bias=False)  # Fully connected layer for classification
         self.fc3 = nn.Linear(1 * 28 * 28, 10, bias=False)  # Fully connected layer for classification
+        # self.fc4 = nn.Linear(1 * 28 * 28, 10, bias=False)  # Fully connected layer for classification
 
     def forward(self, x):
         # x = self.conv1(x)  # 10000 * 1 * 28 * 28
@@ -26,6 +27,7 @@ class CNN(nn.Module):
         x = self.fc1(x)
         x = self.fc2(x)
         x = self.fc3(x)
+        # x = self.fc4(x)
         return x
 
 # Load and preprocess the MNIST dataset
@@ -50,11 +52,11 @@ model.to(device)
 
 # Define the loss function and optimizer
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 
 # Train the model
-num_epochs = 5
+num_epochs = 4
 for epoch in range(num_epochs):
     running_loss = 0.0
     correct = 0
@@ -108,6 +110,7 @@ print('Finished Training')
 fc_weight_ndarray1 = model.fc1.weight.data.cpu().numpy()
 fc_weight_ndarray2 = model.fc2.weight.data.cpu().numpy()
 fc_weight_ndarray3 = model.fc3.weight.data.cpu().numpy()
+# fc_weight_ndarray4 = model.fc4.weight.data.cpu().numpy()
 
 # conv1_weight_ndarray have shape 1 * 1* 3 * 3
 # conv1_weight_ndarray = np.reshape(conv1_weight_ndarray, [3, 3])
@@ -115,3 +118,4 @@ fc_weight_ndarray3 = model.fc3.weight.data.cpu().numpy()
 np.savetxt('weights/fc_weight1.csv', fc_weight_ndarray1, delimiter=',')
 np.savetxt('weights/fc_weight2.csv', fc_weight_ndarray2, delimiter=',')
 np.savetxt('weights/fc_weight3.csv', fc_weight_ndarray3, delimiter=',')
+# np.savetxt('weights/fc_weight4.csv', fc_weight_ndarray4, delimiter=',')

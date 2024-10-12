@@ -7,7 +7,15 @@
 
 namespace nn {
 
+// template <typename dtype>
+// class Module {
+// public:
+//     virtual ~Module() = default;
+//     // virtual Tensor<dtype> forward() = 0; // pure virtual func
+// };
+
 template <typename dtype>
+// class Linear : public Module<dtype> {
 class Linear {
 public:
     Linear(int in_features, int out_features);
@@ -15,16 +23,23 @@ public:
     ~Linear() = default;
     Tensor<dtype> forward(const Tensor<dtype>& input);
 
-protected:
+// protected:
     int in_features;
     int out_features;
     Tensor<dtype> weight;
 };
 
 template <typename dtype>
-Linear<dtype>::Linear(int in_features, int out_features) : in_features(in_features), out_features(out_features) {
-    weight = Tensor<dtype>(std::vector<int>{out_features, in_features});
-}
+Linear<dtype>::Linear(int in_features, int out_features) : 
+in_features(in_features), 
+out_features(out_features), 
+weight(Tensor<dtype>(std::vector<int>{out_features, in_features}))
+{}
+
+// template <typename dtype>
+// Linear<dtype>::Linear(int in_features, int out_features) : in_features(in_features), out_features(out_features) {
+//     weight = Tensor<dtype>(std::vector<int>{out_features, in_features});
+// }
 
 template <typename dtype>
 Linear<dtype>::Linear(int in_features, int out_features, Tensor<dtype>&& weight)
@@ -55,6 +70,7 @@ Tensor<dtype> Linear<dtype>::forward(const Tensor<dtype>& input) {
 
 
 template <typename dtype>
+// class ReLU : public Module<dtype> {
 class ReLU {
 public:
     ReLU() = default;
@@ -70,6 +86,7 @@ Tensor<dtype> ReLU<dtype>::forward(const Tensor<dtype>& input) {
 }
 
 template <typename dtype>
+// class Conv2d : public Module<dtype> {
 class Conv2d {
 public:
     Conv2d(int in_channels, int out_channels, int kernel_size, int stride, int padding, Tensor<dtype>&& weight);
