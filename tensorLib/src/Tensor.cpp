@@ -30,8 +30,11 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape
         // data_ = std::vector<dtype>(num_elements);
 
         // data_ = std::make_shared<dtype[]>(num_elements); // cpp 20 or later
-        std::shared_ptr<dtype[]> temp(new dtype[num_elements]);
+        std::shared_ptr<dtype[]> temp(new dtype[num_elements], Deleter<dtype>(num_elements));
         data_ = temp;
+
+        memoryUsage += num_elements * sizeof(dtype);
+        std::cout << "Allocate: " << sizeof(dtype) * num_elements << ", now: " << memoryUsage << std::endl;
 
         stride_ = std::vector<int>(ndim);
 

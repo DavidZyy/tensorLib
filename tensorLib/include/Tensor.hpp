@@ -2,9 +2,11 @@
 
 #include <cassert>
 #include <cstddef>
+#include <iostream>
 #include <memory>
 #include <vector>
 #include <ostream>
+#include <atomic>
 
 // Forward declaration of Tensor class
 // template <typename dtype>
@@ -33,6 +35,23 @@
 //         return tensor(indices);
 //     }
 // };
+
+static std::atomic<size_t> memoryUsage(0);
+
+template <typename dtype>
+class Deleter {
+public:
+    void operator()(dtype* ptr) const {
+        memoryUsage -= sizeof(dtype) * elem_num;
+        delete[] ptr;
+        std::cout << "Free: " << sizeof(dtype) * elem_num << ", now: " << memoryUsage << std::endl;
+    }
+
+    Deleter(size_t elem_num) : elem_num(elem_num) {}
+
+private:
+    size_t elem_num;
+};
 
 template <typename dtype>
 class Tensor {

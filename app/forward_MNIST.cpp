@@ -5,7 +5,6 @@
 #include <cstddef>
 #include "iostream"
 
-
 std::string testImgPath = "../dataset/MNIST/raw/t10k-images-idx3-ubyte.gz";
 std::string testLabelsPath = "../dataset/MNIST/raw/t10k-labels-idx1-ubyte.gz";
 
@@ -35,16 +34,33 @@ public:
     nn::Linear<dtype> fc3;
 };
 
+template <typename dtype>
+class CNN1 {
+public:
+    CNN1 () : fc1(784, 10) {
+    };
+
+    ~ CNN1() {};
+
+    Tensor<dtype> forward(const Tensor<float>& input) {
+        return fc1.forward(input);
+    }
+
+// private:
+
+    nn::Linear<dtype> fc1;
+};
+
 int main() {
-    auto model = CNN<float>();
+    auto model = CNN1<float>();
 
     Tensor<float> fc_weight1 = readCSV<float>(fc_weight1Path);
-    Tensor<float> fc_weight2 = readCSV<float>(fc_weight2Path);
-    Tensor<float> fc_weight3 = readCSV<float>(fc_weight3Path);
+    // Tensor<float> fc_weight2 = readCSV<float>(fc_weight2Path);
+    // Tensor<float> fc_weight3 = readCSV<float>(fc_weight3Path);
 
     model.fc1.weight = std::move(fc_weight1);
-    model.fc2.weight = std::move(fc_weight2);
-    model.fc3.weight = std::move(fc_weight3);
+    // model.fc2.weight = std::move(fc_weight2);
+    // model.fc3.weight = std::move(fc_weight3);
 
     Tensor<float> X_te = readMNISTImages<float>(testImgPath);
 
