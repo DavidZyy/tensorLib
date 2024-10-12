@@ -385,6 +385,9 @@ Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const {
         }
     }
 
+    std::cout << "the address of result: " << &result << std::endl;
+    std::cout << "the data address of result: " << result.data() << std::endl;
+    // return std::move(result);
     return result;
 }
 

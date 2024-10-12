@@ -341,6 +341,26 @@ void test_select() {
     std::cout << "t: " << std::endl << t << std::endl;
 }
 
+/**
+ * @brief test elementwise mul, overload *.
+ */
+void test_elementwise_mul_efficient() {
+    Tensor<int> a = originTensor({200,500, 1, 1});
+    Tensor<int> b = originTensor({200, 500,1 ,1});
+    Tensor<int> c = a*b;
+
+    std::cout << "the address of result: " << &c << std::endl;
+    std::cout << "the data address of result: " << c.data() << std::endl;
+
+//     Tensor<int> b = a.slice(0, 1, 0).slice(0, 1, 1);
+//     Tensor<int> c = a.slice(1, 2, 0).slice(2, 3, 1);
+// 
+    // std::cout << "a: " << std::endl << a << std::endl;
+//     std::cout << "b: " << std::endl << b << std::endl;
+//     std::cout << "c: " << std::endl << c << std::endl;
+//     std::cout << "b * c: " << std::endl << b*c << std::endl;
+}
+
 int main() {
     // test_construct();
     // test_getData();
@@ -354,5 +374,6 @@ int main() {
     // test_slice();
     // test_sum();
     // test_elementwise_mul();
-    test_select();
+    // test_select();
+    test_elementwise_mul_efficient();
 }

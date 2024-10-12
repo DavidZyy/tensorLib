@@ -13,7 +13,9 @@ class CNN(nn.Module):
         # self.relu = nn.ReLU()
         # self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
         # self.fc = nn.Linear(1 * 14 * 14, 10, bias=False)  # Fully connected layer for classification
-        self.fc = nn.Linear(1 * 28 * 28, 10, bias=False)  # Fully connected layer for classification
+        self.fc1 = nn.Linear(1 * 28 * 28, 1*28*28//2, bias=False)  # Fully connected layer for classification
+        self.fc2 = nn.Linear(1*28*28//2, 1 * 28 * 28, bias=False)  # Fully connected layer for classification
+        self.fc3 = nn.Linear(1 * 28 * 28, 10, bias=False)  # Fully connected layer for classification
 
     def forward(self, x):
         # x = self.conv1(x)  # 10000 * 1 * 28 * 28
@@ -21,7 +23,9 @@ class CNN(nn.Module):
         # x = self.maxpool(x)  # 10000 * 1 * 14 * 14
         # x = x.view(-1, 1 * 14 * 14)  # Reshape to fit the fully connected layer # 10000 * (1*14*14)
         x = x.view(-1, 1 * 28 * 28)  # Reshape to fit the fully connected layer # 10000 * (1*14*14)
-        x = self.fc(x)
+        x = self.fc1(x)
+        x = self.fc2(x)
+        x = self.fc3(x)
         return x
 
 # Load and preprocess the MNIST dataset
@@ -101,9 +105,13 @@ print('Finished Training')
 
 # save parameters
 # conv1_weight_ndarray = model.conv1.weight.data.numpy()
-fc_weight_ndarray = model.fc.weight.data.cpu().numpy()
+fc_weight_ndarray1 = model.fc1.weight.data.cpu().numpy()
+fc_weight_ndarray2 = model.fc2.weight.data.cpu().numpy()
+fc_weight_ndarray3 = model.fc3.weight.data.cpu().numpy()
 
 # conv1_weight_ndarray have shape 1 * 1* 3 * 3
 # conv1_weight_ndarray = np.reshape(conv1_weight_ndarray, [3, 3])
 # np.savetxt('weights/conv1_weight.csv', conv1_weight_ndarray, delimiter=',')
-np.savetxt('weights/fc_weight.csv', fc_weight_ndarray, delimiter=',')
+np.savetxt('weights/fc_weight1.csv', fc_weight_ndarray1, delimiter=',')
+np.savetxt('weights/fc_weight2.csv', fc_weight_ndarray2, delimiter=',')
+np.savetxt('weights/fc_weight3.csv', fc_weight_ndarray3, delimiter=',')

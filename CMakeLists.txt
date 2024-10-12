@@ -24,10 +24,11 @@ endif()
 # add_executable(test_tensor tensorLib/test/test_tensor.cpp tensorLib/src/Tensor.cpp)
 # add_executable(test_readCSV tensorLib/test/test_readCSV.cpp tensorLib/src/readCSV.cpp tensorLib/src/Tensor.cpp)
 # add_executable(test_modules tensorLib/test/nn/test_modules.cpp tensorLib/src/nn/modules.cpp tensorLib/src/Tensor.cpp)
+add_executable(test_shared_ptr tensorLib/test/test_shared_ptr.cpp)
 
-add_executable(forward_MNIST app/forward_MNIST.cpp tensorLib/src/readMNIST.cpp tensorLib/src/Tensor.cpp tensorLib/src/readCSV.cpp)
-add_executable(forward_MNIST_conv app/forward_MNIST_conv.cpp tensorLib/src/readMNIST.cpp tensorLib/src/Tensor.cpp tensorLib/src/readCSV.cpp)
-add_executable(forward_MNIST_quantize app/forward_MNIST_quantize.cpp tensorLib/src/readMNIST.cpp tensorLib/src/Tensor.cpp tensorLib/src/readCSV.cpp)
+# add_executable(forward_MNIST app/forward_MNIST.cpp tensorLib/src/readMNIST.cpp tensorLib/src/Tensor.cpp tensorLib/src/readCSV.cpp)
+# add_executable(forward_MNIST_conv app/forward_MNIST_conv.cpp tensorLib/src/readMNIST.cpp tensorLib/src/Tensor.cpp tensorLib/src/readCSV.cpp)
+# add_executable(forward_MNIST_quantize app/forward_MNIST_quantize.cpp tensorLib/src/readMNIST.cpp tensorLib/src/Tensor.cpp tensorLib/src/readCSV.cpp)
 
 # Add include directories
 include_directories(tensorLib/include)
@@ -40,9 +41,9 @@ if (ZLIB_FOUND)
 
     # Link against the zlib library
     # target_link_libraries(test_readMNIST ${ZLIB_LIBRARIES})
-    target_link_libraries(forward_MNIST ${ZLIB_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
-    target_link_libraries(forward_MNIST_conv ${ZLIB_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
-    target_link_libraries(forward_MNIST_quantize ${ZLIB_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
+    # target_link_libraries(forward_MNIST ${ZLIB_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
+    # target_link_libraries(forward_MNIST_conv ${ZLIB_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
+    # target_link_libraries(forward_MNIST_quantize ${ZLIB_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
 else()
     message(FATAL_ERROR "Zlib library not found in the system, please install it first.")
 endif()
