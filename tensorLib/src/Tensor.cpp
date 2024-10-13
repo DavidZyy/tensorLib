@@ -48,8 +48,9 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape
 }
 
 template <typename dtype>
-// Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::vector<dtype>& data) 
-Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data) 
+// Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>&& data) 
+//     : ndim(shape.size()), shape_(shape), data_(std::move(data)), offset_(0) {    // use move semantic
+Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data)
     : ndim(shape.size()), shape_(shape), data_(data), offset_(0) {
         // Calculate the total number of elements in the tensor
         num_elements = 1;
