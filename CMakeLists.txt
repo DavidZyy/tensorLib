@@ -30,8 +30,11 @@ add_executable(forward_MNIST app/forward_MNIST.cpp tensorLib/src/readMNIST.cpp t
 # add_executable(forward_MNIST_conv app/forward_MNIST_conv.cpp tensorLib/src/readMNIST.cpp tensorLib/src/Tensor.cpp tensorLib/src/readCSV.cpp)
 # add_executable(forward_MNIST_quantize app/forward_MNIST_quantize.cpp tensorLib/src/readMNIST.cpp tensorLib/src/Tensor.cpp tensorLib/src/readCSV.cpp)
 
+add_executable(test_tokenizer app/llm/test/test_tokenizer.cpp app/llm/src/Tokenizer.cpp)
+
 # Add include directories
 include_directories(tensorLib/include)
+include_directories(app/llm/include)
 
 # Find the zlib library
 find_package(ZLIB REQUIRED)

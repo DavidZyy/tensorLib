@@ -11,7 +11,8 @@
       "program": "${workspaceFolder}/build/${fileBasenameNoExtension}",
       "args": [],
       "stopAtEntry": false,
-      "cwd": "${fileDirname}",
+      // "cwd": "${fileDirname}",
+      "cwd": "${workspaceFolder}/build",
       "environment": [],
       "externalConsole": false,
       "MIMode": "gdb",
@@ -30,7 +31,8 @@
           {
             // 16进制表示数据
             "description": "ss",
-            "text": " set output-radix 16",
+            // "text": " set output-radix 16",
+            "text": " set output-radix 10",
             "ignoreFailures": false
           }
       ],
