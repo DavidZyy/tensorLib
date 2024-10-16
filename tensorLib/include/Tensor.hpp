@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <iostream>
 #include <memory>
@@ -124,6 +125,9 @@ public:
 
     template<typename T>
     friend Tensor<T> zeros(const std::vector<int>& shape);
+
+    template<typename T>
+    friend Tensor<T> apply_rotary_emb(Tensor<T> input, Tensor<T> freqs);
 
     Tensor<dtype> transpose(int dim0, int dim1) const;
 
@@ -261,3 +265,43 @@ bool Tensor<dtype>::is_contiguous(const Tensor<dtype>& t) const {
     return true;
 }
 
+/**
+ * freqs is a 2d tensor with shape [T, head_dim/2]
+ * freqs = m[theta_1, theta_2, ..., theta_(d/2)], m = 1, 2, ..., T
+ * theta_i = 10000 ^ {-2(i-1)/d}
+ * 
+ * input's shape is [B, T, n_heads, head_dim]
+ */
+template <typename dtype>
+Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs) {
+    if (input.shape().size() != 4 || freqs.shape().size() != 2) {
+        throw std::invalid_argument("Invalid shape.");
+    }
+
+    int B = input.shape()[0];
+    int T = input.shape()[1];
+    int n_heads = input.shape()[2];
+    int head_dim = input.shape()[3];
+
+    Tensor<dtype> result(input.shape());
+
+    for (int i = 0; i < B; ++i) {
+        for (int j = 0; j < T; ++j) {
+            for (int k = 0; k < n_heads; ++k) {
+                for (int l = 0; l < head_dim; l += 2) {
+                    dtype theta = freqs.data_[j * freqs.shape()[0] + l / 2];
+                    dtype cos_theta = std::cos(theta);
+                    dtype sin_theta = std::sin(theta);
+
+                    auto v0 = input.getData({i, j, k, l});
+                    auto v1 = input.getData({i, j, k, l + 1});
+
+                    result.setData({i, j, k, l}, v0 * cos_theta - v1 * sin_theta);
+                    result.setData({i, j, k, l + 1}, v0 * cos_theta + v1 * sin_theta);
+                }
+            }
+        }
+    }
+
+    return result;
+}
