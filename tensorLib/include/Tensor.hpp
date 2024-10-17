@@ -60,7 +60,7 @@ public:
     // Constructor
     Tensor(const std::vector<int>& shape);
     Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data);
-    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &&offset, const std::shared_ptr<dtype[]>& data);
+    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data);
 
     // Destructor
     ~Tensor();
@@ -138,6 +138,13 @@ public:
     // get or set a sub-tensor of this tensor. The implementation here refers to the homework project of CMU10_414.
     Tensor<dtype> getItem(std::vector<std::vector<int>>& slices) const;
     void setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype>& value);
+
+    Tensor<dtype> broadcast_to(const std::vector<int>& new_shape) const;
+
+    Tensor<dtype> exp();
+
+    // reduce method(reduce 1 dimension) like sum
+    Tensor<dtype> max();
 
     // int8_t quantize, but use int32_t store value now in case of overflow when perform mutmul.
     Tensor<int> quantize() const;

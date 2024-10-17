@@ -378,6 +378,24 @@ void test_set_get_item() {
     std::cout << "a: " << std::endl << a << std::endl;
 }
 
+void test_broadcast_to() {
+    Tensor<int> a = originTensor({2, 3});
+
+    std::cout << "a: " << std::endl << a << std::endl;
+
+    auto b = a.view({2, 3, 1});
+    std::cout << "b: " << std::endl << b << std::endl;
+
+    auto c = a.view({2, 1, 3});
+    std::cout << "c: " << std::endl << c << std::endl;
+
+    b = b.broadcast_to({2,3,2});
+    std::cout << "b: " << std::endl << b << std::endl;
+
+    c = c.broadcast_to({2,2,3});
+    std::cout << "c: " << std::endl << c << std::endl;
+}
+
 int main() {
     // test_construct();
     // test_getData();
@@ -393,5 +411,6 @@ int main() {
     // test_elementwise_mul();
     // test_select();
     // test_elementwise_mul_efficient();
-    test_set_get_item();
+    // test_set_get_item();
+    test_broadcast_to();
 }

@@ -35,10 +35,23 @@ Tensor<dtype> Attention<dtype>::forward(Tensor<dtype> x, int start_pos, Tensor<d
     xq = apply_rotary_emb(xq, freqs);
     xk = apply_rotary_emb(xk, freqs);
 
-    // put the computed k, v in kv_cache
+    // put the computed k, v into kv_cache
     std::vector<std::vector<int>> slices  = {{0, bsz}, {start_pos, start_pos+seqlen}, {}, {}};
     this->cache_k.setItem(slices, xk);
     this->cache_v.setItem(slices, xv);
 
+    // get keys and values from kv_cache
+    std::vector<std::vector<int>> slices2  = {{0, bsz}, {0, start_pos+seqlen}, {}, {}};
+    auto keys = this->cache_k.getItem(slices2);
+    auto values = this->cache_v.getItem(slices2);
+
+    xq = xq.transpose(1, 2);
+    keys = keys.transpose(1, 2);
+    values = values.transpose(1, 2);
+    auto scores = xq.matmul(keys.transpose(2, 3)) / sqrt(head_dim); // (bsz, n_heads, seqlen, cache_len+seqlen)
+    if (mask.has_value()) {
+        scores = scores + mask.value();
+    }
+    // scores = scores.softmax(3);
 
 }

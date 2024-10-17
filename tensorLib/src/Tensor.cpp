@@ -75,8 +75,8 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype
  * @tparam dtype 
  */
 template <typename dtype>
-Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &&offset, const std::shared_ptr<dtype[]>& data):
-ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(std::move(offset)), data_(data) {
+Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data):
+ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), data_(data) {
     this-> num_elements = 1;
     for (int dim : shape) {
         this->num_elements *= dim;
@@ -564,7 +564,8 @@ Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) cons
         new_offset += start * this->stride_[i];
     }
 
-    Tensor<dtype> result(std::move(new_shape), std::move(new_stride), std::move(new_offset), this->data_);
+    // Tensor<dtype> result(std::move(new_shape), std::move(new_stride), std::move(new_offset), this->data_);
+    Tensor<dtype> result(std::move(new_shape), std::move(new_stride), new_offset, this->data_);
     return result;
 }
 
@@ -643,3 +644,28 @@ std::vector<std::vector<int>> Tensor<dtype>::process_slices(const std::vector<st
     return result;
 }
 
+/*
+ * Broadcast an array to a new shape.  new_shape's elements must be the
+ * same as the original shape, except for dimensions in the self where
+ * the size = 1 (which can then be broadcast to any size). 
+ * This will not copy memory, and just achieves
+ * broadcasting by manipulating the strides.
+ * 
+ * so when broadcast_to a shape().size() greater than current shape().size(), you should add 1 in current shape()'s dimension which to be broadcasted.
+ */
+template<typename dtype>
+Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) const {
+    if (new_shape.size() != this->shape().size()) {
+        throw std::invalid_argument("The new shape must be equal to the original shape.");
+    }
+
+    std::vector<int> new_stride;
+    for (int i=0; i < new_shape.size(); i++) {
+        if (new_shape[i] != this->shape()[i] && this->shape()[i] != 1) {
+            throw std::invalid_argument("The dimension to be broadcasted must be 1.");
+        }
+        new_stride.push_back(this->shape()[i] == 1 ? 0 : this->stride_[i]);
+    }
+
+    return Tensor<dtype>(std::move(new_shape), std::move(new_stride), this->offset_, this->data_);
+}
