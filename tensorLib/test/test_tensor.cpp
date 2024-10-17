@@ -1,5 +1,6 @@
 #include "Tensor.hpp"
 #include <cstddef>
+#include <vector>
 #include "iostream"
 
 int test_construct() {
@@ -361,6 +362,22 @@ void test_elementwise_mul_efficient() {
 //     std::cout << "b * c: " << std::endl << b*c << std::endl;
 }
 
+void test_set_get_item() {
+    Tensor<int> a = originTensor({2, 3, 4, 5});
+    std::cout << "a: " << std::endl << a << std::endl;
+
+    std::vector<std::vector<int>> slices = {{0}, {1, 3}, {2, 4}, {1, 4}};
+
+    auto b = a.getItem(slices);
+    std::cout << "b: " << std::endl << b << std::endl;
+
+    Tensor<int> value = originTensor(b.shape());
+    std::cout << "value: " << std::endl << value << std::endl;
+
+    a.setItem(slices, b);
+    std::cout << "a: " << std::endl << a << std::endl;
+}
+
 int main() {
     // test_construct();
     // test_getData();
@@ -375,5 +392,6 @@ int main() {
     // test_sum();
     // test_elementwise_mul();
     // test_select();
-    test_elementwise_mul_efficient();
+    // test_elementwise_mul_efficient();
+    test_set_get_item();
 }

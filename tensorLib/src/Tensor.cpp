@@ -70,6 +70,19 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype
         }
 }
 
+/**
+ * use std::move semantic to construct a Tensor with given shape, stride, offset, maybe faster ? 
+ * @tparam dtype 
+ */
+template <typename dtype>
+Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &&offset, const std::shared_ptr<dtype[]>& data):
+ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(std::move(offset)), data_(data) {
+    this-> num_elements = 1;
+    for (int dim : shape) {
+        this->num_elements *= dim;
+    }
+}
+
 template <typename dtype>
 Tensor<dtype>::~Tensor() {
 
@@ -314,6 +327,7 @@ Tensor<dtype> Tensor<dtype>::view(const std::vector<int>& shape) const {
      * it maybe optimized it later.
      */
     Tensor<dtype> result(shape, this->data());
+    // Tensor<dtype> result(shape, std::move(this->data()));  // maybe result should take over ownership of data_.
 
     return result;
 }
@@ -529,3 +543,103 @@ Tensor<float> Tensor<dtype>::dequantize() const {
 
     return result;
 }
+
+template <typename dtype>
+Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) const {
+    slices = process_slices(slices);
+
+    if (slices.size() != this->shape().size()) {
+        throw std::invalid_argument("The number of slices must be equal to the number of dimensions.");
+    }
+
+    std::vector<int> new_shape;
+    std::vector<int> new_stride;
+    int new_offset = this->offset_;
+    
+    for (int i=0; i < slices.size(); i++) {
+        int start = slices[i][0], stop = slices[i][1], step = slices[i][2];
+
+        new_shape.push_back((stop - start + (step - 1)) / step);
+        new_stride.push_back(step * this->stride_[i]);
+        new_offset += start * this->stride_[i];
+    }
+
+    Tensor<dtype> result(std::move(new_shape), std::move(new_stride), std::move(new_offset), this->data_);
+    return result;
+}
+
+/**
+ * The slices is a vector of vector, each vector represent a slice, have 3 ints, [start, stop, step],
+ * step is default to 1 if not provided. start is default to 0 if not provided, stop is default to this->shape[dim] if not provided.
+ *
+ * value is contiguous, out is not contiguous
+ * @tparam dtype 
+ */
+template <typename dtype>
+void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype>& value) {
+    // get item first, the new tensor shared the same data with the original tensor in memory.
+    slices = process_slices(slices);
+
+    auto out = getItem(slices);
+
+    if (out.shape() != value.shape()) {
+        throw std::invalid_argument("The shape of value must be equal to the shape of the slice.");
+    }
+    
+    // current index of out tensor to set value
+    std::vector<int> cur_idx(value.shape().size(), 0);
+    int num = value.num_elements;
+
+    int cnt = 0;
+    // this algorithm maybe not efficient, because it can not use omp to parallelize the loop
+    for (int i=0; i < num; i++) {
+        int idx = out.offset_;
+        // int idx = 0;
+
+        // #pragma omp parallel for // seems error
+        for (int j=0; j < cur_idx.size(); j++) {
+            idx += cur_idx[j] * out.stride_[j];
+        }
+
+        out.data_[idx] = value.data_[cnt++];
+
+        // carry
+        // for (int j=0; j < cur_idx.size(); j++) { // this is not right, because stride[0] is the max stride, stride[dim-1] is the min stride, we should increse the cur_idx from bigger dimension to smaller
+        for (int j=cur_idx.size()-1; j >= 0; j--) {
+            cur_idx[j] += 1;
+
+            if (cur_idx[j] < out.shape()[j]) {
+                break;
+            } else {
+                cur_idx[j] = 0;
+            }
+        }
+    }
+}
+
+/**
+ * The format of slice is [start, stop, step], default step is 1.
+ * process_slices will convert the slice to the format like [start, stop, step].
+ * @tparam dtype 
+ */
+template<typename dtype>
+std::vector<std::vector<int>> Tensor<dtype>::process_slices(const std::vector<std::vector<int>>& slices) const {
+    std::vector<std::vector<int>> result;
+
+    for (int i=0; i < slices.size(); i++) {
+        auto slice = slices[i];
+
+        if (slice.empty()) { // whole
+            result.push_back({0, this->shape()[i], 1}); 
+        } else if (slice.size() == 1) { // select, only have start
+            result.push_back({slice[0], slice[0]+1, 1});
+        } else if (slice.size() == 2) { // slice, have start and stop
+            result.push_back({slice[0], slice[1], 1});
+        } else {
+            result.push_back(slice); // slice, have start, stop and step
+        } 
+    }
+
+    return result;
+}
+

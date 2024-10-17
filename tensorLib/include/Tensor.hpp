@@ -59,10 +59,8 @@ class Tensor {
 public:
     // Constructor
     Tensor(const std::vector<int>& shape);
-    // the data may be another's Tensor's data, allocated in heap, or a temporary vector, in stack,
-    // maybe cause error.
-    // Tensor(const std::vector<int>& shape, const std::vector<dtype>& data);
     Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data);
+    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &&offset, const std::shared_ptr<dtype[]>& data);
 
     // Destructor
     ~Tensor();
@@ -137,6 +135,10 @@ public:
     // but with a different memory layout which is contiguous.
     Tensor<dtype> contiguous() const;
 
+    // get or set a sub-tensor of this tensor. The implementation here refers to the homework project of CMU10_414.
+    Tensor<dtype> getItem(std::vector<std::vector<int>>& slices) const;
+    void setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype>& value);
+
     // int8_t quantize, but use int32_t store value now in case of overflow when perform mutmul.
     Tensor<int> quantize() const;
 
@@ -163,6 +165,8 @@ private:
     size_t calculateLinearIndex(const std::vector<int>& indices) const;
     // helper function for view
     bool is_contiguous(const Tensor<dtype>& t) const;
+    // used in getItem method, process slice, supplement abbreviation of slice to full
+    std::vector<std::vector<int>> process_slices(const std::vector<std::vector<int>>& slices) const;
 };
 
 
@@ -285,6 +289,7 @@ Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs) {
 
     Tensor<dtype> result(input.shape());
 
+    #pragma omp parallel for collapse(4)
     for (int i = 0; i < B; ++i) {
         for (int j = 0; j < T; ++j) {
             for (int k = 0; k < n_heads; ++k) {

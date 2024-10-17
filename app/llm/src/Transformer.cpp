@@ -1,6 +1,7 @@
 #include "Transformer.hpp"
 #include "Tensor.hpp"
 #include "nn/modules.hpp"
+#include <vector>
 
 template <typename dtype>
 Attention<dtype>::Attention(ModelArgs args) {
@@ -24,7 +25,7 @@ Tensor<dtype> Attention<dtype>::forward(Tensor<dtype> x, int start_pos, Tensor<d
     auto seqlen = x.shape()[1];
 
     auto xq = this->wq.forward(x);
-    auto xk = this->wk.forward(x);
+    auto xk = this->wk.forward(x); // can we use kv cache to accept the result directly, saving the following step that copy result to cache?
     auto xv = this->wv.forward(x);
 
     xq = xq.view({bsz, seqlen, n_heads, head_dim});
@@ -33,5 +34,11 @@ Tensor<dtype> Attention<dtype>::forward(Tensor<dtype> x, int start_pos, Tensor<d
 
     xq = apply_rotary_emb(xq, freqs);
     xk = apply_rotary_emb(xk, freqs);
+
+    // put the computed k, v in kv_cache
+    std::vector<std::vector<int>> slices  = {{0, bsz}, {start_pos, start_pos+seqlen}, {}, {}};
+    this->cache_k.setItem(slices, xk);
+    this->cache_v.setItem(slices, xv);
+
 
 }
