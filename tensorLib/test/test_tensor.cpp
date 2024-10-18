@@ -262,37 +262,37 @@ int sum_up(Tensor<int> t) {
     return sum;
 }
 
-void test_sum() {
-    Tensor<int> a = originTensor({2, 3, 4, 5});
-    // Tensor<int> b = a.slice(0, 1, 0);
-    // Tensor<int> c = a.slice(0, 1, 1);
-    // Tensor<int> d = a.slice(0, 2, 2);
-    // Tensor<int> e = a.slice(0, 1, 3);
-    // Tensor<int> f = a.slice(1, 2, 3);
-    // Tensor<int> g = f.slice(1, 2, 2);
-    // Tensor<int> h = g.slice(1, 2, 1);
-    Tensor<int> i = a.slice(0, 1, 0).slice(0, 3, 2).slice(1, 4, 3);
-    Tensor<int> j = a.slice(1, 2, 0).slice(1, 4, 2).slice(2, 5, 3);
-
-
-    assert(a.sum() == sum_up(a));
-    std::cout << "a: " << std::endl << a << std::endl << "sum: " << a.sum() << " sum_up " << sum_up(a) << std::endl;
-    // std::cout << "b: " << std::endl << b << std::endl;
-    // std::cout << "c: " << std::endl << c << std::endl;
-    // std::cout << "e: " << std::endl << e << std::endl;
-    // std::cout << "f: " << std::endl << f << std::endl;
-    // std::cout << "g: " << std::endl << g << std::endl;
-    // std::cout << "h: " << std::endl << h << std::endl;
-    assert(i.sum() == sum_up(i));
-    std::cout << "i: " << std::endl << i << std::endl << "sum: " << i.sum() << " sum_up " << sum_up(i) << std::endl;
-    assert(j.sum() == sum_up(j));
-    std::cout << "j: " << std::endl << j << std::endl << "sum: " << j.sum() << " sum_up " << sum_up(j) << std::endl;
-
-    j.setData({0, 0, 0, 0}, 100);
-    j.setData({0, 1, 1, 1}, 90);
-    assert(j.sum() == sum_up(j));
-    std::cout << "j: " << std::endl << j << std::endl << "sum: " << j.sum() << " sum_up " << sum_up(j) << std::endl;
-}
+// void test_sum() {
+//     Tensor<int> a = originTensor({2, 3, 4, 5});
+//     // Tensor<int> b = a.slice(0, 1, 0);
+//     // Tensor<int> c = a.slice(0, 1, 1);
+//     // Tensor<int> d = a.slice(0, 2, 2);
+//     // Tensor<int> e = a.slice(0, 1, 3);
+//     // Tensor<int> f = a.slice(1, 2, 3);
+//     // Tensor<int> g = f.slice(1, 2, 2);
+//     // Tensor<int> h = g.slice(1, 2, 1);
+//     Tensor<int> i = a.slice(0, 1, 0).slice(0, 3, 2).slice(1, 4, 3);
+//     Tensor<int> j = a.slice(1, 2, 0).slice(1, 4, 2).slice(2, 5, 3);
+// 
+// 
+//     assert(a.sum() == sum_up(a));
+//     std::cout << "a: " << std::endl << a << std::endl << "sum: " << a.sum() << " sum_up " << sum_up(a) << std::endl;
+//     // std::cout << "b: " << std::endl << b << std::endl;
+//     // std::cout << "c: " << std::endl << c << std::endl;
+//     // std::cout << "e: " << std::endl << e << std::endl;
+//     // std::cout << "f: " << std::endl << f << std::endl;
+//     // std::cout << "g: " << std::endl << g << std::endl;
+//     // std::cout << "h: " << std::endl << h << std::endl;
+//     assert(i.sum() == sum_up(i));
+//     std::cout << "i: " << std::endl << i << std::endl << "sum: " << i.sum() << " sum_up " << sum_up(i) << std::endl;
+//     assert(j.sum() == sum_up(j));
+//     std::cout << "j: " << std::endl << j << std::endl << "sum: " << j.sum() << " sum_up " << sum_up(j) << std::endl;
+// 
+//     j.setData({0, 0, 0, 0}, 100);
+//     j.setData({0, 1, 1, 1}, 90);
+//     assert(j.sum() == sum_up(j));
+//     std::cout << "j: " << std::endl << j << std::endl << "sum: " << j.sum() << " sum_up " << sum_up(j) << std::endl;
+// }
 
 /**
  * @brief test elementwise mul, overload *.
@@ -398,20 +398,20 @@ void test_broadcast_to() {
 
 void test_max_or_sum() {
     Tensor<int> a = originTensor({2, 3, 4, 5});
-    std::cout << "a: " << std::endl << a << std::endl;
+    // std::cout << "a: " << std::endl << a << std::endl;
 
     auto b = a.sum(0);
-    std::cout << "b: " << std::endl << b << std::endl;
+    // std::cout << "b: " << std::endl << b << std::endl;
 
     auto c = a.sum(0, true);
-    std::cout << "c: " << std::endl << c << std::endl;
+    // std::cout << "c: " << std::endl << c << std::endl;
 
 
     b = a.max(1);
-    std::cout << "b: " << std::endl << b << std::endl;
+    // std::cout << "b: " << std::endl << b << std::endl;
 
     c = a.max(1, true);
-    std::cout << "c: " << std::endl << c << std::endl;
+    // std::cout << "c: " << std::endl << c << std::endl;
 }
 
 int main() {

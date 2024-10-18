@@ -139,12 +139,25 @@ public:
 
     // ewise methods
     Tensor<dtype> exp() const;
+    Tensor<dtype> log() const;
+    Tensor<dtype> tanh() const;
+    Tensor<dtype> operator+(const Tensor<dtype>& other) const;
+    Tensor<dtype> operator-(const Tensor<dtype>& other) const;
     Tensor<dtype> operator*(const Tensor<dtype>& other) const;
+    Tensor<dtype> operator/(const Tensor<dtype>& other) const;
+
+    // scalar methods
+    Tensor<dtype> operator+(dtype& scalar) const;
+    Tensor<dtype> operator-(dtype& scalar) const;
+    Tensor<dtype> operator*(dtype& scalar) const;
+    Tensor<dtype> operator/(dtype& scalar) const;
 
     // reduce methods(reduce 1 dimension each function call), like sum, max
     Tensor<dtype> max(int axis, bool keepdims = false) const;
     Tensor<dtype> sum(int axis, bool keepdims = false) const;
-    dtype sum(bool keepdims = false) const; // no use, will be deleted
+    // dtype sum(bool keepdims = false) const; // no use, will be deleted
+
+    Tensor<dtype> softmax(int dim) const;
 
     // int8_t quantize, but use int32_t store value now in case of overflow when perform mutmul.
     Tensor<int> quantize() const;
@@ -177,8 +190,35 @@ private:
     // reduce methods helper
     Tensor<dtype> get_reduce_view(int axis) const;
     std::vector<int> get_reduce_shape(int axis, bool keepdims) const;
+
+    // helper function for ewise or scalar methods
+    Tensor<dtype> apply_operation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const;
+    Tensor<dtype> apply_scalar_operation(dtype scalar, dtype(*op)(dtype, dtype)) const;
 };
 
+
+template <typename dtype>
+static inline dtype add(dtype a, dtype b) {
+    return a + b;
+}
+
+template <typename dtype>
+static inline dtype subtract(dtype a, dtype b) {
+    return a - b;
+}
+
+template <typename dtype>
+static inline dtype multiply(dtype a, dtype b) {
+    return a * b;
+}
+
+template <typename dtype>
+static inline dtype divide(dtype a, dtype b) {
+    if (b == 0) {
+        throw std::invalid_argument("Division by zero.");
+    }
+    return a / b;
+}
 
 // Overload operator<< to print Tensor
 template <typename dtype>
