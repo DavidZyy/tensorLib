@@ -181,6 +181,14 @@ Tensor<int> originTensor(const std::vector<int>& shape) {
     return tensor;
 }
 
+Tensor<float> originTensor_float(const std::vector<int>& shape) {
+    Tensor<float> tensor(shape);
+
+    for(auto i=0; i<tensor.num_elements; i++)
+        tensor.data_[i] = i;
+
+    return tensor;
+}
 
 void test_view() {
     Tensor<int> a = originTensor({2, 3, 4, 5});
@@ -414,6 +422,35 @@ void test_max_or_sum() {
     // std::cout << "c: " << std::endl << c << std::endl;
 }
 
+void test_ewise() {
+    Tensor<int> a = originTensor({2, 3, 4, 5});
+    Tensor<int> b = originTensor({2, 3, 4, 5});
+
+    auto c = a + b;
+    std::cout << "c: " << std::endl << c << std::endl;
+    c = c + 1;
+    std::cout << "c: " << std::endl << c << std::endl;
+    auto d = c * 2;
+    std::cout << "d: " << std::endl << d << std::endl;
+    int e = 2;
+    auto f = d + e;
+    std::cout << "f: " << std::endl << f << std::endl;
+
+}
+
+void test_scalar() {
+
+}
+
+void test_softmax() {
+    Tensor<float> a = originTensor_float({2, 3}); 
+    std::cout << "a: " << std::endl << a << std::endl;
+    auto b = a.softmax(0);
+    std::cout << "b: " << std::endl << b << std::endl;
+    auto c = a.softmax(1);
+    std::cout << "c: " << std::endl << c << std::endl;
+}
+
 int main() {
     // test_construct();
     // test_getData();
@@ -431,5 +468,7 @@ int main() {
     // test_elementwise_mul_efficient();
     // test_set_get_item();
     // test_broadcast_to();
-    test_max_or_sum();
+    // test_max_or_sum();
+    // test_ewise();
+    test_softmax();
 }

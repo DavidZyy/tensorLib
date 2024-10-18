@@ -51,6 +51,6 @@ Tensor<dtype> Attention<dtype>::forward(Tensor<dtype> x, int start_pos, Tensor<d
     if (mask.has_value()) {
         scores = scores + mask.value();
     }
-    // scores = scores.softmax(3);
+    scores = scores.softmax(3);
 
 }

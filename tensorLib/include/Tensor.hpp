@@ -147,10 +147,10 @@ public:
     Tensor<dtype> operator/(const Tensor<dtype>& other) const;
 
     // scalar methods
-    Tensor<dtype> operator+(dtype& scalar) const;
-    Tensor<dtype> operator-(dtype& scalar) const;
-    Tensor<dtype> operator*(dtype& scalar) const;
-    Tensor<dtype> operator/(dtype& scalar) const;
+    Tensor<dtype> operator+(dtype scalar) const; // could support Tensor + 1(not a lvalue), (dtype& scalar) can not support this
+    Tensor<dtype> operator-(dtype scalar) const;
+    Tensor<dtype> operator*(dtype scalar) const;
+    Tensor<dtype> operator/(dtype scalar) const;
 
     // reduce methods(reduce 1 dimension each function call), like sum, max
     Tensor<dtype> max(int axis, bool keepdims = false) const;

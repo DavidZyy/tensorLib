@@ -720,7 +720,8 @@ template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(const Tensor<dt
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const { return apply_operation(other, multiply<dtype>); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(const Tensor<dtype>& other) const { return apply_operation(other, divide<dtype>); }
 
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(dtype& scalar) const { return apply_scalar_operation(scalar, multiply<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator+(dtype& scalar) const { return apply_scalar_operation(scalar, add<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(dtype& scalar) const { return apply_scalar_operation(scalar, subtract<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(dtype& scalar) const { return apply_scalar_operation(scalar, divide<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator+(dtype scalar) const { return apply_scalar_operation(scalar, add<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(dtype scalar) const { return apply_scalar_operation(scalar, subtract<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(dtype scalar) const { return apply_scalar_operation(scalar, multiply<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(dtype scalar) const { return apply_scalar_operation(scalar, divide<dtype>); }
+
