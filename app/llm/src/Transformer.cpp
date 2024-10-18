@@ -18,7 +18,6 @@ Attention<dtype>::Attention(ModelArgs args) {
     this->cache_v = Tensor<dtype>({args.max_batch_size, args.max_seq_len, this->n_heads, this->head_dim});
 }
 
-
 template <typename dtype>
 Tensor<dtype> Attention<dtype>::forward(Tensor<dtype> x, int start_pos, Tensor<dtype> freqs, std::optional<Tensor<dtype>> mask) {
     auto bsz = x.shape()[0];

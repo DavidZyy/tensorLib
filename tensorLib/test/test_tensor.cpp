@@ -396,6 +396,24 @@ void test_broadcast_to() {
     std::cout << "c: " << std::endl << c << std::endl;
 }
 
+void test_max_or_sum() {
+    Tensor<int> a = originTensor({2, 3, 4, 5});
+    std::cout << "a: " << std::endl << a << std::endl;
+
+    auto b = a.sum(0);
+    std::cout << "b: " << std::endl << b << std::endl;
+
+    auto c = a.sum(0, true);
+    std::cout << "c: " << std::endl << c << std::endl;
+
+
+    b = a.max(1);
+    std::cout << "b: " << std::endl << b << std::endl;
+
+    c = a.max(1, true);
+    std::cout << "c: " << std::endl << c << std::endl;
+}
+
 int main() {
     // test_construct();
     // test_getData();
@@ -412,5 +430,6 @@ int main() {
     // test_select();
     // test_elementwise_mul_efficient();
     // test_set_get_item();
-    test_broadcast_to();
+    // test_broadcast_to();
+    test_max_or_sum();
 }

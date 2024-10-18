@@ -91,7 +91,6 @@ public:
 
     Tensor<int> operator==(const Tensor<dtype>& other) const;
 
-    Tensor<dtype> operator*(const Tensor<dtype>& other) const;
 
     // Overloaded operator[] to return TensorProxy for nested indexing
     // need to return a new thensor with different shape_, stride_, offset_, ndim, but have the same data_ area.
@@ -116,8 +115,6 @@ public:
         This function returns a view of the original tensor with the given dimension removed.*/
     Tensor<dtype> select(int dim, int index) const;
 
-    dtype sum(bool keepdims = false) const;
-
     template<typename T>
     friend Tensor<T> maximum(Tensor<T> a, Tensor<T> b);
 
@@ -128,8 +125,7 @@ public:
     friend Tensor<T> apply_rotary_emb(Tensor<T> input, Tensor<T> freqs);
 
     Tensor<dtype> transpose(int dim0, int dim1) const;
-
-    Tensor<dtype> permute(const std::vector<int>& dims) const;
+    Tensor<dtype> permute(const std::vector<int>& new_axes) const;
 
     // return a new tensor with the same shape and data, 
     // but with a different memory layout which is contiguous.
@@ -141,14 +137,17 @@ public:
 
     Tensor<dtype> broadcast_to(const std::vector<int>& new_shape) const;
 
-    Tensor<dtype> exp();
+    // ewise methods
+    Tensor<dtype> exp() const;
+    Tensor<dtype> operator*(const Tensor<dtype>& other) const;
 
-    // reduce method(reduce 1 dimension) like sum
-    Tensor<dtype> max();
+    // reduce methods(reduce 1 dimension each function call), like sum, max
+    Tensor<dtype> max(int axis, bool keepdims = false) const;
+    Tensor<dtype> sum(int axis, bool keepdims = false) const;
+    dtype sum(bool keepdims = false) const; // no use, will be deleted
 
     // int8_t quantize, but use int32_t store value now in case of overflow when perform mutmul.
     Tensor<int> quantize() const;
-
     Tensor<float> dequantize() const;
 
     /* data is managed by copy on write (COW) later */
@@ -174,6 +173,10 @@ private:
     bool is_contiguous(const Tensor<dtype>& t) const;
     // used in getItem method, process slice, supplement abbreviation of slice to full
     std::vector<std::vector<int>> process_slices(const std::vector<std::vector<int>>& slices) const;
+
+    // reduce methods helper
+    Tensor<dtype> get_reduce_view(int axis) const;
+    std::vector<int> get_reduce_shape(int axis, bool keepdims) const;
 };
 
 

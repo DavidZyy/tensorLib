@@ -30,8 +30,10 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape
         // data_ = std::vector<dtype>(num_elements);
 
         // data_ = std::make_shared<dtype[]>(num_elements); // cpp 20 or later
-        std::shared_ptr<dtype[]> temp(new dtype[num_elements], Deleter<dtype>(num_elements));
-        data_ = temp;
+        // std::shared_ptr<dtype[]> temp(new dtype[num_elements], Deleter<dtype>(num_elements));
+        // data_ = temp;
+
+        data_ = std::shared_ptr<dtype[]>(new dtype[num_elements], Deleter<dtype>(num_elements));
 
         memoryUsage += num_elements * sizeof(dtype);
         std::cout << "Allocate: " << sizeof(dtype) * num_elements << ", now: " << memoryUsage << std::endl;
@@ -486,15 +488,27 @@ Tensor<dtype> Tensor<dtype>::transpose(int dim0, int dim1) const {
 
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::contiguous() const {
-    if (this->shape_.size() != 2) {
-        throw std::invalid_argument("only support 2d tensor now");
-    }
-
     Tensor<dtype> result(this->shape());
 
-    for (int i=0; i < this->shape()[0]; i++) {
-        for (int j=0; j < this->shape()[1]; j++) {
-            result.setData({i, j}, this->getData({i, j}));
+    std::vector<int> cur_idx(this->shape().size(), 0);
+
+    // maybe can parallel this loop later ...
+    for (int i=0; i < this->num_elements; i++) {
+        int totalIdx = this->offset_;
+        for (int j=cur_idx.size()-1; j >= 0; j--) {
+            totalIdx += cur_idx[j] * this->stride_[j];
+        }
+        
+        result.data_[i] = this->data_[totalIdx];
+
+        for (int j=cur_idx.size()-1; j >= 0; j--) {
+            cur_idx[j] += 1;
+
+            if (cur_idx[j] < result.shape()[j]) {
+                break;
+            } else {
+                cur_idx[j] = 0;
+            }
         }
     }
 
@@ -589,20 +603,17 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<
     
     // current index of out tensor to set value
     std::vector<int> cur_idx(value.shape().size(), 0);
-    int num = value.num_elements;
 
-    int cnt = 0;
-    // this algorithm maybe not efficient, because it can not use omp to parallelize the loop
-    for (int i=0; i < num; i++) {
+    // maybe can parallel this loop later ...
+    for (int i=0; i < value.num_elements; i++) {
         int idx = out.offset_;
-        // int idx = 0;
 
         // #pragma omp parallel for // seems error
         for (int j=0; j < cur_idx.size(); j++) {
             idx += cur_idx[j] * out.stride_[j];
         }
 
-        out.data_[idx] = value.data_[cnt++];
+        out.data_[idx] = value.data_[i];
 
         // carry
         // for (int j=0; j < cur_idx.size(); j++) { // this is not right, because stride[0] is the max stride, stride[dim-1] is the min stride, we should increse the cur_idx from bigger dimension to smaller
@@ -669,3 +680,102 @@ Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) con
 
     return Tensor<dtype>(std::move(new_shape), std::move(new_stride), this->offset_, this->data_);
 }
+
+template<typename dtype>
+Tensor<dtype> Tensor<dtype>::exp() const {
+    Tensor<dtype> result(this->shape());
+
+    #pragma omp parallel for
+    for (int i=0; i < this->num_elements; i++) {
+        result.data_[i] = std::exp(this->data_[i]);
+    }
+
+    return result;
+}
+
+template<typename dtype>
+Tensor<dtype> Tensor<dtype>::permute(const std::vector<int>& new_axes) const {
+    if (new_axes.size() != this->shape().size()) {
+        throw std::invalid_argument("The new axes must be equal to the original axes.");
+    }
+
+    std::vector<int> new_shape;
+    std::vector<int> new_stride;
+    for (int i=0; i < new_axes.size(); i++) {
+        new_shape.push_back(this->shape_[new_axes[i]]);
+        new_stride.push_back(this->stride_[new_axes[i]]);
+    }
+
+    return Tensor<dtype>(std::move(new_shape), std::move(new_stride), this->offset_, this->data_);
+}
+
+/**
+ * permute the axis to the last dimension first, then return a view of the tensor which is contiguous.
+ * @tparam dtype 
+ */
+template<typename dtype>
+Tensor<dtype> Tensor<dtype>::get_reduce_view(int axis) const {
+    std::vector<int> new_axes;
+    for (int i=0; i < this->shape().size(); i++) {
+        if (i != axis) {
+            new_axes.push_back(i);
+        }
+    }
+    new_axes.push_back(axis);
+
+    auto view = this->permute(new_axes);
+    view = view.contiguous();
+    return view;
+}
+
+template<typename dtype>
+std::vector<int> Tensor<dtype>::get_reduce_shape(int axis, bool keepdims) const{
+    std::vector<int> new_shape = this->shape();
+    if (keepdims) {
+        new_shape[axis] = 1;
+    } else {
+        new_shape.erase(new_shape.begin() + axis);
+    }
+    
+    return new_shape;
+}
+
+template<typename dtype>
+Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const {
+    // permute the axis to the last dimension first, and then reduce the last dimension
+    auto view = get_reduce_view(axis);
+    auto new_shape = get_reduce_shape(axis, keepdims);
+
+    Tensor<dtype> result(new_shape);
+
+    int reduce_size = this->shape()[axis];
+    for (int i=0; i < view.num_elements; i+=reduce_size) {
+        result.data_[i/reduce_size] = view.data_[i];
+        for (int j=1; j < reduce_size; j++) {
+            result.data_[i/reduce_size] = std::max(result.data_[i/reduce_size], view.data_[i+j]);
+        }
+    }
+
+    return result;
+}
+
+template<typename dtype>
+Tensor<dtype> Tensor<dtype>::sum(int axis, bool keepdims) const {
+    // permute the axis to the last dimension first, and then reduce the last dimension
+    auto view = get_reduce_view(axis);
+    auto new_shape = get_reduce_shape(axis, keepdims);
+
+    Tensor<dtype> result(new_shape);
+
+    int reduce_size = this->shape()[axis];
+    for (int i=0; i < view.num_elements; i+=reduce_size) {
+        result.data_[i/reduce_size] = view.data_[i];
+        for (int j=1; j < reduce_size; j++) {
+            result.data_[i/reduce_size] += view.data_[i+j];
+        }
+    }
+
+    return result;
+}
+
+
