@@ -141,6 +141,7 @@ public:
     Tensor<dtype> exp() const;
     Tensor<dtype> log() const;
     Tensor<dtype> tanh() const;
+    Tensor<dtype> silu() const;
     Tensor<dtype> operator+(const Tensor<dtype>& other) const;
     Tensor<dtype> operator-(const Tensor<dtype>& other) const;
     Tensor<dtype> operator*(const Tensor<dtype>& other) const;

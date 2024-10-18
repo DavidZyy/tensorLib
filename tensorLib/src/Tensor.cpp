@@ -579,9 +579,23 @@ template<typename dtype>
 Tensor<dtype> Tensor<dtype>::exp() const {
     Tensor<dtype> result(this->shape());
 
-    #pragma omp parallel for
+    // #pragma omp parallel for
     for (int i=0; i < this->num_elements; i++) {
         result.data_[i] = std::exp(this->data_[i]);
+    }
+
+    return result;
+}
+
+template<typename dtype>
+Tensor<dtype> Tensor<dtype>::silu() const {
+    Tensor<dtype> result(this->shape());
+
+    // #pragma omp parallel for
+    for (int i=0; i < this->num_elements; i++) {
+        dtype x = this->data_[i];
+        dtype sigmoid_x = 1 / (1 + std::exp(-x));
+        result.data_[i] = x * sigmoid_x;
     }
 
     return result;

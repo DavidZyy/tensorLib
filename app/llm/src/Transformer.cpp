@@ -46,11 +46,31 @@ Tensor<dtype> Attention<dtype>::forward(Tensor<dtype> x, int start_pos, Tensor<d
 
     xq = xq.transpose(1, 2);
     keys = keys.transpose(1, 2);
-    values = values.transpose(1, 2);
+    values = values.transpose(1, 2); // (bsz, n_heads, cache_len+seqlen, head_dim)
     auto scores = xq.matmul(keys.transpose(2, 3)) / sqrt(head_dim); // (bsz, n_heads, seqlen, cache_len+seqlen)
     if (mask.has_value()) {
         scores = scores + mask.value();
     }
-    scores = scores.softmax(3);
+    scores = scores.softmax(3); // (bsz, n_heads, seqlen, cache_len+seqlen)
+    auto output = scores.matmul(values); // (bsz, n_heads, seqlen, head_dim)
+    output = output.transpose(1, 2).contiguous().view({bsz, seqlen, n_heads * head_dim}); // (bsz, seqlen, dim)
+    return this->wo.forward(output); // (bsz, seqlen, dim)
+}
 
+template <typename dtype>
+FeedForward<dtype>::FeedForward(int dim, int hidden_dim) : dim(dim), hidden_dim(hidden_dim) {
+    this->w1 = nn::Linear<dtype>(dim, hidden_dim);
+    this->w2 = nn::Linear<dtype>(hidden_dim, dim);
+    this->w3 = nn::Linear<dtype>(dim, hidden_dim);
+}
+
+template <typename dtype>
+Tensor<dtype> FeedForward<dtype>::forward(Tensor<dtype> x) {
+    // x: (bsz, seqlen, dim)
+    auto x1 = this->w1.forward(x); // (bsz, seqlen, hidden_dim)
+    x1 = x1.silu();
+    auto x3 = this->w3.forward(x); // (bsz, seqlen, hidden_dim)
+    auto x2 = x1 * x3;
+    auto result = this->w2.forward(x2); // (bsz, seqlen, dim)
+    return result;
 }

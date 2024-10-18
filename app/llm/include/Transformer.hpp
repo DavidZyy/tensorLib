@@ -28,3 +28,14 @@ private:
     nn::Linear<dtype> wq, wk, wv, wo;
     Tensor<dtype> cache_k, cache_v;
 };
+
+template <typename dtype>
+class FeedForward {
+public:
+    FeedForward(int dim, int hidden_dim); // no need multiple_of here, use llama2.c way.
+
+    Tensor<dtype> forward(Tensor<dtype> x);
+private:
+    int dim, hidden_dim;
+    nn::Linear<dtype> w1, w2, w3;
+};
