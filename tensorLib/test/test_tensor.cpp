@@ -451,6 +451,15 @@ void test_softmax() {
     std::cout << "c: " << std::endl << c << std::endl;
 }
 
+void test_mean() {
+    Tensor<float> a = originTensor_float({2, 3}); 
+    std::cout << "a: " << std::endl << a << std::endl;
+    auto b = a.mean(0, true);
+    std::cout << "b: " << std::endl << b << std::endl;
+    auto c = a.mean(1, true);
+    std::cout << "c: " << std::endl << c << std::endl;
+}
+
 int main() {
     // test_construct();
     // test_getData();
@@ -470,5 +479,6 @@ int main() {
     // test_broadcast_to();
     // test_max_or_sum();
     // test_ewise();
-    test_softmax();
+    // test_softmax();
+    test_mean();
 }

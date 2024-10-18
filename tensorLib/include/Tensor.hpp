@@ -103,9 +103,6 @@ public:
     // Tensor<dtype> argmax(int axis) const;
     Tensor<int> argmax(int dim, bool keepdim = false) const;
 
-    template<typename T = float>
-    Tensor<T> mean(int dim = -1, bool keepdim = false) const;
-
     Tensor<dtype> view(const std::vector<int>& shape) const;
 
     // startIdx <= idx < endIdx
@@ -152,10 +149,12 @@ public:
     Tensor<dtype> operator-(dtype scalar) const;
     Tensor<dtype> operator*(dtype scalar) const;
     Tensor<dtype> operator/(dtype scalar) const;
+    Tensor<dtype> pow(dtype scalar) const;
 
     // reduce methods(reduce 1 dimension each function call), like sum, max
     Tensor<dtype> max(int axis, bool keepdims = false) const;
     Tensor<dtype> sum(int axis, bool keepdims = false) const;
+    Tensor<dtype> mean(int axis, bool keepdims = false) const;
     // dtype sum(bool keepdims = false) const; // no use, will be deleted
 
     Tensor<dtype> softmax(int dim) const;
@@ -221,6 +220,11 @@ static inline dtype divide(dtype a, dtype b) {
     return a / b;
 }
 
+template <typename dtype>
+static inline dtype power(dtype a, dtype b) {
+    return std::pow(a, b);
+}
+
 // Overload operator<< to print Tensor
 template <typename dtype>
 std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
@@ -259,55 +263,6 @@ Tensor<dtype> zeros(const std::vector<int>& shape) {
     }
     return result;
 }
-
-template <typename dtype>
-template <typename T>
-// Tensor<float> Tensor<dtype>::mean(int dim, bool keepdim) const {
-Tensor<T> Tensor<dtype>::mean(int dim, bool keepdim) const {
-//     if (shape_.size() != 2) {
-//         throw std::invalid_argument("Only support 2d.");
-//     }
-// 
-//     int reduce_shape = shape_[1 - dim];
-//     Tensor<int> result(std::vector<int>{reduce_shape});
-// 
-//     int off = stride_[1-dim];
-//     int stride = stride_[dim];
-// 
-//     for (int i = 0; i < reduce_shape; ++i) {
-//         int max_index = 0;
-//         dtype max_value = data_[i*off];
-//         for (int j = 0; j < shape_[dim]; ++j) {
-//             if (data_[i*off + j*stride] > max_value) {
-//                 max_value = data_[i*off + j*stride];
-//                 max_index = j;
-//             }
-//         }
-//         result.setData({i}, max_index);
-//     }
-// 
-//     return result;
-    
-    if (shape_.size() != 1) {
-        throw std::invalid_argument("Only support 1d.");
-    }
-
-    Tensor<T> result(std::vector<int>{1});
-
-    dtype sum = 0;
-    // for (auto value : data_) {
-    //     sum += value;
-    // }
-
-    for(auto i = 0; i < this->num_elements; ++i) {
-        sum += this->data_[i];
-    }
-
-    result.setData({0}, (T)sum / (T)shape_[0]);
-
-    return result;
-}
-
 
 template <typename dtype>
 bool Tensor<dtype>::is_contiguous(const Tensor<dtype>& t) const {

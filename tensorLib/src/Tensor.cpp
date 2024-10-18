@@ -658,10 +658,11 @@ Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const {
 
     int reduce_size = this->shape()[axis];
     for (int i=0; i < view.num_elements; i+=reduce_size) {
-        result.data_[i/reduce_size] = view.data_[i];
+        auto temp = view.data_[i];
         for (int j=1; j < reduce_size; j++) {
-            result.data_[i/reduce_size] = std::max(result.data_[i/reduce_size], view.data_[i+j]);
+            temp = std::max(result.data_[i/reduce_size], view.data_[i+j]);
         }
+        result.data_[i/reduce_size] = temp;
     }
 
     return result;
@@ -677,10 +678,31 @@ Tensor<dtype> Tensor<dtype>::sum(int axis, bool keepdims) const {
 
     int reduce_size = this->shape()[axis];
     for (int i=0; i < view.num_elements; i+=reduce_size) {
-        result.data_[i/reduce_size] = view.data_[i];
+        auto temp = view.data_[i];
         for (int j=1; j < reduce_size; j++) {
-            result.data_[i/reduce_size] += view.data_[i+j];
+            temp += view.data_[i+j];
         }
+        result.data_[i/reduce_size] = temp;
+    }
+
+    return result;
+}
+
+template<typename dtype>
+Tensor<dtype> Tensor<dtype>::mean(int axis, bool keepdims) const {
+    // permute the axis to the last dimension first, and then reduce the last dimension
+    auto view = get_reduce_view(axis);
+    auto new_shape = get_reduce_shape(axis, keepdims);
+
+    Tensor<dtype> result(new_shape);
+
+    int reduce_size = this->shape()[axis];
+    for (int i=0; i < view.num_elements; i+=reduce_size) {
+        auto temp = view.data_[i];
+        for (int j=1; j < reduce_size; j++) {
+            temp += view.data_[i+j];
+        }
+        result.data_[i/reduce_size] = temp / reduce_size;
     }
 
     return result;
@@ -738,4 +760,4 @@ template <typename dtype> Tensor<dtype> Tensor<dtype>::operator+(dtype scalar) c
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(dtype scalar) const { return apply_scalar_operation(scalar, subtract<dtype>); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(dtype scalar) const { return apply_scalar_operation(scalar, multiply<dtype>); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(dtype scalar) const { return apply_scalar_operation(scalar, divide<dtype>); }
-
+template <typename dtype> Tensor<dtype> Tensor<dtype>::pow(dtype scalar) const { return apply_scalar_operation(scalar, power<dtype>); }
