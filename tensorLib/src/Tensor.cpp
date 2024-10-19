@@ -623,6 +623,16 @@ Tensor<dtype> Tensor<dtype>::permute(const std::vector<int>& new_axes) const {
  */
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::get_reduce_view(int axis) const {
+    if (axis >= this->shape().size()) {
+        throw std::invalid_argument("The axis must be less than the shape size.");
+    } else if (axis < -this->shape().size()) {
+        throw std::invalid_argument("The axis must be greater than or equal to -shape size.");
+    }
+
+    if (axis < 0) {
+        axis += this->shape().size();
+    }
+
     std::vector<int> new_axes;
     for (int i=0; i < this->shape().size(); i++) {
         if (i != axis) {

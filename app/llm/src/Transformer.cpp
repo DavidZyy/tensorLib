@@ -74,3 +74,31 @@ Tensor<dtype> FeedForward<dtype>::forward(Tensor<dtype> x) {
     auto result = this->w2.forward(x2); // (bsz, seqlen, dim)
     return result;
 }
+
+
+template <typename dtype>
+RMSNorm<dtype>::RMSNorm(int dim, float eps) : dim(dim), eps(eps) {
+    this->weight = Tensor<dtype>({dim});
+}
+
+template <typename dtype>
+Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) {
+    auto origin_shape = x.shape();
+    auto temp = x;
+    temp = temp.pow(2);
+    temp = temp.mean(-1, true);
+    temp = temp.broadcast_to(origin_shape);
+    temp = temp + this->eps;
+    temp = temp.rsqrt();
+    return x * temp; 
+}
+
+template <typename dtype>
+Tensor<dtype> RMSNorm<dtype>::forward(Tensor<dtype> x) {
+    // x : (bsz, seqlen, dim)
+    // weight : (dim)
+    auto result = this->_norm(x);
+    auto weight = this->weight.view({1, 1, this->dim});
+    weight = weight.broadcast_to(x.shape());
+    return result * weight;
+}

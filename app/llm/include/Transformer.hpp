@@ -39,3 +39,16 @@ private:
     int dim, hidden_dim;
     nn::Linear<dtype> w1, w2, w3;
 };
+
+template <typename dtype>
+class RMSNorm {
+public:
+    RMSNorm(int dim, float eps = 1e-5);
+
+    Tensor<dtype> forward(Tensor<dtype> x);
+    Tensor<dtype> _norm(Tensor<dtype> x);
+private:
+    float eps;
+    int dim;
+    Tensor<dtype> weight;
+};
