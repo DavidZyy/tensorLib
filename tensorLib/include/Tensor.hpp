@@ -43,8 +43,11 @@ template <typename dtype>
 class Deleter {
 public:
     void operator()(dtype* ptr) const {
-        memoryUsage -= sizeof(dtype) * elem_num;
         delete[] ptr;
+        auto a = memoryUsage.load(); // in one case, a = 0, another a is not 0,
+        auto b = sizeof(dtype) * elem_num;
+        memoryUsage = a - b;
+        // memoryUsage -= sizeof(dtype) * elem_num;
         std::cout << "Free: " << sizeof(dtype) * elem_num << ", now: " << memoryUsage << std::endl;
     }
 
@@ -61,6 +64,7 @@ public:
     Tensor(const std::vector<int>& shape);
     Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data);
     Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data);
+    template<typename OtherType> Tensor(const Tensor<OtherType>& other); // support static cast
 
     // Destructor
     ~Tensor();
@@ -171,12 +175,13 @@ public:
     // used for quantize
     // int group_size;  // seem as one group now for simple
     float scale;
-private:
+
     // the offset of data_, used for slice method to share the same memory area of data_.
     int offset_;
     std::vector<int> stride_;
     int ndim;
     std::vector<int> shape_;
+private:
 
     // helper method for operator<<
     void printTensor(std::ostream& os, size_t depth, std::vector<int> indices) const;
@@ -196,6 +201,28 @@ private:
     Tensor<dtype> apply_scalar_operation(dtype scalar, dtype(*op)(dtype, dtype)) const;
 };
 
+// Definition of the conversion constructor outside the class
+template <typename dtype>  // This is the Tensor's dtype template
+template <typename OtherType>  // This is the type we are converting from
+Tensor<dtype>::Tensor(const Tensor<OtherType>& other) {
+    Tensor<dtype> tmp(other.shape());
+    // Convert the data from 'OtherType' to 'dtype'
+    this->num_elements = other.num_elements;  // Copy the number of elements
+    this->offset_ = other.offset_;
+    this->stride_ = other.stride_;
+    this->ndim = other.ndim;
+    this->shape_ = other.shape();  // Copy the shape
+    // data_ = std::make_shared<dtype[]>(num_elements);  // Allocate memory for new data
+    // data_ = std::shared_ptr<dtype[]>(new dtype[this->num_elements], Deleter<dtype>(num_elements));
+    // memoryUsage += num_elements * sizeof(dtype);
+    // std::cout << "Allocate: " << sizeof(dtype) * num_elements << ", now: " << memoryUsage << std::endl;
+    this->data_ = tmp.data_;
+
+    // Element-wise conversion from OtherType to dtype
+    for (int i = 0; i < num_elements; ++i) {
+        data_[i] = static_cast<dtype>(other.data_[i]);
+    }
+}
 
 template <typename dtype>
 static inline dtype add(dtype a, dtype b) {

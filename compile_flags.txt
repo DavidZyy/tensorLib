@@ -1,2 +1,3 @@
 -I./tensorLib/include
+-I./tensorLib/include/nn
 -I./app/llm/include

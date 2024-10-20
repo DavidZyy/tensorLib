@@ -3,6 +3,7 @@
 #include "Tensor.hpp"
 #include <cassert>
 #include <chrono>
+#include <vector>
 #include "iostream"
 
 namespace nn {
@@ -13,15 +14,22 @@ namespace nn {
 //     virtual ~Module() = default;
 //     // virtual Tensor<dtype> forward() = 0; // pure virtual func
 // };
+template <typename dtype>
+class Module {
+public:
+    virtual ~Module() = default;
+    virtual Tensor<dtype> forward(const Tensor<dtype>& intput) const = 0; // pure virtual func
+};
+
 
 template <typename dtype>
 // class Linear : public Module<dtype> {
-class Linear {
+class Linear : public Module<dtype> {
 public:
     Linear(int in_features, int out_features);
     Linear(int in_features, int out_features, Tensor<dtype>&& weight);
     ~Linear() = default;
-    Tensor<dtype> forward(const Tensor<dtype>& input);
+    Tensor<dtype> forward(const Tensor<dtype>& input) const override; // add const will resolve the bug, but why??(because virtual function has const at last)
 
 // protected:
     int in_features;
@@ -56,7 +64,7 @@ Linear<dtype>::Linear(int in_features, int out_features, Tensor<dtype>&& weight)
  * output = input.matmul(weight.T)
  */
 template <typename dtype>
-Tensor<dtype> Linear<dtype>::forward(const Tensor<dtype>& input) {
+Tensor<dtype> Linear<dtype>::forward(const Tensor<dtype>& input) const {
     auto start_time = std::chrono::high_resolution_clock::now();
 
     auto result = input.matmul(weight.transpose(0, 1));
@@ -165,5 +173,103 @@ Tensor<dtype> Conv2d<dtype>::forward(const Tensor<dtype>& input) {
     
     return output;
 }
+
+template <typename dtype>
+class Embedding {
+public:
+    Embedding(int num_embeddings, int embedding_dim);
+    ~Embedding() = default;
+
+    Tensor<dtype> forward(const Tensor<dtype>& input);
+
+// private:
+protected:
+    int num_embeddings;
+    int embedding_dim;
+    Tensor<dtype> weight;
+};
+
+template <typename dtype>
+Embedding<dtype>::Embedding(int num_embeddings, int embedding_dim) : 
+    num_embeddings(num_embeddings), embedding_dim(embedding_dim), weight(Tensor<dtype>({num_embeddings, embedding_dim})) {}
+
+/**
+ * using the following way, we can handle arbitrary dimension input. 
+ * @tparam dtype 
+ */
+template <typename dtype>
+Tensor<dtype> Embedding<dtype>::forward(const Tensor<dtype>& input) {
+    auto new_shape = input.shape().push_back(embedding_dim);
+    auto result = Tensor<dtype>(new_shape);
+
+    std::vector<int> cur_idx(input.shape().size(), 0);
+
+    // embedding every elements in input
+    for (int i=0; i < input.num_elements; i++) {
+        int embedding_index = input.getData(cur_idx);
+        
+        // assign
+        for (int j=0; j < embedding_dim; j++) {
+            result.setData({cur_idx, j}, weight.getData({embedding_index, j}));
+        }
+
+        // carry
+        for (int j=cur_idx.size()-1; j >= 0; j--) {
+            cur_idx[j] += 1;
+
+            if (cur_idx[j] < input.shape()[j]) {
+                break;
+            } else {
+                cur_idx[j] = 0;
+            }
+        }
+
+    }
+
+    return result;
+}
+
+
+// Define the ModuleList class
+template <typename dtype>
+class ModuleList {
+public:
+    // Default constructor
+    ModuleList() = default;
+
+    // Append a new module to the list
+    void append(std::shared_ptr<Module<dtype>> module) {
+        modules_.push_back(module);
+    }
+
+    // Access a module by index
+    std::shared_ptr<Module<dtype>> operator[](int index) const {
+        if (index < 0 || index >= modules_.size()) {
+            throw std::out_of_range("ModuleList index out of range.");
+        }
+        return modules_[index];
+    }
+
+    // Get the size of the ModuleList
+    int size() const {
+        return modules_.size();
+    }
+
+    // Forward pass through all modules in the list
+    Tensor<dtype> forward(const Tensor<dtype>& input) const {
+        Tensor<dtype> current_input = input;
+
+        // Sequentially pass through all modules in the list
+        for (const auto& module : modules_) {
+            current_input = module->forward(current_input);
+        }
+
+        return current_input;
+    }
+
+private:
+    // Vector to hold the list of shared pointers to modules
+    std::vector<std::shared_ptr<Module<dtype>>> modules_;
+};
 
 }

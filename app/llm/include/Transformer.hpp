@@ -5,8 +5,10 @@
 class ModelArgs {
 public:
     int dim;
+    int hidden_dim; // for FFN
     int n_layers;
     int n_heads;
+    int vocab_size;
     // int n_kv_heads; (= n_heads), by default.
 
     int max_batch_size; // (=1), by default, we will process one batch at a time for simplicity.
@@ -14,7 +16,7 @@ public:
 };
 
 template <typename dtype>
-class Attention {
+class Attention : public nn::Module<dtype>{
 public:
     Attention(ModelArgs args);
 
@@ -51,4 +53,41 @@ private:
     float eps;
     int dim;
     Tensor<dtype> weight;
+};
+
+template <typename dtype>
+class TransformerBlock {
+public:
+    TransformerBlock(int layer_id, ModelArgs args);
+
+    Tensor<dtype> forward(Tensor<dtype> x, int start_pos, Tensor<dtype> freqs, std::optional<Tensor<dtype>> mask);
+private:
+    int n_heads;
+    int dim;
+    int head_dim;
+    int layer_id;
+    Attention<dtype> attention;
+    FeedForward<dtype> feed_forward;
+    RMSNorm<dtype> attention_norm, ffn_norm;
+};
+
+template <typename dtype>
+class Transformer {
+public:
+    Transformer(ModelArgs args);
+
+    Tensor<dtype> forward(Tensor<dtype> tokens, int start_pos);
+private:
+    int n_layers;
+    int vocab_size;
+    int head_dim;
+    ModelArgs params;
+    nn::Embedding<dtype> tok_embeddings;
+    nn::ModuleList<dtype> layers;
+    RMSNorm<dtype> norm;
+    nn::Linear<dtype> output;
+    Tensor<dtype> freqs;
+
+    Tensor<dtype> precompute_freqs();
+    std::optional<Tensor<dtype>> get_mask(int seq_len);
 };

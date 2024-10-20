@@ -72,7 +72,11 @@ int main() {
 
     Tensor<int> correct = (pred == label);
 
-    auto meanValue = correct.mean();
+    // convert int to float for mean
+    auto correct2 = static_cast<Tensor<float>>(correct);
+
+    // auto meanValue = correct.mean(0);
+    auto meanValue = correct2.mean(0);
 
     std::cout << meanValue << std::endl;
 }

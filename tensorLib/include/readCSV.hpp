@@ -59,7 +59,7 @@ Tensor<dtype> readCSV(const std::string& filename) {
         }
     }
 
-    std::cout<<"tensor address: "<<&tensor<<" tensor data address: "<<&tensor.data_<<std::endl;
+    // std::cout<<"tensor address: "<<&tensor<<" tensor data address: "<<&tensor.data_<<std::endl;
 
     // return std::move(tensor);
     return tensor;

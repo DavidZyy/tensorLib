@@ -85,6 +85,8 @@ ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset
     }
 }
 
+
+
 template <typename dtype>
 Tensor<dtype>::~Tensor() {
 
@@ -486,6 +488,11 @@ Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) cons
  */
 template <typename dtype>
 void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype>& value) {
+    // value = value.contiguous();
+    if (!is_contiguous(value)) {
+        throw std::invalid_argument("The value must be contiguous.");
+    }
+
     // get item first, the new tensor shared the same data with the original tensor in memory.
     slices = process_slices(slices);
 
@@ -504,10 +511,10 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<
 
         // #pragma omp parallel for // seems error
         for (int j=0; j < cur_idx.size(); j++) {
-            idx += cur_idx[j] * out.stride_[j];
+            idx += cur_idx[j] * out.stride_[j]; // use current idx to calculate the flatten idx
         }
 
-        out.data_[idx] = value.data_[i];
+        out.data_[idx] = value.data_[i]; // index value use i directly, value should be contiguous.
 
         // carry
         // for (int j=0; j < cur_idx.size(); j++) { // this is not right, because stride[0] is the max stride, stride[dim-1] is the min stride, we should increse the cur_idx from bigger dimension to smaller
@@ -623,9 +630,10 @@ Tensor<dtype> Tensor<dtype>::permute(const std::vector<int>& new_axes) const {
  */
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::get_reduce_view(int axis) const {
-    if (axis >= this->shape().size()) {
+    int dims = static_cast<int>(this->shape().size()); // size is unsigned, so use int
+    if (axis >= dims) {
         throw std::invalid_argument("The axis must be less than the shape size.");
-    } else if (axis < -this->shape().size()) {
+    } else if (axis < -dims) {
         throw std::invalid_argument("The axis must be greater than or equal to -shape size.");
     }
 

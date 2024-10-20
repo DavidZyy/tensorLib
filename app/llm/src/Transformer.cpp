@@ -1,7 +1,11 @@
 #include "Transformer.hpp"
 #include "Tensor.hpp"
 #include "nn/modules.hpp"
+#include <cmath>
+#include <optional>
 #include <vector>
+
+
 
 template <typename dtype>
 Attention<dtype>::Attention(ModelArgs args) {
@@ -102,3 +106,88 @@ Tensor<dtype> RMSNorm<dtype>::forward(Tensor<dtype> x) {
     weight = weight.broadcast_to(x.shape());
     return result * weight;
 }
+
+template <typename dtype>
+TransformerBlock<dtype>::TransformerBlock(int layer_id, ModelArgs args) {
+    this->n_heads = args.n_heads;
+    this->dim = args.dim;
+    this->head_dim = args.dim / args.n_heads;
+    this->layer_id = layer_id;
+
+    this->attention = Attention<dtype>(args);
+    this->feed_forward = FeedForward<dtype>(args.dim, args.hidden_dim);
+    this->attention_norm = RMSNorm<dtype>(args.dim, 1e-5);
+    this->ffn_norm = RMSNorm<dtype>(args.dim, 1e-5);
+}
+
+template <typename dtype>
+Tensor<dtype> TransformerBlock<dtype>::forward(Tensor<dtype> x, int start_pos, Tensor<dtype> freqs, std::optional<Tensor<dtype>> mask) { 
+    auto temp1 = this->attention_norm.forward(x);
+    auto h = x + this->attention.forward(temp1, start_pos, freqs, mask);
+    auto out = h + this->feed_forward.forward(this->ffn_norm.forward(h));
+    return out;
+}
+
+
+template <typename dtype>
+Transformer<dtype>::Transformer(ModelArgs args) : params(args) {
+    this->n_layers = args.n_layers;
+    this->vocab_size = args.vocab_size;
+    this->head_dim = args.dim / args.n_heads;
+    this->tok_embeddings = nn::Embedding<dtype> (args.vocab_size, args.dim);
+    this->layers = nn::ModuleList<dtype>();
+    for (int i = 0; i < args.n_layers; i++) {
+        this->layers.append(TransformerBlock<dtype>(i, args));
+    }
+    this->norm = RMSNorm<dtype>(args.dim, 1e-5);
+    this->output = nn::Linear<dtype>(args.dim, args.vocab_size);
+
+    this->freqs = precompute_freqs(args.dim);
+}
+
+template <typename dtype>
+Tensor<dtype> Transformer<dtype>::precompute_freqs() {
+    auto shape = {this->params.max_seq_len, this->head_dim}; // (seq_len, head_dim)
+    Tensor<dtype> freqs(shape);
+    for (int i = 0; i < this->params.max_seq_len; i++) {
+        for (int j = 0; j < this->head_dim; j++) {
+            freqs[i][j] = i * pow(10000, -2.0 * j / this->head_dim);
+        }
+    }
+
+    return freqs;
+}
+
+template <typename dtype>
+std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen) {
+    if (seqlen <= 1) return {};
+
+    Tensor<dtype> mask = Tensor<dtype>({seqlen, seqlen});
+    for (int i = 0; i < seqlen; i++) {
+        for (int j = 0; j < seqlen; j++) {
+            if (i > j) {
+                mask[i][j] = 0;
+            } else {
+                mask[i][j] = -INFINITY;
+            }
+        }
+    }
+    return mask;
+}
+
+template <typename dtype>
+Tensor<dtype> Transformer<dtype>::forward(Tensor<dtype> tokens, int start_pos) {
+    auto bsz = tokens.shape()[0];
+    auto seqlen = tokens.shape()[1];
+    auto h = this->tok_embeddings.forward(tokens);
+    auto freqs = this->freqs.slice({start_pos, start_pos+seqlen});
+    auto mask = this->get_mask(seqlen);
+    for (int i = 0; i < this->n_layers; i++) {
+        auto layer = this->layers[i];
+        h = layer.forward(h, start_pos, freqs, mask);
+    }
+    h = this->norm.forward(h);
+    output = this->output.forward(h);
+    return output;
+}
+
