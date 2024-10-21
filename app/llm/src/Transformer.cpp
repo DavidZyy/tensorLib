@@ -23,7 +23,7 @@ Attention<dtype>::Attention(ModelArgs args) {
 }
 
 template <typename dtype>
-Tensor<dtype> Attention<dtype>::forward(Tensor<dtype> x, int start_pos, Tensor<dtype> freqs, std::optional<Tensor<dtype>> mask) {
+Tensor<dtype> Attention<dtype>::forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask) {
     auto bsz = x.shape()[0];
     auto seqlen = x.shape()[1];
 
@@ -69,7 +69,7 @@ FeedForward<dtype>::FeedForward(int dim, int hidden_dim) : dim(dim), hidden_dim(
 }
 
 template <typename dtype>
-Tensor<dtype> FeedForward<dtype>::forward(Tensor<dtype> x) {
+Tensor<dtype> FeedForward<dtype>::forward(const Tensor<dtype>& x) const {
     // x: (bsz, seqlen, dim)
     auto x1 = this->w1.forward(x); // (bsz, seqlen, hidden_dim)
     x1 = x1.silu();
@@ -80,13 +80,15 @@ Tensor<dtype> FeedForward<dtype>::forward(Tensor<dtype> x) {
 }
 
 
+template class RMSNorm<float>;
+
 template <typename dtype>
 RMSNorm<dtype>::RMSNorm(int dim, float eps) : dim(dim), eps(eps) {
     this->weight = Tensor<dtype>({dim});
 }
 
 template <typename dtype>
-Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) {
+Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) const {
     auto origin_shape = x.shape();
     auto temp = x;
     temp = temp.pow(2);
@@ -98,7 +100,7 @@ Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) {
 }
 
 template <typename dtype>
-Tensor<dtype> RMSNorm<dtype>::forward(Tensor<dtype> x) {
+Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x) const {
     // x : (bsz, seqlen, dim)
     // weight : (dim)
     auto result = this->_norm(x);
@@ -121,28 +123,35 @@ TransformerBlock<dtype>::TransformerBlock(int layer_id, ModelArgs args) {
 }
 
 template <typename dtype>
-Tensor<dtype> TransformerBlock<dtype>::forward(Tensor<dtype> x, int start_pos, Tensor<dtype> freqs, std::optional<Tensor<dtype>> mask) { 
+Tensor<dtype> TransformerBlock<dtype>::forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask) {
     auto temp1 = this->attention_norm.forward(x);
     auto h = x + this->attention.forward(temp1, start_pos, freqs, mask);
     auto out = h + this->feed_forward.forward(this->ffn_norm.forward(h));
     return out;
 }
 
+// Explicit instantiation for float, int
+template class Transformer<float>;
+// template class Transformer<int>;
 
+// without default constructor, not initialize members in member initializer list cause error.
 template <typename dtype>
-Transformer<dtype>::Transformer(ModelArgs args) : params(args) {
+Transformer<dtype>::Transformer(ModelArgs& args) {
+    this->params = args;
     this->n_layers = args.n_layers;
     this->vocab_size = args.vocab_size;
     this->head_dim = args.dim / args.n_heads;
-    this->tok_embeddings = nn::Embedding<dtype> (args.vocab_size, args.dim);
+    this->tok_embeddings = nn::Embedding<dtype>(args.vocab_size, args.dim);
+    // this->tok_embeddings = nn::Embedding<dtype>();
     this->layers = nn::ModuleList<dtype>();
     for (int i = 0; i < args.n_layers; i++) {
-        this->layers.append(TransformerBlock<dtype>(i, args));
+        // this->layers.append(TransformerBlock<dtype>(i, args));
+        this->layers.append(std::make_shared<TransformerBlock<dtype>>(i, args));
     }
     this->norm = RMSNorm<dtype>(args.dim, 1e-5);
     this->output = nn::Linear<dtype>(args.dim, args.vocab_size);
 
-    this->freqs = precompute_freqs(args.dim);
+    this->freqs = precompute_freqs();
 }
 
 template <typename dtype>
@@ -151,7 +160,7 @@ Tensor<dtype> Transformer<dtype>::precompute_freqs() {
     Tensor<dtype> freqs(shape);
     for (int i = 0; i < this->params.max_seq_len; i++) {
         for (int j = 0; j < this->head_dim; j++) {
-            freqs[i][j] = i * pow(10000, -2.0 * j / this->head_dim);
+            freqs.setData({i, j},  i * pow(10000, -2.0 * j / this->head_dim));
         }
     }
 
@@ -159,16 +168,16 @@ Tensor<dtype> Transformer<dtype>::precompute_freqs() {
 }
 
 template <typename dtype>
-std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen) {
+std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen) const {
     if (seqlen <= 1) return {};
 
     Tensor<dtype> mask = Tensor<dtype>({seqlen, seqlen});
     for (int i = 0; i < seqlen; i++) {
         for (int j = 0; j < seqlen; j++) {
             if (i > j) {
-                mask[i][j] = 0;
+                mask.setData({i, j}, 0);
             } else {
-                mask[i][j] = -INFINITY;
+                mask.setData({i, j}, -INFINITY);
             }
         }
     }
@@ -176,18 +185,18 @@ std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen) {
 }
 
 template <typename dtype>
-Tensor<dtype> Transformer<dtype>::forward(Tensor<dtype> tokens, int start_pos) {
+Tensor<dtype> Transformer<dtype>::forward(const Tensor<dtype>& tokens, int start_pos) const {
     auto bsz = tokens.shape()[0];
     auto seqlen = tokens.shape()[1];
     auto h = this->tok_embeddings.forward(tokens);
-    auto freqs = this->freqs.slice({start_pos, start_pos+seqlen});
+    auto freqs = this->freqs.slice(start_pos, start_pos+seqlen, 0);
     auto mask = this->get_mask(seqlen);
     for (int i = 0; i < this->n_layers; i++) {
-        auto layer = this->layers[i];
-        h = layer.forward(h, start_pos, freqs, mask);
+        auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(this->layers[i]);
+        h = layer->forward(h, start_pos, freqs, mask);
     }
     h = this->norm.forward(h);
-    output = this->output.forward(h);
-    return output;
+    auto result = this->output.forward(h);
+    return result;
 }
 

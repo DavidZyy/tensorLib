@@ -8,28 +8,32 @@
 
 namespace nn {
 
-// template <typename dtype>
-// class Module {
-// public:
-//     virtual ~Module() = default;
-//     // virtual Tensor<dtype> forward() = 0; // pure virtual func
-// };
+// template class Module<float>;
 template <typename dtype>
 class Module {
 public:
+    Module() = default;
     virtual ~Module() = default;
-    virtual Tensor<dtype> forward(const Tensor<dtype>& intput) const = 0; // pure virtual func
+    // virtual Tensor<dtype> forward(const Tensor<dtype>& intput) const = 0; // pure virtual func
+    virtual Tensor<dtype> forward(const Tensor<dtype>& intput) const; // not pure, for overloading forward(that have different numbers or types of parameters)
 };
+
+// not pure virtual, should have defination
+template <typename dtype>
+Tensor<dtype> Module<dtype>::forward(const Tensor<dtype>& input) const {
+    throw std::runtime_error("module's forward should never be called!");
+    return input;
+}
 
 
 template <typename dtype>
-// class Linear : public Module<dtype> {
 class Linear : public Module<dtype> {
 public:
+    Linear() = default; // used in member initializer list.
     Linear(int in_features, int out_features);
     Linear(int in_features, int out_features, Tensor<dtype>&& weight);
     ~Linear() = default;
-    Tensor<dtype> forward(const Tensor<dtype>& input) const override; // add const will resolve the bug, but why??(because virtual function has const at last)
+    Tensor<dtype> forward(const Tensor<dtype>& input) const override; // add const will resolve the bug, but why??(because this virtual function has const at last, the inherited class should have const too)
 
 // protected:
     int in_features;
@@ -79,7 +83,7 @@ Tensor<dtype> Linear<dtype>::forward(const Tensor<dtype>& input) const {
 
 template <typename dtype>
 // class ReLU : public Module<dtype> {
-class ReLU {
+class ReLU : public nn::Module<dtype> {
 public:
     ReLU() = default;
     ~ReLU() = default;
@@ -95,8 +99,9 @@ Tensor<dtype> ReLU<dtype>::forward(const Tensor<dtype>& input) {
 
 template <typename dtype>
 // class Conv2d : public Module<dtype> {
-class Conv2d {
+class Conv2d : public nn::Module<dtype> {
 public:
+    Conv2d() = default;
     Conv2d(int in_channels, int out_channels, int kernel_size, int stride, int padding, Tensor<dtype>&& weight);
     ~Conv2d() = default;
 
@@ -175,12 +180,13 @@ Tensor<dtype> Conv2d<dtype>::forward(const Tensor<dtype>& input) {
 }
 
 template <typename dtype>
-class Embedding {
+class Embedding : public Module<dtype> {
 public:
+    Embedding() = default;  
     Embedding(int num_embeddings, int embedding_dim);
     ~Embedding() = default;
 
-    Tensor<dtype> forward(const Tensor<dtype>& input);
+    Tensor<dtype> forward(const Tensor<dtype>& input) const override;
 
 // private:
 protected:
@@ -198,8 +204,9 @@ Embedding<dtype>::Embedding(int num_embeddings, int embedding_dim) :
  * @tparam dtype 
  */
 template <typename dtype>
-Tensor<dtype> Embedding<dtype>::forward(const Tensor<dtype>& input) {
-    auto new_shape = input.shape().push_back(embedding_dim);
+Tensor<dtype> Embedding<dtype>::forward(const Tensor<dtype>& input) const {
+    auto new_shape = input.shape();
+    new_shape.push_back(embedding_dim);
     auto result = Tensor<dtype>(new_shape);
 
     std::vector<int> cur_idx(input.shape().size(), 0);
@@ -210,7 +217,9 @@ Tensor<dtype> Embedding<dtype>::forward(const Tensor<dtype>& input) {
         
         // assign
         for (int j=0; j < embedding_dim; j++) {
-            result.setData({cur_idx, j}, weight.getData({embedding_index, j}));
+            auto temp = cur_idx;
+            temp.push_back(j);
+            result.setData(temp, weight.getData({embedding_index, j}));
         }
 
         // carry
@@ -232,7 +241,7 @@ Tensor<dtype> Embedding<dtype>::forward(const Tensor<dtype>& input) {
 
 // Define the ModuleList class
 template <typename dtype>
-class ModuleList {
+class ModuleList : public Module<dtype> {
 public:
     // Default constructor
     ModuleList() = default;

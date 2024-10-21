@@ -61,6 +61,7 @@ template <typename dtype>
 class Tensor {
 public:
     // Constructor
+    Tensor() = default;
     Tensor(const std::vector<int>& shape);
     Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data);
     Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data);
@@ -143,6 +144,7 @@ public:
     Tensor<dtype> log() const;
     Tensor<dtype> tanh() const;
     Tensor<dtype> silu() const;
+    Tensor<dtype> rsqrt() const;
     Tensor<dtype> operator+(const Tensor<dtype>& other) const;
     Tensor<dtype> operator-(const Tensor<dtype>& other) const;
     Tensor<dtype> operator*(const Tensor<dtype>& other) const;

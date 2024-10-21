@@ -609,6 +609,23 @@ Tensor<dtype> Tensor<dtype>::silu() const {
 }
 
 template<typename dtype>
+Tensor<dtype> Tensor<dtype>::rsqrt() const {
+    Tensor<dtype> result(this->shape());
+
+    // #pragma omp parallel for
+    for (int i=0; i < this->num_elements; i++) {
+        dtype x = this->data_[i];
+        if (x > 0) {
+            result.data_[i] = 1 / std::sqrt(x); // Rsqrt calculation
+        } else {
+            throw std::domain_error("Cannot take rsqrt of non-positive values.");
+        }
+    }
+
+    return result;
+}
+
+template<typename dtype>
 Tensor<dtype> Tensor<dtype>::permute(const std::vector<int>& new_axes) const {
     if (new_axes.size() != this->shape().size()) {
         throw std::invalid_argument("The new axes must be equal to the original axes.");

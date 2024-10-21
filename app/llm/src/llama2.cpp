@@ -1,5 +1,11 @@
+#include "llama2.hpp"
 #include "Tokenizer.hpp"
 
-int main() {
+
+void generate() {
+
+}
+
+void text_completion() {
 
 }

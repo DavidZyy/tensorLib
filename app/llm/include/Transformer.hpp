@@ -1,3 +1,4 @@
+#pragma once
 #include "Tensor.hpp"
 #include "nn/modules.hpp"
 #include <optional>
@@ -16,11 +17,12 @@ public:
 };
 
 template <typename dtype>
-class Attention : public nn::Module<dtype>{
+class Attention : public nn::Module<dtype> {
 public:
+    Attention() = default;
     Attention(ModelArgs args);
 
-    Tensor<dtype> forward(Tensor<dtype> x, int start_pos, Tensor<dtype> freqs_cis, std::optional<Tensor<dtype>> mask);
+    Tensor<dtype> forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask); // not const, cache will be modified
 private:
     // int n_kv_heads; // assum n_kn_heads == n_heads now for simplicity
     int n_heads;
@@ -32,23 +34,25 @@ private:
 };
 
 template <typename dtype>
-class FeedForward {
+class FeedForward : public nn::Module<dtype> {
 public:
+    FeedForward() = default;
     FeedForward(int dim, int hidden_dim); // no need multiple_of here, use llama2.c way.
 
-    Tensor<dtype> forward(Tensor<dtype> x);
+    Tensor<dtype> forward(const Tensor<dtype>& x) const override;
 private:
     int dim, hidden_dim;
     nn::Linear<dtype> w1, w2, w3;
 };
 
 template <typename dtype>
-class RMSNorm {
+class RMSNorm : public nn::Module<dtype> {
 public:
+    RMSNorm() = default;
     RMSNorm(int dim, float eps = 1e-5);
 
-    Tensor<dtype> forward(Tensor<dtype> x);
-    Tensor<dtype> _norm(Tensor<dtype> x);
+    Tensor<dtype> forward(const Tensor<dtype>& x) const override;
+    Tensor<dtype> _norm(Tensor<dtype> x) const;
 private:
     float eps;
     int dim;
@@ -56,11 +60,12 @@ private:
 };
 
 template <typename dtype>
-class TransformerBlock {
+class TransformerBlock : public nn::Module<dtype> {
 public:
+    TransformerBlock() = default;
     TransformerBlock(int layer_id, ModelArgs args);
 
-    Tensor<dtype> forward(Tensor<dtype> x, int start_pos, Tensor<dtype> freqs, std::optional<Tensor<dtype>> mask);
+    Tensor<dtype> forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask); //(not const, Attention.cache will be modified) cannot use override here, because the function signature(parameters) is different with the base module
 private:
     int n_heads;
     int dim;
@@ -72,11 +77,11 @@ private:
 };
 
 template <typename dtype>
-class Transformer {
+class Transformer : public nn::Module<dtype> {
 public:
-    Transformer(ModelArgs args);
+    Transformer(ModelArgs& args);
 
-    Tensor<dtype> forward(Tensor<dtype> tokens, int start_pos);
+    Tensor<dtype> forward(const Tensor<dtype>& tokens, int start_pos) const;
 private:
     int n_layers;
     int vocab_size;
@@ -89,5 +94,5 @@ private:
     Tensor<dtype> freqs;
 
     Tensor<dtype> precompute_freqs();
-    std::optional<Tensor<dtype>> get_mask(int seq_len);
+    std::optional<Tensor<dtype>> get_mask(int seq_len) const;
 };
