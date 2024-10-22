@@ -105,6 +105,7 @@ public:
 
     // Matrix multiplication method
     Tensor<dtype> matmul(const Tensor<dtype>& other) const;
+    Tensor<dtype> batched_matmul(const Tensor<dtype>& other) const;
     // Tensor<dtype> argmax(int axis) const;
     Tensor<int> argmax(int dim, bool keepdim = false) const;
 
@@ -195,6 +196,7 @@ private:
     std::vector<std::vector<int>> process_slices(const std::vector<std::vector<int>>& slices) const;
 
     // reduce methods helper
+    int handle_axis(int axis) const;
     Tensor<dtype> get_reduce_view(int axis) const;
     std::vector<int> get_reduce_shape(int axis, bool keepdims) const;
 

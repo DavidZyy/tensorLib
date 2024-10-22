@@ -220,6 +220,112 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
 }
 
 /**
+ * batched matrix multiplication 
+ * @tparam dtype 
+ */
+template <typename dtype>
+Tensor<dtype> Tensor<dtype>::batched_matmul(const Tensor<dtype>& other) const {
+    // Ensure dimensionality is compatible for matrix multiplication
+    if (this->ndim < 2 || other.ndim < 2) {
+        throw std::invalid_argument("Tensors must have at least 2 dimensions for matmul.");
+    }
+
+    // Get the shapes of the tensors
+    const auto& A_shape = this->shape_;
+    const auto& B_shape = other.shape_;
+
+    // The last dimension of A should match the second-to-last dimension of B
+    if (A_shape[this->ndim - 1] != B_shape[other.ndim - 2]) {
+        throw std::invalid_argument("Shape mismatch: the number of columns in the first tensor must match the number of rows in the second tensor.");
+    }
+
+    // Determine output shape (handling broadcasting for batch dimensions)
+    std::vector<int> output_shape;
+    size_t num_batch_dims = std::max(this->ndim - 2, other.ndim - 2);
+
+    // broadcast for batched matmul
+    Tensor<dtype> A = *this;
+    Tensor<dtype> B = other;
+
+    // for example, A.shape = (2, 3, 4, 5), B.shape = (3, 5, 4)
+    if (A.shape().size() > B.shape().size()) {
+        int diff = A.shape().size() - B.shape().size();
+        // check if can be batched
+        for (int i = 0; i < B.shape().size()-2; ++i) {
+            // ERROR!! SHOULD CHECK BEFORE BROADCAST!!
+            if (A.shape()[i+diff] != B.shape()[i]) {
+                throw std::invalid_argument("Shape mismatch: the batch dimensions must be broadcastable.");
+            }
+        }
+        // for example, A.shape = (2, 2, 3, 4, 5), B.shape = (3, 5, 4), after this, B.shape will be (1, 1, 3, 5, 4) -> (2, 2, 3, 5, 4)
+        std::vector<int> B_new_shape(A.shape().size(), 1);
+        for (int i = 0; i < B.shape().size(); ++i) {
+            B_new_shape[i+diff] = B.shape()[i];
+        }
+        B = B.view(B_new_shape);
+        B = B.broadcast_to(A.shape());
+    } else if (A.shape().size() < B.shape().size()) {
+        int diff = B.shape().size() - A.shape().size();
+        // check if can be batched
+        for (int i = 0; i < A.shape().size()-2; ++i) {
+            // ERROR!! SHOULD CHECK BEFORE BROADCAST!!
+            if (B.shape()[i+diff] != A.shape()[i]) {
+                throw std::invalid_argument("Shape mismatch: the batch dimensions must be broadcastable.");
+            }
+        }
+        std::vector<int> A_new_shape(B.shape().size(), 1);
+        for (int i = 0; i < A.shape().size(); ++i) {
+            A_new_shape[i+diff] = A.shape()[i];
+        }
+        A = A.view(A_new_shape);
+        A = A.broadcast_to(B.shape());
+    }
+
+    // A.shape()[0: num_batch_dim] == B.shape[0: num_batch_dim] now
+    for (int i=0; i<num_batch_dims; ++i) {
+        output_shape.push_back(A.shape()[i]);
+    }
+    output_shape.push_back(A.shape()[A.ndim - 2]);
+    output_shape.push_back(B.shape()[B.ndim - 1]);
+
+    // now execute batched matmul
+    // Create the result tensor
+    Tensor<dtype> result(output_shape);
+
+    std::vector<int> result_indices(output_shape.size(), 0);
+    size_t result_elements = result.num_elements;
+    for (size_t idx = 0; idx < result_elements; ++idx) {
+        std::vector<int> A_indices = result_indices;
+        std::vector<int> B_indices = result_indices;
+
+        int row = result_indices[num_batch_dims];
+        int col = result_indices[num_batch_dims + 1];
+        dtype sum = 0;
+        for (int k = 0; k < A.shape()[A.ndim - 1]; ++k) {
+            A_indices[A.ndim - 2] = row;
+            A_indices[A.ndim - 1] = k;
+            B_indices[B.ndim - 2] = k;
+            B_indices[B.ndim - 1]= col;
+            sum += A.getData(A_indices) * B.getData(B_indices);
+        }
+
+        // Store the result in the output tensor
+        result.setData(result_indices, sum);
+        // Update the result_indices for the next iteration
+        for (int dim = output_shape.size() - 1; dim >= 0; --dim) {
+            result_indices[dim]++;
+            if (result_indices[dim] < output_shape[dim]) {
+                break;
+            }
+            result_indices[dim] = 0;
+        }
+    }
+
+    return result;
+}
+
+
+/**
  * Returns the indices of the maximum values along an axis.
  * @param dim the dimension to reduce.
  */
@@ -641,12 +747,8 @@ Tensor<dtype> Tensor<dtype>::permute(const std::vector<int>& new_axes) const {
     return Tensor<dtype>(std::move(new_shape), std::move(new_stride), this->offset_, this->data_);
 }
 
-/**
- * permute the axis to the last dimension first, then return a view of the tensor which is contiguous.
- * @tparam dtype 
- */
-template<typename dtype>
-Tensor<dtype> Tensor<dtype>::get_reduce_view(int axis) const {
+template <typename dtype>
+int Tensor<dtype>::handle_axis(int axis) const {
     int dims = static_cast<int>(this->shape().size()); // size is unsigned, so use int
     if (axis >= dims) {
         throw std::invalid_argument("The axis must be less than the shape size.");
@@ -657,7 +759,15 @@ Tensor<dtype> Tensor<dtype>::get_reduce_view(int axis) const {
     if (axis < 0) {
         axis += this->shape().size();
     }
+    return axis;
+}
 
+/**
+ * permute the axis to the last dimension first, then return a view of the tensor which is contiguous.
+ * @tparam dtype 
+ */
+template<typename dtype>
+Tensor<dtype> Tensor<dtype>::get_reduce_view(int axis) const {
     std::vector<int> new_axes;
     for (int i=0; i < this->shape().size(); i++) {
         if (i != axis) {
@@ -672,7 +782,7 @@ Tensor<dtype> Tensor<dtype>::get_reduce_view(int axis) const {
 }
 
 template<typename dtype>
-std::vector<int> Tensor<dtype>::get_reduce_shape(int axis, bool keepdims) const{
+std::vector<int> Tensor<dtype>::get_reduce_shape(int axis, bool keepdims) const {
     std::vector<int> new_shape = this->shape();
     if (keepdims) {
         new_shape[axis] = 1;
@@ -686,6 +796,7 @@ std::vector<int> Tensor<dtype>::get_reduce_shape(int axis, bool keepdims) const{
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const {
     // permute the axis to the last dimension first, and then reduce the last dimension
+    axis = handle_axis(axis);
     auto view = get_reduce_view(axis);
     auto new_shape = get_reduce_shape(axis, keepdims);
 
@@ -706,6 +817,7 @@ Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const {
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::sum(int axis, bool keepdims) const {
     // permute the axis to the last dimension first, and then reduce the last dimension
+    axis = handle_axis(axis);
     auto view = get_reduce_view(axis);
     auto new_shape = get_reduce_shape(axis, keepdims);
 
@@ -726,6 +838,7 @@ Tensor<dtype> Tensor<dtype>::sum(int axis, bool keepdims) const {
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::mean(int axis, bool keepdims) const {
     // permute the axis to the last dimension first, and then reduce the last dimension
+    axis = handle_axis(axis);
     auto view = get_reduce_view(axis);
     auto new_shape = get_reduce_shape(axis, keepdims);
 

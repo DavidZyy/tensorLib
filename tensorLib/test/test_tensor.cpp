@@ -209,7 +209,9 @@ void test_view() {
 void test_maximum() {
     Tensor<int> a = originTensor({2, 3});
 
-    Tensor<int> temp({});
+    std::vector<int> shape;
+
+    Tensor<int> temp(shape); // temp is a scalar
 
     temp.setData({}, 3);
     auto b = maximum(a, temp);
@@ -460,6 +462,18 @@ void test_mean() {
     std::cout << "c: " << std::endl << c << std::endl;
 }
 
+void test_batched_matmul() {
+    Tensor<int> a = originTensor({3, 2, 2, 2});
+    // Tensor<int> a = originTensor({2, 2});
+    Tensor<int> b = originTensor({2, 2, 2});
+
+    std::cout << "a: " << std::endl << a << std::endl;
+    std::cout << "b: " << std::endl << b << std::endl;
+    // std::cout << "a*b: " << std::endl << a.matmul(b) << std::endl;
+    std::cout << "a*b: " << std::endl << a.batched_matmul(b) << std::endl;
+    std::cout << "b*a: " << std::endl << b.batched_matmul(a) << std::endl;
+}
+
 int main() {
     // test_construct();
     // test_getData();
@@ -480,5 +494,6 @@ int main() {
     // test_max_or_sum();
     // test_ewise();
     // test_softmax();
-    test_mean();
+    // test_mean();
+    test_batched_matmul();
 }
