@@ -56,3 +56,23 @@ if (ZLIB_FOUND)
 else()
     message(FATAL_ERROR "Zlib library not found in the system, please install it first.")
 endif()
+
+# pybind11
+find_package(pybind11 REQUIRED)
+include_directories(${pybind11_INCLUDE_DIRS})
+
+find_package(Python3 REQUIRED)
+include_directories(${Python3_INCLUDE_DIRS})
+
+# Add your source files
+add_library(tensor_bindings MODULE tensorLib/test/tensor_bindings.cpp tensorLib/src/Tensor.cpp)
+
+# Set the output name without the 'lib' prefix
+set_target_properties(tensor_bindings
+    PROPERTIES
+    PREFIX ""
+)
+
+# Link with pybind11
+target_link_libraries(tensor_bindings PRIVATE pybind11::module)
+pybind11_strip(tensor_bindings)

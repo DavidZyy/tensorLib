@@ -80,7 +80,6 @@ public:
     }
 
     // Method to get data (double is used as an example type)
-    // const std::vector<dtype> data() const {
     const std::shared_ptr<dtype[]> data() const {
         return data_;
     }

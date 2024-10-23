@@ -49,5 +49,8 @@
         "stdexcept": "cpp",
         "streambuf": "cpp",
         "typeinfo": "cpp"
-    }
+    },
+    "python.analysis.extraPaths": [
+        "./build",
+    ],
 }

@@ -1,3 +1,4 @@
 -I./tensorLib/include
 -I./tensorLib/include/nn
 -I./app/llm/include
+-I/home/zhuyangyang/miniconda3/envs/llm/bin/python3
