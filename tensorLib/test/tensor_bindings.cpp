@@ -59,9 +59,28 @@ PYBIND11_MODULE(tensor_bindings, m) {
         std::vector<int> numpy_strides = t.stride_;
         std::transform(numpy_strides.begin(), numpy_strides.end(), numpy_strides.begin(),
                [](int& c) { return c * sizeof(float); });
-        assert(t.offset_ == 0); // not yet handle this case now.
+        // assert(t.offset_ == 0); // not yet handle this case now.
         float* data_ptr = t.data_.get();
-        return py::array_t<float>(t.shape_, numpy_strides, data_ptr);
+        return py::array_t<float>(t.shape_, numpy_strides, data_ptr + t.offset_);
     });
 
+    // convert a numpy array to Tensor
+    m.def("convert_to_tensor", [](py::array_t<float> a) {
+        // Get shape and strides from the numpy array and convert them to std::vector<int>
+        std::vector<int> shape(a.ndim());
+        std::vector<int> strides(a.ndim());
+
+        for (size_t i = 0; i < a.ndim(); ++i) {
+            shape[i] = static_cast<int>(a.shape(i));
+            strides[i] = static_cast<int>(a.strides(i) / sizeof(float)); // Convert byte strides to element strides
+        }
+
+        // Wrap the numpy array data into a shared_ptr with a custom deleter (to avoid double-free)
+        auto data_ptr = std::shared_ptr<float[]>(a.mutable_data(), [](float* p) {
+            // Numpy owns the memory, so no need to delete p
+        });
+
+        // Construct and return the Tensor object
+        return Tensor<float>(std::move(shape), std::move(strides), 0, data_ptr);
+    });
 }
