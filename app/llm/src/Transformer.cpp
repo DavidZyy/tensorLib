@@ -5,8 +5,6 @@
 #include <optional>
 #include <vector>
 
-
-
 template <typename dtype>
 Attention<dtype>::Attention(ModelArgs args) {
     // this->n_kv_heads = (n_kv_heads == -1) ? n_heads : n_kv_heads;
@@ -52,6 +50,8 @@ Tensor<dtype> Attention<dtype>::forward(const Tensor<dtype>& x, int start_pos, c
     keys = keys.transpose(1, 2);
     values = values.transpose(1, 2); // (bsz, n_heads, cache_len+seqlen, head_dim)
     auto scores = xq.matmul(keys.transpose(2, 3)) / sqrt(head_dim); // (bsz, n_heads, seqlen, cache_len+seqlen)
+    // std::cout << "scores: " << scores << std::endl;
+    // std::cout << "mask: " << mask.value() << std::endl;
     if (mask.has_value()) {
         scores = scores + mask.value();
     }
@@ -89,11 +89,14 @@ RMSNorm<dtype>::RMSNorm(int dim, float eps) : dim(dim), eps(eps) {
 
 template <typename dtype>
 Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) const {
+    // std::cout << "x:" << std::endl << x << std::endl;
     auto origin_shape = x.shape();
     auto temp = x;
     temp = temp.pow(2);
     temp = temp.mean(-1, true);
+    // std::cout << "temp:" << std::endl << temp << std::endl;
     temp = temp.broadcast_to(origin_shape);
+    // std::cout << "temp:" << std::endl << temp << std::endl;
     temp = temp + this->eps;
     temp = temp.rsqrt();
     return x * temp; 
@@ -174,7 +177,7 @@ std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen) const {
     Tensor<dtype> mask = Tensor<dtype>({seqlen, seqlen});
     for (int i = 0; i < seqlen; i++) {
         for (int j = 0; j < seqlen; j++) {
-            if (i > j) {
+            if (i >= j) { // set diagonal to zero
                 mask.setData({i, j}, 0);
             } else {
                 mask.setData({i, j}, -INFINITY);

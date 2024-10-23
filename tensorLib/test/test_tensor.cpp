@@ -470,8 +470,8 @@ void test_batched_matmul() {
     std::cout << "a: " << std::endl << a << std::endl;
     std::cout << "b: " << std::endl << b << std::endl;
     // std::cout << "a*b: " << std::endl << a.matmul(b) << std::endl;
-    std::cout << "a*b: " << std::endl << a.batched_matmul(b) << std::endl;
-    std::cout << "b*a: " << std::endl << b.batched_matmul(a) << std::endl;
+    // std::cout << "a*b: " << std::endl << a.batched_matmul(b) << std::endl;
+    // std::cout << "b*a: " << std::endl << b.batched_matmul(a) << std::endl;
 }
 
 int main() {

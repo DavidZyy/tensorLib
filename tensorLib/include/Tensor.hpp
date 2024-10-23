@@ -48,7 +48,7 @@ public:
         auto b = sizeof(dtype) * elem_num;
         memoryUsage = a - b;
         // memoryUsage -= sizeof(dtype) * elem_num;
-        std::cout << "Free: " << sizeof(dtype) * elem_num << ", now: " << memoryUsage << std::endl;
+        // std::cout << "Free: " << sizeof(dtype) * elem_num << ", now: " << memoryUsage << std::endl;
     }
 
     Deleter(size_t elem_num) : elem_num(elem_num) {}
@@ -105,7 +105,7 @@ public:
 
     // Matrix multiplication method
     Tensor<dtype> matmul(const Tensor<dtype>& other) const;
-    Tensor<dtype> batched_matmul(const Tensor<dtype>& other) const;
+    // Tensor<dtype> batched_matmul(const Tensor<dtype>& other) const;
     // Tensor<dtype> argmax(int axis) const;
     Tensor<int> argmax(int dim, bool keepdim = false) const;
 
@@ -173,6 +173,7 @@ public:
     /* data is managed by copy on write (COW) later */
     // std::vector<dtype> data_;
     std::shared_ptr<dtype[]> data_;
+    int data_size; // may different from num_elements in broadcasted Tensor, used for memory safety
     int num_elements;
 
     // used for quantize
@@ -203,6 +204,8 @@ private:
     // helper function for ewise or scalar methods
     Tensor<dtype> apply_operation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const;
     Tensor<dtype> apply_scalar_operation(dtype scalar, dtype(*op)(dtype, dtype)) const;
+
+    std::vector<int> get_broadcast_shape(std::vector<int>& shape_a, std::vector<int>& shape_b) const; // without const, will cause error.
 };
 
 // Definition of the conversion constructor outside the class
@@ -271,7 +274,6 @@ std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
 
     return os;
 }
-
 
 template <typename T>
 Tensor<T> maximum(Tensor<T> a, Tensor<T> b) {

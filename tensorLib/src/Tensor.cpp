@@ -1,4 +1,5 @@
 #include "../include/Tensor.hpp"
+#include <cassert>
 #include <cstddef>
 #include <memory>
 #include <utility>
@@ -36,7 +37,7 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape) : ndim(shape.size()), shape
         data_ = std::shared_ptr<dtype[]>(new dtype[num_elements], Deleter<dtype>(num_elements));
 
         memoryUsage += num_elements * sizeof(dtype);
-        std::cout << "Allocate: " << sizeof(dtype) * num_elements << ", now: " << memoryUsage << std::endl;
+        // std::cout << "Allocate: " << sizeof(dtype) * num_elements << ", now: " << memoryUsage << std::endl;
 
         stride_ = std::vector<int>(ndim);
 
@@ -186,45 +187,46 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
 /**
  * Matrix multiplication method implementation
  */
-template <typename dtype>
-Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
-    // Check dimensions for compatibility
-    if (shape_.size() != 2 || other.shape().size() != 2 || shape_[1] != other.shape()[0]) {
-        throw std::invalid_argument("Matrix dimensions are not compatible for multiplication");
-    }
-
-    // make this and other matrix contiguous, which is more efficient when accessing memory for elements.
-    auto left = is_contiguous(*this) ? *this : this->contiguous();
-    auto right = is_contiguous(other) ? other : other.contiguous();
-
-
-    // Dimensions of the resulting matrix
-    std::vector<int> result_shape = {left.shape_[0], right.shape_[1]};
-    Tensor<dtype> result(result_shape);
-
-    // Parallelized matrix multiplication
-    #pragma omp parallel for collapse(2)
-    for (int i = 0; i < left.shape_[0]; ++i) {
-        for (int j = 0; j < right.shape_[1]; ++j) {
-            dtype sum = 0;
-            for (int k = 0; k < left.shape_[1]; ++k) {
-                // sum += left.getData({i, k}) * right.getData({k, j});
-                sum += left.data_[i * left.stride_[0] + k * left.stride_[1]] * right.data_[k * right.stride_[0] + j * right.stride_[1]];
-            }
-            // result.setData({i, j}, sum);
-            result.data_[i * result.stride_[0] + j * result.stride_[1]] = sum;
-        }
-    }
-
-    return result;
-}
+// template <typename dtype>
+// Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
+//     // Check dimensions for compatibility
+//     if (shape_.size() != 2 || other.shape().size() != 2 || shape_[1] != other.shape()[0]) {
+//         throw std::invalid_argument("Matrix dimensions are not compatible for multiplication");
+//     }
+// 
+//     // make this and other matrix contiguous, which is more efficient when accessing memory for elements.
+//     auto left = is_contiguous(*this) ? *this : this->contiguous();
+//     auto right = is_contiguous(other) ? other : other.contiguous();
+// 
+// 
+//     // Dimensions of the resulting matrix
+//     std::vector<int> result_shape = {left.shape_[0], right.shape_[1]};
+//     Tensor<dtype> result(result_shape);
+// 
+//     // Parallelized matrix multiplication
+//     #pragma omp parallel for collapse(2)
+//     for (int i = 0; i < left.shape_[0]; ++i) {
+//         for (int j = 0; j < right.shape_[1]; ++j) {
+//             dtype sum = 0;
+//             for (int k = 0; k < left.shape_[1]; ++k) {
+//                 // sum += left.getData({i, k}) * right.getData({k, j});
+//                 sum += left.data_[i * left.stride_[0] + k * left.stride_[1]] * right.data_[k * right.stride_[0] + j * right.stride_[1]];
+//             }
+//             // result.setData({i, j}, sum);
+//             result.data_[i * result.stride_[0] + j * result.stride_[1]] = sum;
+//         }
+//     }
+// 
+//     return result;
+// }
 
 /**
  * batched matrix multiplication 
  * @tparam dtype 
  */
 template <typename dtype>
-Tensor<dtype> Tensor<dtype>::batched_matmul(const Tensor<dtype>& other) const {
+// Tensor<dtype> Tensor<dtype>::batched_matmul(const Tensor<dtype>& other) const {
+Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
     // Ensure dimensionality is compatible for matrix multiplication
     if (this->ndim < 2 || other.ndim < 2) {
         throw std::invalid_argument("Tensors must have at least 2 dimensions for matmul.");
@@ -262,8 +264,10 @@ Tensor<dtype> Tensor<dtype>::batched_matmul(const Tensor<dtype>& other) const {
         for (int i = 0; i < B.shape().size(); ++i) {
             B_new_shape[i+diff] = B.shape()[i];
         }
+        B = B.contiguous();
         B = B.view(B_new_shape);
-        B = B.broadcast_to(A.shape());
+        for (int i = 0; i < diff; ++i) B_new_shape[i] = B.shape()[i];
+        B = B.broadcast_to(B_new_shape);
     } else if (A.shape().size() < B.shape().size()) {
         int diff = B.shape().size() - A.shape().size();
         // check if can be batched
@@ -277,8 +281,10 @@ Tensor<dtype> Tensor<dtype>::batched_matmul(const Tensor<dtype>& other) const {
         for (int i = 0; i < A.shape().size(); ++i) {
             A_new_shape[i+diff] = A.shape()[i];
         }
+        A = A.contiguous();
         A = A.view(A_new_shape);
-        A = A.broadcast_to(B.shape());
+        for (int i = 0; i < diff; ++i) A_new_shape[i] = A.shape()[i];
+        A = A.broadcast_to(A_new_shape);
     }
 
     // A.shape()[0: num_batch_dim] == B.shape[0: num_batch_dim] now
@@ -388,9 +394,11 @@ Tensor<int> Tensor<dtype>::operator==(const Tensor<dtype>& other) const {
  */
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::view(const std::vector<int>& shape) const {
-    if (!is_contiguous(*this)) {
+    if (shape == this->shape()) 
+        return *this;
+
+    if (!is_contiguous(*this))
         throw std::invalid_argument("This tensor is not contiguous.");
-    }
 
     int num = 1;
     for (auto i=0; i<shape.size(); i++) {
@@ -673,19 +681,29 @@ std::vector<std::vector<int>> Tensor<dtype>::process_slices(const std::vector<st
  */
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) const {
-    if (new_shape.size() != this->shape().size()) {
-        throw std::invalid_argument("The new shape must be equal to the original shape.");
+    if (this->shape() == new_shape) 
+        return *this;
+
+    auto prepend_shape = this->shape(); // if this->shape().size() < new_shape().size, prepend 1 before this->shape().
+
+    if (prepend_shape.size() > new_shape.size()) {
+        throw std::invalid_argument("The new shape must be greater than or equal to the original shape.");
+    } else if (prepend_shape.size() < new_shape.size()) {
+        prepend_shape.insert(prepend_shape.begin(), new_shape.size() - prepend_shape.size(), 1);
     }
 
+    auto new_tensor = this->view(prepend_shape);
+
+    // now prepend_shape.size() == new_shape.size()
     std::vector<int> new_stride;
     for (int i=0; i < new_shape.size(); i++) {
-        if (new_shape[i] != this->shape()[i] && this->shape()[i] != 1) {
+        if ((new_shape[i] != prepend_shape[i]) && prepend_shape[i] != 1) {
             throw std::invalid_argument("The dimension to be broadcasted must be 1.");
         }
-        new_stride.push_back(this->shape()[i] == 1 ? 0 : this->stride_[i]);
+        new_stride.push_back(prepend_shape[i] == 1 ? 0 : new_tensor.stride_[i]);
     }
 
-    return Tensor<dtype>(std::move(new_shape), std::move(new_stride), this->offset_, this->data_);
+    return Tensor<dtype>(std::move(new_shape), std::move(new_stride), new_tensor.offset_, new_tensor.data_);
 }
 
 template<typename dtype>
@@ -724,6 +742,7 @@ Tensor<dtype> Tensor<dtype>::rsqrt() const {
         if (x > 0) {
             result.data_[i] = 1 / std::sqrt(x); // Rsqrt calculation
         } else {
+            // std::cout << "this:" << std::endl << *this << std::endl;
             throw std::domain_error("Cannot take rsqrt of non-positive values.");
         }
     }
@@ -798,6 +817,7 @@ Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const {
     // permute the axis to the last dimension first, and then reduce the last dimension
     axis = handle_axis(axis);
     auto view = get_reduce_view(axis);
+    // std::cout << "vew:" << std::endl << view << std::endl;
     auto new_shape = get_reduce_shape(axis, keepdims);
 
     Tensor<dtype> result(new_shape);
@@ -806,11 +826,12 @@ Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const {
     for (int i=0; i < view.num_elements; i+=reduce_size) {
         auto temp = view.data_[i];
         for (int j=1; j < reduce_size; j++) {
-            temp = std::max(result.data_[i/reduce_size], view.data_[i+j]);
+            temp = std::max(temp, view.data_[i+j]);
         }
         result.data_[i/reduce_size] = temp;
     }
 
+    // std::cout << "result:" << std::endl << result << std::endl;
     return result;
 }
 
@@ -865,21 +886,79 @@ Tensor<dtype> Tensor<dtype>::softmax(int dim) const {
 
     auto sum_val = exp_val.sum(dim, true);
     sum_val = sum_val.broadcast_to(this->shape());
+
+    // std::cout << *this << std::endl;
+    // std::cout << max_val << std::endl;
+    // std::cout << exp_val << std::endl;
+    // std::cout << sum_val << std::endl;
     return exp_val / sum_val;
 }
 
-
+/**
+ * used for implicit broadcasting 
+ * implicitly broadcasting before operation, for example:
+ * a(5, 1, 3) + b(4, 3) -> a(5, 1, 3) + b(1, 4, 3) -> new_shape(5, 4, 3)
+ */
 template <typename dtype>
-Tensor<dtype> Tensor<dtype>::apply_operation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const {
-    if (this->shape() != other.shape()) {
-        throw std::invalid_argument("This shape and other shape is not equal.");
+std::vector<int> Tensor<dtype>::get_broadcast_shape(std::vector<int>& shape_a, std::vector<int>& shape_b) const {
+    if (shape_a == shape_b) return shape_a;
+
+    auto a = shape_a;
+    auto b = shape_b;
+
+    int dims_a = shape_a.size();
+    int dims_b = shape_b.size();
+    int max_dims = std::max(dims_a, dims_b);
+
+    if (dims_a > dims_b) {
+        for (int i=dims_b; i < dims_a; i++) {
+            b.insert(b.begin(), 1);
+        }
+    } else {
+        for (int i=dims_a; i < dims_b; i++) {
+            a.insert(a.begin(), 1);
+        }
     }
 
-    Tensor<dtype> result(this->shape());
-    auto a = this->contiguous();
-    auto b = other.contiguous();
+    // now a.size() == b.size()
+    std::vector<int> new_shape;
+    for (int i=0; i <max_dims; i++) {
+        if (a[i] == b[i]) {
+            new_shape.push_back(a[i]);
+        } else if (a[i] == 1) {
+            new_shape.push_back(b[i]);
+        } else if (b[i] == 1) {
+            new_shape.push_back(a[i]);
+        } else {
+            throw std::invalid_argument("The shape cannot be broadcasted.");
+        }
+    }
 
-    #pragma omp parallel for
+    return new_shape;
+}
+
+/**
+ * maybe should support implicit broadcasting 
+ * @tparam dtype 
+ */
+template <typename dtype>
+Tensor<dtype> Tensor<dtype>::apply_operation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const {
+    Tensor<dtype> a = *this, b = other;
+    
+    // implicit broadcasting
+    if (this->shape() != other.shape()) {
+        std::vector<int> shape_a = this->shape();
+        std::vector<int> shape_b = other.shape();
+        auto new_shape = get_broadcast_shape(shape_a, shape_b);
+        a = a.broadcast_to(new_shape); 
+        b = b.broadcast_to(new_shape);
+    }
+
+    a = a.contiguous(); // if broadcast have influence on the result of contiguous?? (seems no, because contiguous will allocate actually memory for array)
+    b = b.contiguous();
+
+    Tensor<dtype> result(this->shape());
+    // #pragma omp parallel for
     for (int i = 0; i < this->num_elements; ++i) {
         result.data_[i] = op(a.data_[i], b.data_[i]);
     }
@@ -887,15 +966,23 @@ Tensor<dtype> Tensor<dtype>::apply_operation(const Tensor<dtype>& other, dtype(*
     return result;
 }
 
+/**
+ * if this is a broadcasted tensor, need to use contiguous() firtst, or the num_elements is not the actual elem size of the tensor data_.
+ * @tparam dtype 
+ */
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::apply_scalar_operation(dtype scalar, dtype(*op)(dtype, dtype)) const {
-    Tensor<dtype> result(this->shape());
+    // Tensor<dtype> result(this->shape());
+    Tensor<dtype> result = this->contiguous();
 
-    #pragma omp parallel for
-    for (int i = 0; i < this->num_elements; ++i) {
-        result.data_[i] = op(this->data_[i], scalar);
+    // std::cout << "this:" << std::endl << *this << std::endl;
+    // #pragma omp parallel for
+    // assert(0); // use data_size to replace num_elements
+    for (int i = 0; i < result.num_elements; ++i) { // broadcast may get error, for it does not have num_elements elems actually.
+        result.data_[i] = op(result.data_[i], scalar);
     }
 
+    // std::cout << "result:" << std::endl << result << std::endl;
     return result;
 }
 

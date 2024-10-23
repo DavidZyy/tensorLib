@@ -12,7 +12,7 @@ int main() {
     args.max_seq_len = 1024;
     Transformer<float> transformer(args);
     Tensor<float> tokens({1, 8});
-    for (int i = 0; i < 8; i++) {
+    for (int i = 1; i < 9; i++) { // avoid 0
         tokens.data_[i] = i;
     }
     auto a = transformer.forward(tokens, 0);
