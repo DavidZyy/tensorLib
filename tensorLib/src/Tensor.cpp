@@ -185,42 +185,6 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
 }
 
 /**
- * Matrix multiplication method implementation
- */
-// template <typename dtype>
-// Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
-//     // Check dimensions for compatibility
-//     if (shape_.size() != 2 || other.shape().size() != 2 || shape_[1] != other.shape()[0]) {
-//         throw std::invalid_argument("Matrix dimensions are not compatible for multiplication");
-//     }
-// 
-//     // make this and other matrix contiguous, which is more efficient when accessing memory for elements.
-//     auto left = is_contiguous(*this) ? *this : this->contiguous();
-//     auto right = is_contiguous(other) ? other : other.contiguous();
-// 
-// 
-//     // Dimensions of the resulting matrix
-//     std::vector<int> result_shape = {left.shape_[0], right.shape_[1]};
-//     Tensor<dtype> result(result_shape);
-// 
-//     // Parallelized matrix multiplication
-//     #pragma omp parallel for collapse(2)
-//     for (int i = 0; i < left.shape_[0]; ++i) {
-//         for (int j = 0; j < right.shape_[1]; ++j) {
-//             dtype sum = 0;
-//             for (int k = 0; k < left.shape_[1]; ++k) {
-//                 // sum += left.getData({i, k}) * right.getData({k, j});
-//                 sum += left.data_[i * left.stride_[0] + k * left.stride_[1]] * right.data_[k * right.stride_[0] + j * right.stride_[1]];
-//             }
-//             // result.setData({i, j}, sum);
-//             result.data_[i * result.stride_[0] + j * result.stride_[1]] = sum;
-//         }
-//     }
-// 
-//     return result;
-// }
-
-/**
  * batched matrix multiplication 
  * @tparam dtype 
  */
@@ -329,38 +293,6 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
 
     return result;
 }
-
-
-// /**
-//  * Returns the indices of the maximum values along an axis.
-//  * @param dim the dimension to reduce.
-//  */
-// template <typename dtype>
-// Tensor<int> Tensor<dtype>::argmax(int dim, bool keepdim) const{
-//     if (shape_.size() != 2) {
-//         throw std::invalid_argument("Only support 2d.");
-//     }
-// 
-//     int reduce_shape = shape_[1 - dim];
-//     Tensor<int> result(std::vector<int>{reduce_shape});
-// 
-//     int off = stride_[1-dim];
-//     int stride = stride_[dim];
-// 
-//     for (int i = 0; i < reduce_shape; ++i) {
-//         int max_index = 0;
-//         dtype max_value = data_[i*off];
-//         for (int j = 0; j < shape_[dim]; ++j) {
-//             if (data_[i*off + j*stride] > max_value) {
-//                 max_value = data_[i*off + j*stride];
-//                 max_index = j;
-//             }
-//         }
-//         result.setData({i}, max_index);
-//     }
-// 
-//     return result;
-// }
 
 /**
  * can not just compare this->data_ and other.data_, because this just means the data_
@@ -812,71 +744,6 @@ std::vector<int> Tensor<dtype>::get_reduce_shape(int axis, bool keepdims) const 
     return new_shape;
 }
 
-// template<typename dtype>
-// Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const {
-//     // permute the axis to the last dimension first, and then reduce the last dimension
-//     axis = handle_axis(axis);
-//     auto view = get_reduce_view(axis);
-//     // std::cout << "vew:" << std::endl << view << std::endl;
-//     auto new_shape = get_reduce_shape(axis, keepdims);
-// 
-//     Tensor<dtype> result(new_shape);
-// 
-//     int reduce_size = this->shape()[axis];
-//     for (int i=0; i < view.num_elements; i+=reduce_size) {
-//         auto temp = view.data_[i];
-//         for (int j=1; j < reduce_size; j++) {
-//             temp = std::max(temp, view.data_[i+j]);
-//         }
-//         result.data_[i/reduce_size] = temp;
-//     }
-// 
-//     // std::cout << "result:" << std::endl << result << std::endl;
-//     return result;
-// }
-// 
-// template<typename dtype>
-// Tensor<dtype> Tensor<dtype>::sum(int axis, bool keepdims) const {
-//     // permute the axis to the last dimension first, and then reduce the last dimension
-//     axis = handle_axis(axis);
-//     auto view = get_reduce_view(axis);
-//     auto new_shape = get_reduce_shape(axis, keepdims);
-// 
-//     Tensor<dtype> result(new_shape);
-// 
-//     int reduce_size = this->shape()[axis];
-//     for (int i=0; i < view.num_elements; i+=reduce_size) {
-//         auto temp = view.data_[i];
-//         for (int j=1; j < reduce_size; j++) {
-//             temp += view.data_[i+j];
-//         }
-//         result.data_[i/reduce_size] = temp;
-//     }
-// 
-//     return result;
-// }
-// 
-// template<typename dtype>
-// Tensor<dtype> Tensor<dtype>::mean(int axis, bool keepdims) const {
-//     // permute the axis to the last dimension first, and then reduce the last dimension
-//     axis = handle_axis(axis);
-//     auto view = get_reduce_view(axis);
-//     auto new_shape = get_reduce_shape(axis, keepdims);
-// 
-//     Tensor<dtype> result(new_shape);
-// 
-//     int reduce_size = this->shape()[axis];
-//     for (int i=0; i < view.num_elements; i+=reduce_size) {
-//         auto temp = view.data_[i];
-//         for (int j=1; j < reduce_size; j++) {
-//             temp += view.data_[i+j];
-//         }
-//         result.data_[i/reduce_size] = temp / reduce_size;
-//     }
-// 
-//     return result;
-// }
-
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::reduce(int axis, bool keepdims, dtype(*op)(dtype, dtype)) const {
     // Handle the axis properly, permute to move the axis to reduce to the last dimension
@@ -1045,7 +912,7 @@ Tensor<dtype> Tensor<dtype>::apply_operation(const Tensor<dtype>& other, dtype(*
     b = b.contiguous();
 
     Tensor<dtype> result(this->shape());
-    // #pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < this->num_elements; ++i) {
         result.data_[i] = op(a.data_[i], b.data_[i]);
     }
@@ -1059,17 +926,13 @@ Tensor<dtype> Tensor<dtype>::apply_operation(const Tensor<dtype>& other, dtype(*
  */
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::apply_scalar_operation(dtype scalar, dtype(*op)(dtype, dtype)) const {
-    // Tensor<dtype> result(this->shape());
     Tensor<dtype> result = this->contiguous();
 
-    // std::cout << "this:" << std::endl << *this << std::endl;
-    // #pragma omp parallel for
-    // assert(0); // use data_size to replace num_elements
+    #pragma omp parallel for
     for (int i = 0; i < result.num_elements; ++i) { // broadcast may get error, for it does not have num_elements elems actually.
         result.data_[i] = op(result.data_[i], scalar);
     }
 
-    // std::cout << "result:" << std::endl << result << std::endl;
     return result;
 }
 

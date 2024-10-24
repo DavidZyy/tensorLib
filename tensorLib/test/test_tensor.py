@@ -2,9 +2,9 @@ import pytest
 import tensor_bindings as tb  # the module is a .so file compiled from C++
 import numpy as np
 import random
+import operator
 # import libtensor_bindings as tb
 # from . import libtensor_bindings as tb
-
 
 def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10):
     """
@@ -27,33 +27,6 @@ def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10):
             shapes.append(shape)
     
     return shapes
-
-
-convert_shapes = generate_random_shapes(100, min_dims=0, max_dims=4, max_size=100)
-
-
-@pytest.mark.parametrize("shape", convert_shapes)
-def test_convert(shape):
-    # print(shape)
-    # Generate random data
-    A = np.random.randn(*shape)
-    # A = np.array([-1.234])
-
-    # If shape is (), convert A to a NumPy array to ensure it's not a mere float
-    if shape == ():
-        A = np.array(A, dtype=np.float32)
-    else:
-        A = A.astype(np.float32)
-
-    A_t = tb.convert_to_tensor(A)
-    A_t_a = tb.convert_to_numpy(A_t)
-    
-    # print(A)
-    # print(A_t)
-    assert A.shape == A_t_a.shape
-    assert A.dtype == A_t_a.dtype
-    assert A.size == A_t_a.size
-    np.testing.assert_allclose(A, A_t_a, atol=1e-5, rtol=1e-5)
 
 
 def generate_batched_matmul_shapes(batch_size_range=(1, 10), dim_range=(1, 100)):
@@ -88,8 +61,33 @@ def generate_batched_matmul_shapes(batch_size_range=(1, 10), dim_range=(1, 100))
 
     return shape1, shape2
 
-bached_matmul_shapes = [generate_batched_matmul_shapes() for _ in range(50)]
 
+convert_shapes = generate_random_shapes(100, min_dims=0, max_dims=4, max_size=100)
+@pytest.mark.parametrize("shape", convert_shapes)
+def test_convert(shape):
+    # print(shape)
+    # Generate random data
+    A = np.random.randn(*shape)
+    # A = np.array([-1.234])
+
+    # If shape is (), convert A to a NumPy array to ensure it's not a mere float
+    if shape == ():
+        A = np.array(A, dtype=np.float32)
+    else:
+        A = A.astype(np.float32)
+
+    A_t = tb.convert_to_tensor(A)
+    A_t_a = tb.convert_to_numpy(A_t)
+    
+    # print(A)
+    # print(A_t)
+    assert A.shape == A_t_a.shape
+    assert A.dtype == A_t_a.dtype
+    assert A.size == A_t_a.size
+    np.testing.assert_allclose(A, A_t_a, atol=1e-5, rtol=1e-5)
+
+
+bached_matmul_shapes = [generate_batched_matmul_shapes() for _ in range(50)]
 @pytest.mark.parametrize("shape1, shape2", bached_matmul_shapes)
 def test_batched_matmul(shape1, shape2):
     A = np.random.randn(*shape1).astype(np.float32)  # must convert to float32!!! or it will be float64!!
@@ -115,8 +113,8 @@ reduced_ops = [
     ('argmax', np.argmax),
     ('argmin', np.argmin)
 ]
-
-@pytest.mark.parametrize("shape", generate_random_shapes(50, min_dims=1, max_dims=2, max_size=5))
+reduced_shapes = generate_random_shapes(50, min_dims=1, max_dims=2, max_size=5)
+@pytest.mark.parametrize("shape", reduced_shapes)
 @pytest.mark.parametrize("op, np_op", reduced_ops)
 @pytest.mark.parametrize("keepdims", [True, False])
 def test_reduced_methods(shape, op, np_op, keepdims):
@@ -146,8 +144,39 @@ def test_reduced_methods(shape, op, np_op, keepdims):
     assert tensor_result_a.dtype == np_result.dtype
     np.testing.assert_allclose(np_result, tensor_result_a, atol=1e-5, rtol=1e-5)
 
-def test_scalar_methods():
-    pass
 
-def test_ewise_methods():
+# Test binary operators, like addition, subtraction, multiplication, division, and power
+binary_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=100)
+binary_ops = [operator.add, operator.sub, operator.mul, operator.truediv, operator.pow]
+@pytest.mark.parametrize("shape", binary_shapes)
+@pytest.mark.parametrize("op", binary_ops)
+@pytest.mark.parametrize("operand", ["scalar", "tensor"])
+def test_binary_methods(shape, op, operand):
+    # do not support power operation with tensor operand
+    if op == operator.pow and operand == "tensor":
+        pytest.skip()
+
+    A = np.random.randn(*shape).astype(np.float32)  # Random numpy array
+    rhs = random.uniform(-10, 10) if operand == "scalar" else np.random.randn(*shape).astype(np.float32)
+    # Apply the operation using numpy
+    A_result = op(A, rhs)
+
+    A_t = tb.convert_to_tensor(A)  # Convert to tensor
+    rhs_t = rhs if operand == "scalar" else tb.convert_to_tensor(rhs)
+    # rhs = tb.convert_to_tensor(rhs)  # get error in np.testing, seems like memory is broken
+
+    # Apply the operation using the tensor's method
+    if op == operator.pow:
+        A_t_result = A_t.pow(rhs_t)  # For power operation, use `pow` method
+    else:
+        A_t_result = op(A_t, rhs_t)
+
+    # Convert tensor result back to numpy for comparison
+    A_t_result_a = tb.convert_to_numpy(A_t_result)
+
+    # Compare results
+    np.testing.assert_allclose(A_result, A_t_result_a, atol=1e-5, rtol=1e-5)
+
+
+def test_unary_methods():
     pass

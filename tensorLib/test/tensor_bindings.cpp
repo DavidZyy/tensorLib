@@ -2,6 +2,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
+#include <pybind11/operators.h>
 #include "Tensor.hpp"
 #include <sstream>
 
@@ -38,6 +39,22 @@ PYBIND11_MODULE(tensor_bindings, m) {
         .def("min", &Tensor<float>::min)
         .def("argmax", &Tensor<float>::argmax)
         .def("argmin", &Tensor<float>::argmin)
+
+        // unary operations
+        // .def("exp", &Tensor<float>::exp)
+        // .def("log", &Tensor<float>::log)
+        // .def("abs", &Tensor<float>::abs)
+
+        // binary operations see https://pybind11.readthedocs.io/en/stable/advanced/classes.html#operator-overloading
+        .def(py::self + float())
+        .def(py::self - float())
+        .def(py::self * float())
+        .def(py::self / float())
+        .def("pow", &Tensor<float>::pow)
+        .def(py::self + py::self)
+        .def(py::self - py::self)
+        .def(py::self * py::self)
+        .def(py::self / py::self)
 
         .def("softmax", &Tensor<float>::softmax)
         .def("transpose", &Tensor<float>::transpose)

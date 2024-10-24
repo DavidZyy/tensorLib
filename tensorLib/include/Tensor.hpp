@@ -136,18 +136,20 @@ public:
 
     Tensor<dtype> broadcast_to(const std::vector<int>& new_shape) const;
 
-    // ewise methods
+    // unary methods
     Tensor<dtype> exp() const;
     Tensor<dtype> log() const;
+    Tensor<dtype> abs() const;
     Tensor<dtype> tanh() const;
     Tensor<dtype> silu() const;
+    Tensor<dtype> sqrt() const;
     Tensor<dtype> rsqrt() const;
+
+    // binary methods
     Tensor<dtype> operator+(const Tensor<dtype>& other) const;
     Tensor<dtype> operator-(const Tensor<dtype>& other) const;
     Tensor<dtype> operator*(const Tensor<dtype>& other) const;
     Tensor<dtype> operator/(const Tensor<dtype>& other) const;
-
-    // scalar methods
     Tensor<dtype> operator+(dtype scalar) const; // could support Tensor + 1(not a lvalue), (dtype& scalar) can not support this
     Tensor<dtype> operator-(dtype scalar) const;
     Tensor<dtype> operator*(dtype scalar) const;
