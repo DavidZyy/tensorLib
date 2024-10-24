@@ -331,36 +331,36 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
 }
 
 
-/**
- * Returns the indices of the maximum values along an axis.
- * @param dim the dimension to reduce.
- */
-template <typename dtype>
-Tensor<int> Tensor<dtype>::argmax(int dim, bool keepdim) const{
-    if (shape_.size() != 2) {
-        throw std::invalid_argument("Only support 2d.");
-    }
-
-    int reduce_shape = shape_[1 - dim];
-    Tensor<int> result(std::vector<int>{reduce_shape});
-
-    int off = stride_[1-dim];
-    int stride = stride_[dim];
-
-    for (int i = 0; i < reduce_shape; ++i) {
-        int max_index = 0;
-        dtype max_value = data_[i*off];
-        for (int j = 0; j < shape_[dim]; ++j) {
-            if (data_[i*off + j*stride] > max_value) {
-                max_value = data_[i*off + j*stride];
-                max_index = j;
-            }
-        }
-        result.setData({i}, max_index);
-    }
-
-    return result;
-}
+// /**
+//  * Returns the indices of the maximum values along an axis.
+//  * @param dim the dimension to reduce.
+//  */
+// template <typename dtype>
+// Tensor<int> Tensor<dtype>::argmax(int dim, bool keepdim) const{
+//     if (shape_.size() != 2) {
+//         throw std::invalid_argument("Only support 2d.");
+//     }
+// 
+//     int reduce_shape = shape_[1 - dim];
+//     Tensor<int> result(std::vector<int>{reduce_shape});
+// 
+//     int off = stride_[1-dim];
+//     int stride = stride_[dim];
+// 
+//     for (int i = 0; i < reduce_shape; ++i) {
+//         int max_index = 0;
+//         dtype max_value = data_[i*off];
+//         for (int j = 0; j < shape_[dim]; ++j) {
+//             if (data_[i*off + j*stride] > max_value) {
+//                 max_value = data_[i*off + j*stride];
+//                 max_index = j;
+//             }
+//         }
+//         result.setData({i}, max_index);
+//     }
+// 
+//     return result;
+// }
 
 /**
  * can not just compare this->data_ and other.data_, because this just means the data_
@@ -812,69 +812,156 @@ std::vector<int> Tensor<dtype>::get_reduce_shape(int axis, bool keepdims) const 
     return new_shape;
 }
 
+// template<typename dtype>
+// Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const {
+//     // permute the axis to the last dimension first, and then reduce the last dimension
+//     axis = handle_axis(axis);
+//     auto view = get_reduce_view(axis);
+//     // std::cout << "vew:" << std::endl << view << std::endl;
+//     auto new_shape = get_reduce_shape(axis, keepdims);
+// 
+//     Tensor<dtype> result(new_shape);
+// 
+//     int reduce_size = this->shape()[axis];
+//     for (int i=0; i < view.num_elements; i+=reduce_size) {
+//         auto temp = view.data_[i];
+//         for (int j=1; j < reduce_size; j++) {
+//             temp = std::max(temp, view.data_[i+j]);
+//         }
+//         result.data_[i/reduce_size] = temp;
+//     }
+// 
+//     // std::cout << "result:" << std::endl << result << std::endl;
+//     return result;
+// }
+// 
+// template<typename dtype>
+// Tensor<dtype> Tensor<dtype>::sum(int axis, bool keepdims) const {
+//     // permute the axis to the last dimension first, and then reduce the last dimension
+//     axis = handle_axis(axis);
+//     auto view = get_reduce_view(axis);
+//     auto new_shape = get_reduce_shape(axis, keepdims);
+// 
+//     Tensor<dtype> result(new_shape);
+// 
+//     int reduce_size = this->shape()[axis];
+//     for (int i=0; i < view.num_elements; i+=reduce_size) {
+//         auto temp = view.data_[i];
+//         for (int j=1; j < reduce_size; j++) {
+//             temp += view.data_[i+j];
+//         }
+//         result.data_[i/reduce_size] = temp;
+//     }
+// 
+//     return result;
+// }
+// 
+// template<typename dtype>
+// Tensor<dtype> Tensor<dtype>::mean(int axis, bool keepdims) const {
+//     // permute the axis to the last dimension first, and then reduce the last dimension
+//     axis = handle_axis(axis);
+//     auto view = get_reduce_view(axis);
+//     auto new_shape = get_reduce_shape(axis, keepdims);
+// 
+//     Tensor<dtype> result(new_shape);
+// 
+//     int reduce_size = this->shape()[axis];
+//     for (int i=0; i < view.num_elements; i+=reduce_size) {
+//         auto temp = view.data_[i];
+//         for (int j=1; j < reduce_size; j++) {
+//             temp += view.data_[i+j];
+//         }
+//         result.data_[i/reduce_size] = temp / reduce_size;
+//     }
+// 
+//     return result;
+// }
+
 template<typename dtype>
-Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const {
-    // permute the axis to the last dimension first, and then reduce the last dimension
+Tensor<dtype> Tensor<dtype>::reduce(int axis, bool keepdims, dtype(*op)(dtype, dtype)) const {
+    // Handle the axis properly, permute to move the axis to reduce to the last dimension
     axis = handle_axis(axis);
     auto view = get_reduce_view(axis);
-    // std::cout << "vew:" << std::endl << view << std::endl;
     auto new_shape = get_reduce_shape(axis, keepdims);
 
     Tensor<dtype> result(new_shape);
 
     int reduce_size = this->shape()[axis];
-    for (int i=0; i < view.num_elements; i+=reduce_size) {
-        auto temp = view.data_[i];
-        for (int j=1; j < reduce_size; j++) {
-            temp = std::max(temp, view.data_[i+j]);
+    
+    // Apply the operation for each reduced chunk
+    for (int i = 0; i < view.num_elements; i += reduce_size) {
+        dtype temp = view.data_[i];  // Initialize the temp value
+        for (int j = 1; j < reduce_size; j++) {
+            temp = op(temp, view.data_[i + j]);  // Apply the operation
         }
-        result.data_[i/reduce_size] = temp;
+        result.data_[i / reduce_size] = temp;  // Store the result
     }
 
-    // std::cout << "result:" << std::endl << result << std::endl;
     return result;
+}
+
+template<typename dtype>
+Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const {
+    return reduce(axis, keepdims, [](dtype a, dtype b) { return std::max(a, b); });
+}
+
+template<typename dtype>
+Tensor<dtype> Tensor<dtype>::min(int axis, bool keepdims) const {
+    return reduce(axis, keepdims, [](dtype a, dtype b) { return std::min(a, b); });
 }
 
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::sum(int axis, bool keepdims) const {
-    // permute the axis to the last dimension first, and then reduce the last dimension
+    return reduce(axis, keepdims, add<dtype>);
+}
+
+template<typename dtype>
+Tensor<dtype> Tensor<dtype>::mean(int axis, bool keepdims) const {
+    int reduce_size = this->shape()[axis];
+
+    auto result1 = this->sum(axis, keepdims);
+    auto result2 = result1 / static_cast<dtype>(reduce_size);
+
+    return result2;
+}
+
+template<typename dtype>
+Tensor<int> Tensor<dtype>::reduce_arg(int axis, bool keepdims, bool(*comp)(dtype, dtype)) const {
+    // Handle the axis properly, permute to move the axis to reduce to the last dimension
     axis = handle_axis(axis);
     auto view = get_reduce_view(axis);
     auto new_shape = get_reduce_shape(axis, keepdims);
 
-    Tensor<dtype> result(new_shape);
+    Tensor<int> result(new_shape);
 
     int reduce_size = this->shape()[axis];
-    for (int i=0; i < view.num_elements; i+=reduce_size) {
-        auto temp = view.data_[i];
-        for (int j=1; j < reduce_size; j++) {
-            temp += view.data_[i+j];
+    
+    // Iterate over the tensor in chunks (based on the reduce size)
+    for (int i = 0; i < view.num_elements; i += reduce_size) {
+        auto best_index = 0;
+        auto best_value = view.data_[i];  // Initialize with the first element
+        
+        // Find the index with the maximum value (or other comparison)
+        for (int j = 1; j < reduce_size; j++) {
+            if (comp(view.data_[i + j], best_value)) {
+                best_value = view.data_[i + j];
+                best_index = j;
+            }
         }
-        result.data_[i/reduce_size] = temp;
+        result.data_[i / reduce_size] = best_index;  // Store the index of the best value
     }
 
     return result;
 }
 
 template<typename dtype>
-Tensor<dtype> Tensor<dtype>::mean(int axis, bool keepdims) const {
-    // permute the axis to the last dimension first, and then reduce the last dimension
-    axis = handle_axis(axis);
-    auto view = get_reduce_view(axis);
-    auto new_shape = get_reduce_shape(axis, keepdims);
+Tensor<int> Tensor<dtype>::argmax(int axis, bool keepdims) const {
+    return reduce_arg(axis, keepdims, [](dtype a, dtype b) { return a > b; });
+}
 
-    Tensor<dtype> result(new_shape);
-
-    int reduce_size = this->shape()[axis];
-    for (int i=0; i < view.num_elements; i+=reduce_size) {
-        auto temp = view.data_[i];
-        for (int j=1; j < reduce_size; j++) {
-            temp += view.data_[i+j];
-        }
-        result.data_[i/reduce_size] = temp / reduce_size;
-    }
-
-    return result;
+template<typename dtype>
+Tensor<int> Tensor<dtype>::argmin(int axis, bool keepdims) const {
+    return reduce_arg(axis, keepdims, [](dtype a, dtype b) { return a < b; });
 }
 
 template<typename dtype>

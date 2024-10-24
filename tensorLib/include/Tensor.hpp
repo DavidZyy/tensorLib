@@ -104,9 +104,6 @@ public:
 
     // Matrix multiplication method
     Tensor<dtype> matmul(const Tensor<dtype>& other) const;
-    // Tensor<dtype> batched_matmul(const Tensor<dtype>& other) const;
-    // Tensor<dtype> argmax(int axis) const;
-    Tensor<int> argmax(int dim, bool keepdim = false) const;
 
     Tensor<dtype> view(const std::vector<int>& shape) const;
 
@@ -159,9 +156,11 @@ public:
 
     // reduce methods(reduce 1 dimension each function call), like sum, max
     Tensor<dtype> max(int axis, bool keepdims = false) const;
+    Tensor<dtype> min(int axis, bool keepdims = false) const;
     Tensor<dtype> sum(int axis, bool keepdims = false) const;
     Tensor<dtype> mean(int axis, bool keepdims = false) const;
-    // dtype sum(bool keepdims = false) const; // no use, will be deleted
+    Tensor<int> argmax(int dim, bool keepdim = false) const;
+    Tensor<int> argmin(int dim, bool keepdim = false) const;
 
     Tensor<dtype> softmax(int dim) const;
 
@@ -205,6 +204,10 @@ private:
     Tensor<dtype> apply_scalar_operation(dtype scalar, dtype(*op)(dtype, dtype)) const;
 
     std::vector<int> get_broadcast_shape(std::vector<int>& shape_a, std::vector<int>& shape_b) const; // without const, will cause error.
+
+    // helper function for reduce methods
+    Tensor<dtype> reduce(int axis, bool keepdims, dtype(*op)(dtype, dtype)) const;
+    Tensor<int> reduce_arg(int axis, bool keepdims, bool(*comp)(dtype, dtype)) const;
 };
 
 // Definition of the conversion constructor outside the class
