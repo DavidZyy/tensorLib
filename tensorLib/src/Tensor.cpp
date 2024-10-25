@@ -865,7 +865,7 @@ Tensor<dtype> Tensor<dtype>::sum(int axis, bool keepdims) const {
 
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::mean(int axis, bool keepdims) const {
-    int reduce_size = this->shape()[axis];
+    int reduce_size = this->shape()[handle_axis(axis)];
 
     auto result1 = this->sum(axis, keepdims);
     auto result2 = result1 / static_cast<dtype>(reduce_size);
