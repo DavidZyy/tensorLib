@@ -133,6 +133,7 @@ public:
     // get or set a sub-tensor of this tensor. The implementation here refers to the homework project of CMU10_414.
     Tensor<dtype> getItem(std::vector<std::vector<int>>& slices) const;
     void setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype>& value);
+    void setItem(std::vector<std::vector<int>>& slices, dtype value);
 
     Tensor<dtype> broadcast_to(const std::vector<int>& new_shape) const;
 

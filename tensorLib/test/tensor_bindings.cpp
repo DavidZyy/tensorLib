@@ -1,5 +1,6 @@
 #include <cassert>
 #include <pybind11/pybind11.h>
+#include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include <pybind11/operators.h>
@@ -21,6 +22,77 @@
 // }
 
 namespace py = pybind11;
+
+// Helper function to convert Python slices to std::vector<std::vector<int>>
+std::vector<std::vector<int>> convert_slices(const py::list& py_slices, const std::vector<int>& tensor_shape) {
+    std::vector<std::vector<int>> c_slices;
+    
+    for (size_t i = 0; i < py_slices.size(); ++i) {
+        if (py::isinstance<py::slice>(py_slices[i])) {
+            py::slice slice = py_slices[i].cast<py::slice>();
+            
+            ssize_t start, stop, step, length;
+            
+            std::cout << "slice: " << slice << std::endl;
+            // Calculate start, stop, and step for this slice in the context of tensor_shape[i]
+            // the first parameter of compute is the total size of the dimension
+            if (!slice.compute(tensor_shape[i], &start, &stop, &step, &length)) {
+                throw std::runtime_error("Invalid slice indices");
+            }
+            std::cout << "start: " << start << ", stop: " << stop << ", step: " << step << ", length: " << length << std::endl;
+
+            // Add {start, stop, step} to c_slices for this dimension
+            c_slices.push_back({static_cast<int>(start), static_cast<int>(stop), static_cast<int>(step)});
+        } else {
+            throw std::invalid_argument("Each item must be a slice object.");
+        }
+    }
+
+    if (c_slices.size() < tensor_shape.size()) {
+        for (size_t i = c_slices.size(); i < tensor_shape.size(); ++i) {
+            c_slices.push_back({}); // empyty vector means slice all
+        }
+    } else if (c_slices.size() > tensor_shape.size()) {
+        throw std::invalid_argument("Too many slices provided.");
+    }
+    
+    return c_slices;
+}
+
+std::vector<std::vector<int>> convert_slices(const py::tuple& py_slices, const std::vector<int>& tensor_shape) {
+    std::vector<std::vector<int>> c_slices;
+
+    for (size_t i = 0; i < py_slices.size(); ++i) {
+        if (py::isinstance<py::slice>(py_slices[i])) {
+            py::slice slice = py_slices[i].cast<py::slice>();
+            
+            ssize_t start, stop, step, length;
+            
+            // std::cout << "slice: " << slice << std::endl;
+            // Calculate start, stop, and step for this slice in the context of tensor_shape[i]
+            if (!slice.compute(tensor_shape[i], &start, &stop, &step, &length)) {
+                throw std::runtime_error("Invalid slice indices");
+            }
+            // std::cout << "start: " << start << ", stop: " << stop << ", step: " << step << ", length: " << length << std::endl;
+
+            // Add {start, stop, step} to c_slices for this dimension
+            c_slices.push_back({static_cast<int>(start), static_cast<int>(stop), static_cast<int>(step)});
+        } else {
+            throw std::invalid_argument("Each item must be a slice object.");
+        }
+    }
+
+    // Handle cases where c_slices has fewer or more elements than tensor_shape
+    if (c_slices.size() < tensor_shape.size()) {
+        for (size_t i = c_slices.size(); i < tensor_shape.size(); ++i) {
+            c_slices.push_back({}); // Empty vector implies slicing all elements in the dimension
+        }
+    } else if (c_slices.size() > tensor_shape.size()) {
+        throw std::invalid_argument("Too many slices provided.");
+    }
+
+    return c_slices;
+}
 
 PYBIND11_MODULE(tensor_bindings, m) {
 
@@ -62,6 +134,41 @@ PYBIND11_MODULE(tensor_bindings, m) {
         .def(py::self - py::self)
         .def(py::self * py::self)
         .def(py::self / py::self)
+
+        // set, get item
+        .def("__getitem__", [](const Tensor<float>& self, const py::list& py_slices) {
+            // Convert Python list of slices to std::vector<std::vector<int>>
+            auto c_slices = convert_slices(py_slices, self.shape());
+            return self.getItem(c_slices);
+        })
+        .def("__getitem__", [](const Tensor<float>& self, const py::tuple& py_slices) {
+            // Convert Python tuple of slices to std::vector<std::vector<int>>
+            auto c_slices = convert_slices(py_slices, self.shape());
+            return self.getItem(c_slices);
+        })
+        .def("__setitem__", [](Tensor<float>& self, const py::tuple& indices, Tensor<float>& value) {
+            auto c_slices = convert_slices(indices, self.shape());
+            self.setItem(c_slices, value);
+        })
+        .def("__setitem__", [](Tensor<float>& self, const py::tuple& indices, float value) {
+            auto c_slices = convert_slices(indices, self.shape());
+            self.setItem(c_slices, value);
+        })
+        // .def("__setitem__", [](Tensor<float>& self, const std::vector<int>& indices, float value) {
+        // })
+
+        // accept slice in python, convert to vetor<vector<int>> pass to cpp method.
+        .def("getItem", [](const Tensor<float>& self, const py::list& py_slices) {
+            // Convert Python list of slices to std::vector<std::vector<int>>
+            auto c_slices = convert_slices(py_slices, self.shape());
+            return self.getItem(c_slices);
+        })
+        .def("getItem", [](const Tensor<float>& self, const py::tuple& py_slices) {
+            // Convert Python tuple of slices to std::vector<std::vector<int>>
+            auto c_slices = convert_slices(py_slices, self.shape());
+            return self.getItem(c_slices);
+        })
+        // .def("setItem", &Tensor<float>::setItem, py::arg("slices"), py::arg("value"))
 
         .def("softmax", &Tensor<float>::softmax)
         .def("transpose", &Tensor<float>::transpose)

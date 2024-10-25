@@ -6,7 +6,7 @@ import operator
 # import libtensor_bindings as tb
 # from . import libtensor_bindings as tb
 
-def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10):
+def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10) -> list[tuple]:
     """
     Generate a list of random shapes, including the possibility of scalar shape ().
     
@@ -224,3 +224,78 @@ def test_unary_methods(shape, op_name, np_op):
     assert np_result.dtype == tensor_result_a.dtype
     assert np_result.size == tensor_result_a.size
     np.testing.assert_allclose(np_result, tensor_result_a, atol=1e-5, rtol=1e-5)
+
+
+def generate_random_tensor(shape) -> tuple[np.ndarray, tb.Tensor_fp32]:
+    """Helper function to create a random numpy array and tensor with the same shape."""
+    np_data = np.random.randn(*shape).astype(np.float32)
+    tensor_data = tb.convert_to_tensor(np_data)
+    return np_data, tensor_data
+
+
+def generate_random_slices(shape) -> list[list[int]]:
+    """Helper function to generate random slices for a given shape."""
+    slices = []
+    for dim in shape:
+        start = random.randint(0, dim - 1)
+        stop = random.randint(start + 1, dim)
+        slices.append([start, stop, 1])
+    return slices
+
+
+getitem_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=10)
+@pytest.mark.parametrize("shape", getitem_shapes)
+def test_getItem(shape):
+    np_data, tensor_data = generate_random_tensor(shape)
+    slices = generate_random_slices(shape)
+
+    # Convert slice format to Python slicing for numpy compatibility
+    np_slices = tuple(slice(*slc) if slc else slice(None) for slc in slices)
+    # np_slices = list(slice(*slc) if slc else slice(None) for slc in slices)
+
+    # Apply the slices to numpy and tensor versions
+    np_result = np_data[np_slices]
+    # tensor_result = tensor_data.getItem(list(np_slices))
+    tensor_result = tensor_data[np_slices]
+    tensor_result_np = tb.convert_to_numpy(tensor_result)
+
+    # Assert shapes and values
+    assert np_result.shape == tensor_result_np.shape
+    assert np_result.dtype == tensor_result_np.dtype
+    assert np_result.size == tensor_result_np.size
+    np.testing.assert_allclose(np_result, tensor_result_np, atol=1e-5, rtol=1e-5)
+
+
+def compute_shape_after_slices(slices: list[list[int]]) -> tuple[int]:
+    new_shape = []
+    for start, stop, step in slices:
+        new_shape.append((stop - start) // step)
+    return tuple(new_shape)
+
+
+setitem_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=10)
+@pytest.mark.parametrize("shape", getitem_shapes)
+@pytest.mark.parametrize("operand", ["scalar", "tensor"])
+def test_setItem(shape, operand):
+    np_data, _ = generate_random_tensor(shape)
+    np_data_copy = np_data.copy()  # deep copy, so np_data and tensor_data are use the different memory
+    tensor_data = tb.convert_to_tensor(np_data_copy)
+    slices = generate_random_slices(shape)
+    slice_shape = compute_shape_after_slices(slices)
+
+    if operand == "scalar":
+        np_set = random.uniform(-10, 10)
+        tensor_set = np_set
+    else:
+        np_set, tensor_set = generate_random_tensor(slice_shape)
+
+    np_slices = tuple(slice(*slc) if slc else slice(None) for slc in slices)
+
+    np_data[np_slices] = np_set
+    tensor_data[np_slices] = tensor_set
+    tensor_data_np = tb.convert_to_numpy(tensor_data)
+
+    assert np_data.shape == tensor_data_np.shape
+    assert np_data.dtype == tensor_data_np.dtype
+    assert np_data.size == tensor_data_np.size
+    np.testing.assert_allclose(np_data, tensor_data_np, atol=1e-5, rtol=1e-5)

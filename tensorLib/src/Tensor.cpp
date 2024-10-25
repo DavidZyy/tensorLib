@@ -550,10 +550,12 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<
     }
     
     // current index of out tensor to set value
-    std::vector<int> cur_idx(value.shape().size(), 0);
+    // std::vector<int> cur_idx(value.shape().size(), 0);
+    std::vector<int> cur_idx(out.shape().size(), 0);
 
     // maybe can parallel this loop later ...
-    for (int i=0; i < value.num_elements; i++) {
+    // for (int i=0; i < value.num_elements; i++) {
+    for (int i=0; i < out.num_elements; i++) {
         int idx = out.offset_;
 
         // #pragma omp parallel for // seems error
@@ -562,6 +564,47 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<
         }
 
         out.data_[idx] = value.data_[i]; // index value use i directly, value should be contiguous.
+
+        // carry
+        // for (int j=0; j < cur_idx.size(); j++) { // this is not right, because stride[0] is the max stride, stride[dim-1] is the min stride, we should increse the cur_idx from bigger dimension to smaller
+        for (int j=cur_idx.size()-1; j >= 0; j--) {
+            cur_idx[j] += 1;
+
+            if (cur_idx[j] < out.shape()[j]) {
+                break;
+            } else {
+                cur_idx[j] = 0;
+            }
+        }
+    }
+}
+
+/**
+ * set item with a scalar value
+ * @tparam dtype 
+ */
+template <typename dtype>
+void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, dtype value) {
+    // get item first, the new tensor shared the same data with the original tensor in memory.
+    slices = process_slices(slices);
+
+    auto out = getItem(slices);
+    
+    // current index of out tensor to set value
+    // std::vector<int> cur_idx(value.shape().size(), 0);
+    std::vector<int> cur_idx(out.shape().size(), 0);
+
+    // maybe can parallel this loop later ...
+    // for (int i=0; i < value.num_elements; i++) {
+    for (int i=0; i < out.num_elements; i++) {
+        int idx = out.offset_;
+
+        // #pragma omp parallel for // seems error
+        for (int j=0; j < cur_idx.size(); j++) {
+            idx += cur_idx[j] * out.stride_[j]; // use current idx to calculate the flatten idx
+        }
+
+        out.data_[idx] = value;
 
         // carry
         // for (int j=0; j < cur_idx.size(); j++) { // this is not right, because stride[0] is the max stride, stride[dim-1] is the min stride, we should increse the cur_idx from bigger dimension to smaller
