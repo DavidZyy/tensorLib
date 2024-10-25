@@ -137,6 +137,9 @@ public:
     Tensor<dtype> broadcast_to(const std::vector<int>& new_shape) const;
 
     // unary methods
+    Tensor<dtype> operator-() const;  // negative operator
+    Tensor<dtype> sin() const;
+    Tensor<dtype> cos() const;
     Tensor<dtype> exp() const;
     Tensor<dtype> log() const;
     Tensor<dtype> abs() const;
@@ -202,14 +205,27 @@ private:
     std::vector<int> get_reduce_shape(int axis, bool keepdims) const;
 
     // helper function for ewise or scalar methods
-    Tensor<dtype> apply_operation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const;
-    Tensor<dtype> apply_scalar_operation(dtype scalar, dtype(*op)(dtype, dtype)) const;
+    Tensor<dtype> applyBinaryOperation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const;
+    Tensor<dtype> applyBinaryScalarOperation(dtype scalar, dtype(*op)(dtype, dtype)) const;
 
     std::vector<int> get_broadcast_shape(std::vector<int>& shape_a, std::vector<int>& shape_b) const; // without const, will cause error.
 
     // helper function for reduce methods
     Tensor<dtype> reduce(int axis, bool keepdims, dtype(*op)(dtype, dtype)) const;
     Tensor<int> reduce_arg(int axis, bool keepdims, bool(*comp)(dtype, dtype)) const;
+
+    // General template for inline unary operations
+    inline Tensor<dtype> applyUnaryOperation(dtype (*func)(dtype)) const {
+        Tensor<dtype> result(this->shape_);
+        
+        // Inline parallel loop for performance (OpenMP enabled)
+        #pragma omp parallel for
+        for (size_t i = 0; i < this->num_elements; ++i) {
+            result.data_[i] = func(this->data_[i]);  // Apply function to each element
+        }
+        
+        return result;
+    }
 };
 
 // Definition of the conversion constructor outside the class
@@ -253,6 +269,7 @@ static inline dtype multiply(dtype a, dtype b) {
 template <typename dtype>
 static inline dtype divide(dtype a, dtype b) {
     if (b == 0) {
+        // or return inf(-inf) ?
         throw std::invalid_argument("Division by zero.");
     }
     return a / b;

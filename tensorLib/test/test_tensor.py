@@ -178,5 +178,49 @@ def test_binary_methods(shape, op, operand):
     np.testing.assert_allclose(A_result, A_t_result_a, atol=1e-5, rtol=1e-5)
 
 
-def test_unary_methods():
-    pass
+
+unary_ops = [
+    ('neg', operator.neg),
+    ('sin', np.sin),
+    ('cos', np.cos),
+    ('exp', np.exp),
+    ('log', np.log),
+    ('abs', np.abs),
+    ('tanh', np.tanh),
+    ('silu', lambda x: x * (1 / (1 + np.exp(-x)))),  # SILU function
+    ('sqrt', np.sqrt),
+    ('rsqrt', lambda x: 1 / np.sqrt(x))
+]
+
+# Use smaller shape sizes for simplicity
+unary_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=10)
+
+@pytest.mark.parametrize("shape", unary_shapes)
+@pytest.mark.parametrize("op_name, np_op", unary_ops)
+def test_unary_methods(shape, op_name, np_op):
+    # Generate random data for the tensor
+    A = np.random.randn(*shape).astype(np.float32)
+
+    # Some operations like log, sqrt, rsqrt need positive values to avoid invalid operations
+    if op_name in ['log', 'sqrt', 'rsqrt']:
+        A = np.abs(A) + 1e-5  # Ensure positive values
+
+    # Apply the numpy operation
+    np_result = np_op(A)
+
+    # Convert A to tensor and apply the tensor operation
+    A_t = tb.convert_to_tensor(A)
+    if op_name == "neg":
+        tensor_result = np_op(A_t)
+    else:
+        tensor_op = getattr(A_t, op_name)  # Get the corresponding tensor operation
+        tensor_result = tensor_op()
+
+    # Convert tensor result back to numpy for comparison
+    tensor_result_a = tb.convert_to_numpy(tensor_result)
+
+    # Validate shapes and contents
+    assert np_result.shape == tensor_result_a.shape
+    assert np_result.dtype == tensor_result_a.dtype
+    assert np_result.size == tensor_result_a.size
+    np.testing.assert_allclose(np_result, tensor_result_a, atol=1e-5, rtol=1e-5)

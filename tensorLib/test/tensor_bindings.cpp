@@ -41,9 +41,16 @@ PYBIND11_MODULE(tensor_bindings, m) {
         .def("argmin", &Tensor<float>::argmin)
 
         // unary operations
-        // .def("exp", &Tensor<float>::exp)
-        // .def("log", &Tensor<float>::log)
-        // .def("abs", &Tensor<float>::abs)
+        .def(-py::self)
+        .def("sin", &Tensor<float>::sin)
+        .def("cos", &Tensor<float>::cos)
+        .def("exp", &Tensor<float>::exp)
+        .def("log", &Tensor<float>::log)
+        .def("abs", &Tensor<float>::abs)
+        .def("tanh", &Tensor<float>::tanh)
+        .def("silu", &Tensor<float>::silu)
+        .def("sqrt", &Tensor<float>::sqrt)
+        .def("rsqrt", &Tensor<float>::rsqrt)
 
         // binary operations see https://pybind11.readthedocs.io/en/stable/advanced/classes.html#operator-overloading
         .def(py::self + float())

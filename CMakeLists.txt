@@ -21,7 +21,7 @@ endif()
 
 # Add executable target
 # add_executable(test_readMNIST tensorLib/test/test_readMNIST.cpp tensorLib/src/readMNIST.cpp tensorLib/src/Tensor.cpp)
-add_executable(test_tensor tensorLib/test/test_tensor.cpp tensorLib/src/Tensor.cpp)
+# add_executable(test_tensor tensorLib/test/test_tensor.cpp tensorLib/src/Tensor.cpp)
 # add_executable(test_readCSV tensorLib/test/test_readCSV.cpp tensorLib/src/readCSV.cpp tensorLib/src/Tensor.cpp)
 # add_executable(test_modules tensorLib/test/nn/test_modules.cpp tensorLib/src/nn/modules.cpp tensorLib/src/Tensor.cpp)
 # add_executable(test_shared_ptr tensorLib/test/test_shared_ptr.cpp)
@@ -31,12 +31,12 @@ add_executable(test_tensor tensorLib/test/test_tensor.cpp tensorLib/src/Tensor.c
 # add_executable(forward_MNIST_quantize app/forward_MNIST_quantize.cpp tensorLib/src/readMNIST.cpp tensorLib/src/Tensor.cpp tensorLib/src/readCSV.cpp)
 
 # add_executable(test_tokenizer app/llm/test/test_tokenizer.cpp app/llm/src/Tokenizer.cpp)
-add_executable(test_transformer 
-    app/llm/test/test_transformer.cpp 
-    app/llm/src/Transformer.cpp 
-    tensorLib/src/Tensor.cpp
-    tensorLib/src/nn/modules.cpp
-    )
+# add_executable(test_transformer 
+#     app/llm/test/test_transformer.cpp 
+#     app/llm/src/Transformer.cpp 
+#     tensorLib/src/Tensor.cpp
+#     tensorLib/src/nn/modules.cpp
+#     )
 
 # Add include directories
 include_directories(tensorLib/include)

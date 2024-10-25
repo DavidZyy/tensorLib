@@ -1,5 +1,6 @@
 #include "../include/Tensor.hpp"
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <memory>
 #include <utility>
@@ -638,48 +639,85 @@ Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) con
     return Tensor<dtype>(std::move(new_shape), std::move(new_stride), new_tensor.offset_, new_tensor.data_);
 }
 
-template<typename dtype>
-Tensor<dtype> Tensor<dtype>::exp() const {
-    Tensor<dtype> result(this->shape());
-
-    // #pragma omp parallel for
-    for (int i=0; i < this->num_elements; i++) {
-        result.data_[i] = std::exp(this->data_[i]);
-    }
-
-    return result;
+// negative operator
+template <typename dtype>
+inline Tensor<dtype> Tensor<dtype>::operator-() const {
+    return applyUnaryOperation([](dtype x) -> dtype{
+        return -x;
+    });
 }
 
-template<typename dtype>
-Tensor<dtype> Tensor<dtype>::silu() const {
-    Tensor<dtype> result(this->shape());
+template <typename dtype>
+inline Tensor<dtype> Tensor<dtype>::sin() const {
+    return applyUnaryOperation([](dtype x) -> dtype{
+        return std::sin(x);
+    });
+}
 
-    // #pragma omp parallel for
-    for (int i=0; i < this->num_elements; i++) {
-        dtype x = this->data_[i];
+template <typename dtype>
+inline Tensor<dtype> Tensor<dtype>::cos() const {
+    return applyUnaryOperation([](dtype x) -> dtype{
+        return std::cos(x);
+    });
+}
+
+template <typename dtype>
+inline Tensor<dtype> Tensor<dtype>::exp() const {
+    return applyUnaryOperation([](dtype x) -> dtype{
+        return std::exp(x);
+    });
+}
+
+template <typename dtype>
+inline Tensor<dtype> Tensor<dtype>::log() const {
+    return applyUnaryOperation([](dtype x) -> dtype{
+        return std::log(x);
+    });
+}
+
+template <typename dtype>
+inline Tensor<dtype> Tensor<dtype>::abs() const {
+    return applyUnaryOperation([](dtype x) -> dtype{
+        return std::fabs(x);
+    });
+}
+
+template <typename dtype>
+inline Tensor<dtype> Tensor<dtype>::tanh() const {
+    return applyUnaryOperation([](dtype x) -> dtype{
+        return std::tanh(x);
+    });
+}
+
+// Custom logic with inline for "silu"
+template <typename dtype>
+inline Tensor<dtype> Tensor<dtype>::silu() const {
+    return applyUnaryOperation([](dtype x) -> dtype {
         dtype sigmoid_x = 1 / (1 + std::exp(-x));
-        result.data_[i] = x * sigmoid_x;
-    }
-
-    return result;
+        return x * sigmoid_x;
+    });
 }
 
-template<typename dtype>
-Tensor<dtype> Tensor<dtype>::rsqrt() const {
-    Tensor<dtype> result(this->shape());
-
-    // #pragma omp parallel for
-    for (int i=0; i < this->num_elements; i++) {
-        dtype x = this->data_[i];
+template <typename dtype>
+inline Tensor<dtype> Tensor<dtype>::sqrt() const {
+    return applyUnaryOperation([](dtype x) -> dtype {
         if (x > 0) {
-            result.data_[i] = 1 / std::sqrt(x); // Rsqrt calculation
+            return std::sqrt(x); // Rsqrt calculation
         } else {
-            // std::cout << "this:" << std::endl << *this << std::endl;
             throw std::domain_error("Cannot take rsqrt of non-positive values.");
         }
-    }
+    });
+}
 
-    return result;
+template <typename dtype>
+inline Tensor<dtype> Tensor<dtype>::rsqrt() const {
+    return applyUnaryOperation([](dtype x) -> dtype {
+        if (x > 0) {
+            return 1 / std::sqrt(x); // Rsqrt calculation
+        } else {
+            throw std::domain_error("Cannot take rsqrt of non-positive values.");
+        }
+    });
 }
 
 template<typename dtype>
@@ -896,7 +934,7 @@ std::vector<int> Tensor<dtype>::get_broadcast_shape(std::vector<int>& shape_a, s
  * @tparam dtype 
  */
 template <typename dtype>
-Tensor<dtype> Tensor<dtype>::apply_operation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const {
+Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const {
     Tensor<dtype> a = *this, b = other;
     
     // implicit broadcasting
@@ -925,7 +963,7 @@ Tensor<dtype> Tensor<dtype>::apply_operation(const Tensor<dtype>& other, dtype(*
  * @tparam dtype 
  */
 template <typename dtype>
-Tensor<dtype> Tensor<dtype>::apply_scalar_operation(dtype scalar, dtype(*op)(dtype, dtype)) const {
+Tensor<dtype> Tensor<dtype>::applyBinaryScalarOperation(dtype scalar, dtype(*op)(dtype, dtype)) const {
     Tensor<dtype> result = this->contiguous();
 
     #pragma omp parallel for
@@ -936,13 +974,13 @@ Tensor<dtype> Tensor<dtype>::apply_scalar_operation(dtype scalar, dtype(*op)(dty
     return result;
 }
 
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator+(const Tensor<dtype>& other) const { return apply_operation(other, add<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(const Tensor<dtype>& other) const { return apply_operation(other, subtract<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const { return apply_operation(other, multiply<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(const Tensor<dtype>& other) const { return apply_operation(other, divide<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator+(const Tensor<dtype>& other) const { return applyBinaryOperation(other, add<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(const Tensor<dtype>& other) const { return applyBinaryOperation(other, subtract<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const { return applyBinaryOperation(other, multiply<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(const Tensor<dtype>& other) const { return applyBinaryOperation(other, divide<dtype>); }
 
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator+(dtype scalar) const { return apply_scalar_operation(scalar, add<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(dtype scalar) const { return apply_scalar_operation(scalar, subtract<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(dtype scalar) const { return apply_scalar_operation(scalar, multiply<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(dtype scalar) const { return apply_scalar_operation(scalar, divide<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::pow(dtype scalar) const { return apply_scalar_operation(scalar, power<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator+(dtype scalar) const { return applyBinaryScalarOperation(scalar, add<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(dtype scalar) const { return applyBinaryScalarOperation(scalar, subtract<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(dtype scalar) const { return applyBinaryScalarOperation(scalar, multiply<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(dtype scalar) const { return applyBinaryScalarOperation(scalar, divide<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::pow(dtype scalar) const { return applyBinaryScalarOperation(scalar, power<dtype>); }
