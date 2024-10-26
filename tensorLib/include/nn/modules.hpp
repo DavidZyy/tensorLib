@@ -42,10 +42,11 @@ public:
 };
 
 template <typename dtype>
-Linear<dtype>::Linear(int in_features, int out_features) : 
-in_features(in_features), 
-out_features(out_features), 
-weight(Tensor<dtype>(std::vector<int>{out_features, in_features}))
+Linear<dtype>::Linear(int in_features, int out_features) :
+in_features(in_features),
+out_features(out_features),
+// weight(Tensor<dtype>(std::vector<int>{out_features, in_features}))
+weight(randn<dtype>({out_features, in_features}))
 {}
 
 // template <typename dtype>
@@ -79,7 +80,6 @@ Tensor<dtype> Linear<dtype>::forward(const Tensor<dtype>& input) const {
 
     return result;
 }
-
 
 template <typename dtype>
 // class ReLU : public Module<dtype> {
@@ -197,7 +197,8 @@ protected:
 
 template <typename dtype>
 Embedding<dtype>::Embedding(int num_embeddings, int embedding_dim) : 
-    num_embeddings(num_embeddings), embedding_dim(embedding_dim), weight(Tensor<dtype>({num_embeddings, embedding_dim})) {}
+    num_embeddings(num_embeddings), embedding_dim(embedding_dim), weight(randn<dtype>({num_embeddings, embedding_dim})) {}
+    // num_embeddings(num_embeddings), embedding_dim(embedding_dim), weight(Tensor<dtype>({num_embeddings, embedding_dim})) {}
 
 /**
  * using the following way, we can handle arbitrary dimension input. 
@@ -232,7 +233,6 @@ Tensor<dtype> Embedding<dtype>::forward(const Tensor<dtype>& input) const {
                 cur_idx[j] = 0;
             }
         }
-
     }
 
     return result;

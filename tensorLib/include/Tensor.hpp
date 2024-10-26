@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <iostream>
 #include <memory>
+#include <random>
 #include <vector>
 #include <ostream>
 #include <atomic>
@@ -117,8 +118,9 @@ public:
     template<typename T>
     friend Tensor<T> maximum(Tensor<T> a, Tensor<T> b);
 
-    template<typename T>
-    friend Tensor<T> zeros(const std::vector<int>& shape);
+    template<typename T> friend Tensor<T> zeros(const std::vector<int>& shape);
+    template<typename T> friend Tensor<T> ones(const std::vector<int>& shape);
+    template<typename T> friend Tensor<T> randn(const std::vector<int>& shape, T mean, T std);
 
     template<typename T>
     friend Tensor<T> apply_rotary_emb(Tensor<T> input, Tensor<T> freqs);
@@ -315,6 +317,32 @@ Tensor<dtype> zeros(const std::vector<int>& shape) {
     Tensor<dtype> result = Tensor<dtype>(shape);
     for(auto i = 0; i < result.num_elements; ++i) {
         result.data_[i] = 0;
+    }
+    return result;
+}
+
+template <typename dtype>
+Tensor<dtype> ones(const std::vector<int>& shape) {
+    Tensor<dtype> result = Tensor<dtype>(shape);
+    for(auto i = 0; i < result.num_elements; ++i) {
+        result.data_[i] = 1;
+    }
+    return result;
+}
+
+// Function to create a tensor filled with random numbers from a normal distribution
+template <typename dtype>
+Tensor<dtype> randn(const std::vector<int>& shape, dtype mean = 0.0, dtype stddev = 1.0) {
+    Tensor<dtype> result = Tensor<dtype>(shape);
+    
+    // Set up random number generation for normal distribution
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::normal_distribution<dtype> distribution(mean, stddev);
+
+    // Fill the tensor with random values
+    for (int i = 0; i < result.num_elements; ++i) {
+        result.data_[i] = distribution(generator);
     }
     return result;
 }

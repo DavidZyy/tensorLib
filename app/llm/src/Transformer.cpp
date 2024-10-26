@@ -84,7 +84,8 @@ template class RMSNorm<float>;
 
 template <typename dtype>
 RMSNorm<dtype>::RMSNorm(int dim, float eps) : dim(dim), eps(eps) {
-    this->weight = Tensor<dtype>({dim});
+    // this->weight = Tensor<dtype>({dim});
+    this->weight = randn<dtype>({dim});
 }
 
 template <typename dtype>
