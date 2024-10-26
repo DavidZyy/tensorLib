@@ -440,10 +440,10 @@ inline size_t Tensor<dtype>::calculateLinearIndex(const std::vector<int>& indice
         // if (indices[i] < 0 || indices[i] >= shape_[i]) {
         //     throw std::out_of_range("Error: Index out of range");
         // }
-        linear_index += indices[i] * stride_[i];
+        linear_index += indices[i] * this->stride_[i];
     }
 
-    return linear_index + offset_;
+    return linear_index + this->offset_;
 }
 
 /**

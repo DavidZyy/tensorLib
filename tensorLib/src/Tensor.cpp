@@ -372,13 +372,8 @@ Tensor<dtype> Tensor<dtype>::contiguous() const {
     # pragma omp parallel for
     for (int i=0; i < this->num_elements; i++) {
         std::vector<int> cur_idx = this->getIndicesFromLinearIndex(i);
-        int totalIdx = this->offset_;
-
-        for (int j=cur_idx.size()-1; j >= 0; j--) {
-            totalIdx += cur_idx[j] * this->stride_[j];
-        }
-        
-        result.data_[i] = this->data_[totalIdx];
+        size_t linearIdx = this->calculateLinearIndex(cur_idx);
+        result.data_[i] = this->data_[linearIdx];
     }
     return result;
 }
@@ -476,13 +471,8 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<
     # pragma omp parallel for
     for (int i = 0; i < out.num_elements; i++) {
         std::vector<int> cur_idx = out.getIndicesFromLinearIndex(i);
-        int idx = out.offset_;
-
-        for (int j=0; j < cur_idx.size(); j++) {
-            idx += cur_idx[j] * out.stride_[j]; // use current idx to calculate the flatten idx
-        }
-
-        out.data_[idx] = value.data_[i]; // index value use i directly, value should be contiguous.
+        size_t linearIdx = out.calculateLinearIndex(cur_idx);
+        out.data_[linearIdx] = value.data_[i]; // index value use i directly, value should be contiguous.
     }
 }
 
@@ -500,13 +490,8 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, dtype value) 
     # pragma omp parallel for
     for (int i=0; i < out.num_elements; i++) {
         std::vector<int> cur_idx = out.getIndicesFromLinearIndex(i);
-        int idx = out.offset_;
-
-        for (int j=0; j < cur_idx.size(); j++) {
-            idx += cur_idx[j] * out.stride_[j]; // use current idx to calculate the flatten idx
-        }
-
-        out.data_[idx] = value;
+        size_t linearIdx = out.calculateLinearIndex(cur_idx);
+        out.data_[linearIdx] = value;
     }
 }
 

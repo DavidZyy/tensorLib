@@ -5,7 +5,7 @@ const std::string tokenizer_path = "./tokenizer.bin";
 
 int main() {
     ModelArgs args;
-    args.dim = 512;
+    // args.dim = 512;
     args.dim = 16;
     // args.hidden_dim = 2048;
     args.hidden_dim = 32;
