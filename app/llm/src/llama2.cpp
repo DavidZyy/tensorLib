@@ -19,6 +19,9 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
         std::cout << this->tokenizer.decode(-1, tokens.data()[i]) << std::flush;
     }
 
+    // Start timing
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     int prev_pos = 0;
     for (int cur_pos = prompt_len; cur_pos < total_len; cur_pos++) {
         std::vector<std::vector<int>> slices  = {{}, {prev_pos, cur_pos}};
@@ -34,7 +37,15 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
         tokens.setItem(slices, next_token);
         prev_pos = cur_pos;
     }
-    std::cout << std::endl;
+
+    // Stop timing
+    auto end_time = std::chrono::high_resolution_clock::now();
+
+    // Calculate the elapsed time in seconds
+    std::chrono::duration<double> elapsed = end_time - start_time;
+    // Calculate and display tok/s
+    double tokens_per_second = (total_len - prompt_len) / elapsed.count();
+    std::cout << "\nTokens per second: " << tokens_per_second << " tok/s" << std::endl;
     return tokens;
 }
 

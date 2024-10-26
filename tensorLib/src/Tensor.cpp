@@ -231,7 +231,7 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
         }
         B = B.contiguous();
         B = B.view(B_new_shape);
-        for (int i = 0; i < diff; ++i) B_new_shape[i] = B.shape()[i];
+        for (int i = 0; i < diff; ++i) B_new_shape[i] = A.shape()[i];
         B = B.broadcast_to(B_new_shape);
     } else if (A.shape().size() < B.shape().size()) {
         int diff = B.shape().size() - A.shape().size();
@@ -248,7 +248,7 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
         }
         A = A.contiguous();
         A = A.view(A_new_shape);
-        for (int i = 0; i < diff; ++i) A_new_shape[i] = A.shape()[i];
+        for (int i = 0; i < diff; ++i) A_new_shape[i] = B.shape()[i];
         A = A.broadcast_to(A_new_shape);
     }
 

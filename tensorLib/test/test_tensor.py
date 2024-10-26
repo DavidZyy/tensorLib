@@ -29,7 +29,7 @@ def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10) -> lis
     return shapes
 
 
-def generate_batched_matmul_shapes(batch_size_range=(1, 10), dim_range=(1, 100)):
+def generate_batched_matmul_shapes(batch_size_range=(2, 4), dim_range=(1, 100)):
     """
     Generate valid shape1 and shape2 for batched matrix multiplication with 1 or 2 batch dimensions.
     
@@ -56,8 +56,10 @@ def generate_batched_matmul_shapes(batch_size_range=(1, 10), dim_range=(1, 100))
     n = random.randint(dim_range[0], dim_range[1])  # Columns in shape2
 
     # Construct shape1 and shape2 with batch dimensions
-    shape1 = batch_shape + (m, k)   # (batch_shape..., m, k) for the first matrix
+    # shape1 = batch_shape + (m, k)   # (batch_shape..., m, k) for the first matrix
+    shape1 = tuple(list(batch_shape)[1:]) + (m, k)  # test batched matmul broadcasting
     shape2 = batch_shape + (k, n)   # (batch_shape..., k, n) for the second matrix
+    # shape2 = tuple(list(batch_shape)[1:]) + (k, n)  # test batched matmul broadcasting
 
     return shape1, shape2
 
