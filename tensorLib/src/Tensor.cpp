@@ -508,33 +508,16 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, dtype value) 
 
     auto out = getItem(slices);
     
-    // current index of out tensor to set value
-    // std::vector<int> cur_idx(value.shape().size(), 0);
-    std::vector<int> cur_idx(out.shape().size(), 0);
-
-    // maybe can parallel this loop later ...
-    // for (int i=0; i < value.num_elements; i++) {
+    # pragma omp parallel for
     for (int i=0; i < out.num_elements; i++) {
+        std::vector<int> cur_idx = out.getIndicesFromLinearIndex(i);
         int idx = out.offset_;
 
-        // #pragma omp parallel for // seems error
         for (int j=0; j < cur_idx.size(); j++) {
             idx += cur_idx[j] * out.stride_[j]; // use current idx to calculate the flatten idx
         }
 
         out.data_[idx] = value;
-
-        // carry
-        // for (int j=0; j < cur_idx.size(); j++) { // this is not right, because stride[0] is the max stride, stride[dim-1] is the min stride, we should increse the cur_idx from bigger dimension to smaller
-        for (int j=cur_idx.size()-1; j >= 0; j--) {
-            cur_idx[j] += 1;
-
-            if (cur_idx[j] < out.shape()[j]) {
-                break;
-            } else {
-                cur_idx[j] = 0;
-            }
-        }
     }
 }
 
@@ -755,6 +738,7 @@ Tensor<dtype> Tensor<dtype>::reduce(int axis, bool keepdims, dtype(*op)(dtype, d
     int reduce_size = this->shape()[axis];
     
     // Apply the operation for each reduced chunk
+    # pragma omp parallel for
     for (int i = 0; i < view.num_elements; i += reduce_size) {
         dtype temp = view.data_[i];  // Initialize the temp value
         for (int j = 1; j < reduce_size; j++) {
@@ -803,6 +787,7 @@ Tensor<int> Tensor<dtype>::reduce_arg(int axis, bool keepdims, bool(*comp)(dtype
     int reduce_size = this->shape()[axis];
     
     // Iterate over the tensor in chunks (based on the reduce size)
+    # pragma omp parallel for
     for (int i = 0; i < view.num_elements; i += reduce_size) {
         auto best_index = 0;
         auto best_value = view.data_[i];  // Initialize with the first element

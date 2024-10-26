@@ -236,6 +236,7 @@ private:
     inline std::vector<int> getIndicesFromLinearIndex(size_t linear_index) const {
         std::vector<int> indices(this->shape_.size(), 0);
         
+        // Iterate from the last dimension to the first(0 dim), because the data is stored contiguously form last dim(the last dim's stride is 1).
         for (int i = shape_.size() - 1; i >= 0; --i) {
             indices[i] = linear_index % shape_[i];
             linear_index /= shape_[i];

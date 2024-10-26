@@ -116,7 +116,7 @@ reduced_ops = [
     ('argmax', np.argmax),
     ('argmin', np.argmin)
 ]
-reduced_shapes = generate_random_shapes(50, min_dims=1, max_dims=2, max_size=5)
+reduced_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=100)
 @pytest.mark.parametrize("shape", reduced_shapes)
 @pytest.mark.parametrize("op, np_op", reduced_ops)
 @pytest.mark.parametrize("keepdims", [True, False])
@@ -278,8 +278,8 @@ def compute_shape_after_slices(slices: list[list[int]]) -> tuple[int]:
 
 setitem_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=100)
 @pytest.mark.parametrize("shape", setitem_shapes)
-# @pytest.mark.parametrize("operand", ["scalar", "tensor"])
-@pytest.mark.parametrize("operand", ["tensor"])
+@pytest.mark.parametrize("operand", ["scalar", "tensor"])
+# @pytest.mark.parametrize("operand", ["tensor"])
 def test_setItem(shape, operand):
     np_data, _ = generate_random_tensor(shape)
     np_data_copy = np_data.copy()  # deep copy, so np_data and tensor_data are use the different memory
