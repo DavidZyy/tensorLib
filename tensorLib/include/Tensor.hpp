@@ -231,7 +231,7 @@ private:
 
     /**
      * seems this shape msethod can handle non-contiguous Tensor, both this and below can be used in matmul(contiguous?),
-     *  but below stride method seems can not used in setItem method(no contiguous?).
+     *  but below stride method seems can not used in setItem or contiguous method(no contiguous?).
      */
     inline std::vector<int> getIndicesFromLinearIndex(size_t linear_index) const {
         std::vector<int> indices(this->shape_.size(), 0);

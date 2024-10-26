@@ -369,28 +369,17 @@ Tensor<dtype> Tensor<dtype>::contiguous() const {
 
     Tensor<dtype> result(this->shape());
 
-    std::vector<int> cur_idx(this->shape().size(), 0);
-
-    // maybe can parallel this loop later ...
+    # pragma omp parallel for
     for (int i=0; i < this->num_elements; i++) {
+        std::vector<int> cur_idx = this->getIndicesFromLinearIndex(i);
         int totalIdx = this->offset_;
+
         for (int j=cur_idx.size()-1; j >= 0; j--) {
             totalIdx += cur_idx[j] * this->stride_[j];
         }
         
         result.data_[i] = this->data_[totalIdx];
-
-        for (int j=cur_idx.size()-1; j >= 0; j--) {
-            cur_idx[j] += 1;
-
-            if (cur_idx[j] < result.shape()[j]) {
-                break;
-            } else {
-                cur_idx[j] = 0;
-            }
-        }
     }
-
     return result;
 }
 
