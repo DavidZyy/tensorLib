@@ -31,12 +31,13 @@ endif()
 # add_executable(forward_MNIST_quantize app/forward_MNIST_quantize.cpp tensorLib/src/readMNIST.cpp tensorLib/src/Tensor.cpp tensorLib/src/readCSV.cpp)
 
 # add_executable(test_tokenizer app/llm/test/test_tokenizer.cpp app/llm/src/Tokenizer.cpp)
-add_executable(test_transformer 
-    app/llm/test/test_transformer.cpp 
-    app/llm/src/Transformer.cpp 
-    tensorLib/src/Tensor.cpp
-    tensorLib/src/nn/modules.cpp
-    )
+
+# add_executable(test_transformer 
+#     app/llm/test/test_transformer.cpp 
+#     app/llm/src/Transformer.cpp 
+#     tensorLib/src/Tensor.cpp
+#     tensorLib/src/nn/modules.cpp
+#     )
 
 add_executable(main
     app/llm/src/main.cpp 

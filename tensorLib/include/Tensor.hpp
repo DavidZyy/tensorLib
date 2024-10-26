@@ -85,9 +85,8 @@ public:
         return data_;
     }
 
-    const dtype& getData(const std::vector<int>& indices) const;
-
-    void setData(const std::vector<int>& indices, const dtype& value);
+    inline const dtype& getData(const std::vector<int>& indices) const;
+    inline void setData(const std::vector<int>& indices, const dtype& value);
 
     // Accessor and modifier for tensor elements (non-const version)
     dtype& operator()(const std::vector<int>& indices);
@@ -196,7 +195,7 @@ private:
     // helper method for operator<<
     void printTensor(std::ostream& os, size_t depth, std::vector<int> indices) const;
     // Helper function to calculate linear index from multi-dimensional indices
-    size_t calculateLinearIndex(const std::vector<int>& indices) const;
+    inline size_t calculateLinearIndex(const std::vector<int>& indices) const;
     // helper function for view
     bool is_contiguous(const Tensor<dtype>& t) const;
     // used in getItem method, process slice, supplement abbreviation of slice to full
@@ -229,6 +228,33 @@ private:
         
         return result;
     }
+
+    /**
+     * seems this shape msethod can handle non-contiguous Tensor, both this and below can be used in matmul(contiguous?),
+     *  but below stride method seems can not used in setItem method(no contiguous?).
+     */
+    inline std::vector<int> getIndicesFromLinearIndex(size_t linear_index) const {
+        std::vector<int> indices(this->shape_.size(), 0);
+        
+        for (int i = shape_.size() - 1; i >= 0; --i) {
+            indices[i] = linear_index % shape_[i];
+            linear_index /= shape_[i];
+        }
+    
+        return indices;
+    }
+
+    // can handle non-contiguous Tensor
+//     inline std::vector<int> getIndicesFromLinearIndex(size_t linear_index) const {
+//         std::vector<int> indices(shape_.size(), 0);
+// 
+//         for (int i = 0; i < shape_.size(); ++i) {
+//             indices[i] = linear_index / stride_[i];
+//             linear_index %= stride_[i];
+//         }
+// 
+//         return indices;
+//     }
 };
 
 // Definition of the conversion constructor outside the class
@@ -398,4 +424,43 @@ Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs) {
     }
 
     return result;
+}
+
+
+template <typename dtype>
+inline size_t Tensor<dtype>::calculateLinearIndex(const std::vector<int>& indices) const{
+    // doulble check
+    // if (indices.size() != shape_.size() || indices.size() != ndim) {
+    //     throw std::invalid_argument("Error: Indices size does not match tensor dimension");
+    // }
+
+    size_t linear_index = 0;
+    for (size_t i = 0; i < indices.size(); ++i) {
+        // if (indices[i] < 0 || indices[i] >= shape_[i]) {
+        //     throw std::out_of_range("Error: Index out of range");
+        // }
+        linear_index += indices[i] * stride_[i];
+    }
+
+    return linear_index + offset_;
+}
+
+/**
+ * maybe should return a Tensor wrapped the data, which is done by pytorch.
+ * @tparam dtype 
+ */
+template <typename dtype>
+inline const dtype& Tensor<dtype>::getData(const std::vector<int>& indices) const {
+    size_t linear_index = calculateLinearIndex(indices);
+
+    return data_[linear_index];
+}
+
+
+// Implementation of setData method
+template <typename dtype>
+inline void Tensor<dtype>::setData(const std::vector<int>& indices, const dtype& value) {
+    size_t linear_index = calculateLinearIndex(indices);
+
+    data_[linear_index] = value;
 }

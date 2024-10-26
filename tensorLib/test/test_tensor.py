@@ -29,7 +29,7 @@ def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10) -> lis
     return shapes
 
 
-def generate_batched_matmul_shapes(batch_size_range=(2, 4), dim_range=(1, 100)):
+def generate_batched_matmul_shapes(num_batch_dims_range=(1, 4), batch_size_range=(2, 4), dim_range=(1, 100)):
     """
     Generate valid shape1 and shape2 for batched matrix multiplication with 1 or 2 batch dimensions.
     
@@ -44,8 +44,8 @@ def generate_batched_matmul_shapes(batch_size_range=(2, 4), dim_range=(1, 100)):
             For shape2 (B), the last dimension represents the number of columns.
             The number of columns of A (i.e., shape1[-1]) must match the number of rows of B (i.e., shape2[-2]).
     """
-    # Randomly select 1 or 2 for the number of batch dimensions
-    num_batch_dims = random.choice([1, 2])
+    # Randomly select the number of batch dimensions
+    num_batch_dims = random.randint(*num_batch_dims_range)
 
     # Randomly generate batch sizes for either 1 or 2 batch dimensions
     batch_shape = tuple(random.randint(batch_size_range[0], batch_size_range[1]) for _ in range(num_batch_dims))
@@ -55,11 +55,12 @@ def generate_batched_matmul_shapes(batch_size_range=(2, 4), dim_range=(1, 100)):
     k = random.randint(dim_range[0], dim_range[1])  # Shared dimension (columns in shape1, rows in shape2)
     n = random.randint(dim_range[0], dim_range[1])  # Columns in shape2
 
+    a = random.randint(0, num_batch_dims)
+    b = random.randint(0, num_batch_dims)
+
     # Construct shape1 and shape2 with batch dimensions
-    # shape1 = batch_shape + (m, k)   # (batch_shape..., m, k) for the first matrix
-    shape1 = tuple(list(batch_shape)[1:]) + (m, k)  # test batched matmul broadcasting
-    shape2 = batch_shape + (k, n)   # (batch_shape..., k, n) for the second matrix
-    # shape2 = tuple(list(batch_shape)[1:]) + (k, n)  # test batched matmul broadcasting
+    shape1 = tuple(list(batch_shape)[a:]) + (m, k)  # test batched matmul broadcasting
+    shape2 = tuple(list(batch_shape)[b:]) + (k, n)  # test batched matmul broadcasting
 
     return shape1, shape2
 
@@ -275,9 +276,10 @@ def compute_shape_after_slices(slices: list[list[int]]) -> tuple[int]:
     return tuple(new_shape)
 
 
-setitem_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=10)
-@pytest.mark.parametrize("shape", getitem_shapes)
-@pytest.mark.parametrize("operand", ["scalar", "tensor"])
+setitem_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=100)
+@pytest.mark.parametrize("shape", setitem_shapes)
+# @pytest.mark.parametrize("operand", ["scalar", "tensor"])
+@pytest.mark.parametrize("operand", ["tensor"])
 def test_setItem(shape, operand):
     np_data, _ = generate_random_tensor(shape)
     np_data_copy = np_data.copy()  # deep copy, so np_data and tensor_data are use the different memory

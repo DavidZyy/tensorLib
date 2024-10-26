@@ -87,49 +87,9 @@ ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset
     }
 }
 
-
-
 template <typename dtype>
 Tensor<dtype>::~Tensor() {
 
-}
-
-template <typename dtype>
-size_t Tensor<dtype>::calculateLinearIndex(const std::vector<int>& indices) const{
-    // doulble check
-    if (indices.size() != shape_.size() || indices.size() != ndim) {
-        throw std::invalid_argument("Error: Indices size does not match tensor dimension");
-    }
-
-    size_t linear_index = 0;
-    for (size_t i = 0; i < indices.size(); ++i) {
-        if (indices[i] < 0 || indices[i] >= shape_[i]) {
-            throw std::out_of_range("Error: Index out of range");
-        }
-        linear_index += indices[i] * stride_[i];
-    }
-
-    return linear_index + offset_;
-}
-
-/**
- * maybe should return a Tensor wrapped the data, which is done by pytorch.
- * @tparam dtype 
- */
-template <typename dtype>
-const dtype& Tensor<dtype>::getData(const std::vector<int>& indices) const {
-    size_t linear_index = calculateLinearIndex(indices);
-
-    return data_[linear_index];
-}
-
-
-// Implementation of setData method
-template <typename dtype>
-void Tensor<dtype>::setData(const std::vector<int>& indices, const dtype& value) {
-    size_t linear_index = calculateLinearIndex(indices);
-
-    data_[linear_index] = value;
 }
 
 // Accessor implementation (non-const version)
@@ -197,81 +157,58 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
         throw std::invalid_argument("Tensors must have at least 2 dimensions for matmul.");
     }
 
-    // Get the shapes of the tensors
-    const auto& A_shape = this->shape_;
-    const auto& B_shape = other.shape_;
-
     // The last dimension of A should match the second-to-last dimension of B
-    if (A_shape[this->ndim - 1] != B_shape[other.ndim - 2]) {
+    if (this->shape_[this->ndim - 1] != other.shape_[other.ndim - 2]) {
         throw std::invalid_argument("Shape mismatch: the number of columns in the first tensor must match the number of rows in the second tensor.");
     }
 
-    // Determine output shape (handling broadcasting for batch dimensions)
-    std::vector<int> output_shape;
-    size_t num_batch_dims = std::max(this->ndim - 2, other.ndim - 2);
-
-    // broadcast for batched matmul
     Tensor<dtype> A = *this;
     Tensor<dtype> B = other;
 
-    // for example, A.shape = (2, 3, 4, 5), B.shape = (3, 5, 4)
-    if (A.shape().size() > B.shape().size()) {
-        int diff = A.shape().size() - B.shape().size();
-        // check if can be batched
-        for (int i = 0; i < B.shape().size()-2; ++i) {
-            // ERROR!! SHOULD CHECK BEFORE BROADCAST!!
-            if (A.shape()[i+diff] != B.shape()[i]) {
-                throw std::invalid_argument("Shape mismatch: the batch dimensions must be broadcastable.");
-            }
-        }
-        // for example, A.shape = (2, 2, 3, 4, 5), B.shape = (3, 5, 4), after this, B.shape will be (1, 1, 3, 5, 4) -> (2, 2, 3, 5, 4)
-        std::vector<int> B_new_shape(A.shape().size(), 1);
-        for (int i = 0; i < B.shape().size(); ++i) {
-            B_new_shape[i+diff] = B.shape()[i];
-        }
-        B = B.contiguous();
-        B = B.view(B_new_shape);
-        for (int i = 0; i < diff; ++i) B_new_shape[i] = A.shape()[i];
-        B = B.broadcast_to(B_new_shape);
-    } else if (A.shape().size() < B.shape().size()) {
-        int diff = B.shape().size() - A.shape().size();
-        // check if can be batched
-        for (int i = 0; i < A.shape().size()-2; ++i) {
-            // ERROR!! SHOULD CHECK BEFORE BROADCAST!!
-            if (B.shape()[i+diff] != A.shape()[i]) {
-                throw std::invalid_argument("Shape mismatch: the batch dimensions must be broadcastable.");
-            }
-        }
-        std::vector<int> A_new_shape(B.shape().size(), 1);
-        for (int i = 0; i < A.shape().size(); ++i) {
-            A_new_shape[i+diff] = A.shape()[i];
-        }
-        A = A.contiguous();
-        A = A.view(A_new_shape);
-        for (int i = 0; i < diff; ++i) A_new_shape[i] = B.shape()[i];
-        A = A.broadcast_to(A_new_shape);
-    } else {
-        for (int i = 0; i < A.shape().size()-2; ++i) {
-            if (A.shape()[i] != B.shape()[i]) {
-                throw std::invalid_argument("Shape mismatch: the batch dimensions must be broadcastable.");
-            }
-        }
+    size_t num_batch_dims = std::max(A.ndim - 2, B.ndim - 2);
+    size_t dim_diff = std::abs(static_cast<int>(A.ndim) - static_cast<int>(B.ndim));
+
+    // If needed, prepend dimensions to match larger tensor size
+    std::vector<int> A_broadcast_shape = A.shape_;
+    std::vector<int> B_broadcast_shape = B.shape_;
+    std::vector<int> output_shape;
+
+    // for example, A.shape = (2, 2, 3, 4, 5), B.shape = (3, 5, 4), after this, B.shape will be (1, 1, 3, 5, 4) -> (2, 2, 3, 5, 4)
+    if (A.ndim < B.ndim) {
+        A_broadcast_shape.insert(A_broadcast_shape.begin(), dim_diff, 1);
+    } else if (B.ndim < A.ndim) {
+        B_broadcast_shape.insert(B_broadcast_shape.begin(), dim_diff, 1);
     }
 
-    // A.shape()[0: num_batch_dim] == B.shape[0: num_batch_dim] now
-    for (int i=0; i<num_batch_dims; ++i) {
-        output_shape.push_back(A.shape()[i]);
+    // Adjust batch dimensions to be broadcast-compatible
+    for (size_t i = 0; i < num_batch_dims; ++i) {
+        if (A_broadcast_shape[i] != B_broadcast_shape[i]) {
+            if (A_broadcast_shape[i] == 1) {
+                A_broadcast_shape[i] = B_broadcast_shape[i];
+            } else if (B_broadcast_shape[i] == 1) {
+                B_broadcast_shape[i] = A_broadcast_shape[i];
+            } else {
+                throw std::invalid_argument("Shape mismatch: the batch dimensions must be broadcastable.");
+            }
+        }
+        output_shape.push_back(A_broadcast_shape[i]);
     }
+
+    // Update A and B to their broadcast shapes
+    A = A.contiguous().broadcast_to(A_broadcast_shape);
+    B = B.contiguous().broadcast_to(B_broadcast_shape);
+
     output_shape.push_back(A.shape()[A.ndim - 2]);
     output_shape.push_back(B.shape()[B.ndim - 1]);
 
     // now execute batched matmul
-    // Create the result tensor
     Tensor<dtype> result(output_shape);
 
-    std::vector<int> result_indices(output_shape.size(), 0);
     size_t result_elements = result.num_elements;
+
+    #pragma omp parallel for
     for (size_t idx = 0; idx < result_elements; ++idx) {
+        std::vector<int> result_indices = result.getIndicesFromLinearIndex(idx);
         std::vector<int> A_indices = result_indices;
         std::vector<int> B_indices = result_indices;
 
@@ -288,14 +225,6 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
 
         // Store the result in the output tensor
         result.setData(result_indices, sum);
-        // Update the result_indices for the next iteration
-        for (int dim = output_shape.size() - 1; dim >= 0; --dim) {
-            result_indices[dim]++;
-            if (result_indices[dim] < output_shape[dim]) {
-                break;
-            }
-            result_indices[dim] = 0;
-        }
     }
 
     return result;
@@ -555,33 +484,16 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<
         throw std::invalid_argument("The shape of value must be equal to the shape of the slice.");
     }
     
-    // current index of out tensor to set value
-    // std::vector<int> cur_idx(value.shape().size(), 0);
-    std::vector<int> cur_idx(out.shape().size(), 0);
-
-    // maybe can parallel this loop later ...
-    // for (int i=0; i < value.num_elements; i++) {
-    for (int i=0; i < out.num_elements; i++) {
+    # pragma omp parallel for
+    for (int i = 0; i < out.num_elements; i++) {
+        std::vector<int> cur_idx = out.getIndicesFromLinearIndex(i);
         int idx = out.offset_;
 
-        // #pragma omp parallel for // seems error
         for (int j=0; j < cur_idx.size(); j++) {
             idx += cur_idx[j] * out.stride_[j]; // use current idx to calculate the flatten idx
         }
 
         out.data_[idx] = value.data_[i]; // index value use i directly, value should be contiguous.
-
-        // carry
-        // for (int j=0; j < cur_idx.size(); j++) { // this is not right, because stride[0] is the max stride, stride[dim-1] is the min stride, we should increse the cur_idx from bigger dimension to smaller
-        for (int j=cur_idx.size()-1; j >= 0; j--) {
-            cur_idx[j] += 1;
-
-            if (cur_idx[j] < out.shape()[j]) {
-                break;
-            } else {
-                cur_idx[j] = 0;
-            }
-        }
     }
 }
 
