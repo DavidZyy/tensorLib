@@ -195,11 +195,16 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
     }
 
     // Update A and B to their broadcast shapes
+    // A = A.contiguous().broadcast_to(A_broadcast_shape).contiguous(); // contiguous use lots of time
+    // B = B.contiguous().broadcast_to(B_broadcast_shape).contiguous();
+
     A = A.contiguous().broadcast_to(A_broadcast_shape);
     B = B.contiguous().broadcast_to(B_broadcast_shape);
 
-    output_shape.push_back(A.shape()[A.ndim - 2]);
-    output_shape.push_back(B.shape()[B.ndim - 1]);
+    output_shape.push_back(A.shape_[A.ndim - 2]);
+    output_shape.push_back(B.shape_[B.ndim - 1]);
+    int height = A.shape_[A.ndim - 2];
+    int width = B.shape_[B.ndim - 1];
 
     // now execute batched matmul
     Tensor<dtype> result(output_shape);
@@ -209,23 +214,32 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
     #pragma omp parallel for
     for (size_t idx = 0; idx < result_elements; ++idx) {
         std::vector<int> result_indices = result.getIndicesFromLinearIndex(idx);
-        std::vector<int> A_indices = result_indices;
-        std::vector<int> B_indices = result_indices;
 
-        int row = result_indices[num_batch_dims];
-        int col = result_indices[num_batch_dims + 1];
-        A_indices[A.ndim - 2] = row;
-        B_indices[B.ndim - 1 ]= col;
-        dtype sum = 0;
+        // height = A.shape_[A.ndim-2], width = B.shape_[B.ndim-1] = B.stride_[B.ndim-2], K = A.shape_[A.ndim-1] = B.shape_[B.ndim-2] = A.stride_[A.ndim-2]
+        // xxx.stride_[dim-1] = 1
+        int row = result_indices[num_batch_dims];  // (0 < row < height)
+        int col = result_indices[num_batch_dims + 1];  // (0 < col < width)
         int K = A.shape_[A.ndim - 1];
+
+        size_t Aoff = 0;
+        size_t Boff = 0;
+        for (int i = 0; i < num_batch_dims; ++i) {
+            Aoff += result_indices[i] * A.stride_[i];
+            Boff += result_indices[i] * B.stride_[i];
+        }
+        Aoff += row * K;
+        // Boff += col * B.stride_[B.ndim - 1];
+        Boff += col;
+        dtype sum = 0;
         for (int k = 0; k < K; ++k) {
-            A_indices[A.ndim - 1] = k;
-            B_indices[B.ndim - 2] = k;
-            sum += A.getData(A_indices) * B.getData(B_indices);
+            // sum += A.data_[Aoff + k * A.stride_[A.ndim-1]] * B.data_[Boff + k * B.stride_[B.ndim-2]]; 
+            // if B.stride_[B.ndim - 2] == B.shape_[B.ndim - 1] always true? here, the last 2 dim of B is contiguous, so it must be true.
+            // seems not true above, if a shape (3,) is broadcast_to (2, 3), the stride of dim-2 is 0, not 3.
+            sum += A.data_[Aoff + k] * B.data_[Boff + k * width];
         }
 
         // Store the result in the output tensor
-        result.setData(result_indices, sum);
+        result.data_[idx] = sum;
     }
 
     return result;

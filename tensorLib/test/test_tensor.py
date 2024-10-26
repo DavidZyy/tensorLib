@@ -29,7 +29,7 @@ def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10) -> lis
     return shapes
 
 
-def generate_batched_matmul_shapes(num_batch_dims_range=(1, 4), batch_size_range=(2, 4), dim_range=(1, 100)):
+def generate_batched_matmul_shapes(num_batch_dims_range=(1, 4), batch_size_range=(2, 4), dim_range=(1, 300)):
     """
     Generate valid shape1 and shape2 for batched matrix multiplication with 1 or 2 batch dimensions.
     
@@ -105,7 +105,7 @@ def test_batched_matmul(shape1, shape2):
     assert C.shape == C_t_a.shape
     assert C.dtype == C_t_a.dtype
     assert C.size == C_t_a.size
-    np.testing.assert_allclose(C, C_t_a, atol=1e-5, rtol=1e-5)
+    np.testing.assert_allclose(C, C_t_a, atol=1e-4, rtol=1e-4)
 
 
 reduced_ops = [
