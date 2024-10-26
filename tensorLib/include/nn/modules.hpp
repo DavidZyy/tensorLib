@@ -69,13 +69,13 @@ Linear<dtype>::Linear(int in_features, int out_features, Tensor<dtype>&& weight)
  */
 template <typename dtype>
 Tensor<dtype> Linear<dtype>::forward(const Tensor<dtype>& input) const {
-    auto start_time = std::chrono::high_resolution_clock::now();
+    // auto start_time = std::chrono::high_resolution_clock::now();
 
     auto result = input.matmul(weight.transpose(0, 1));
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration_seconds = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
-    std::cout << "Linear Execution time: " << duration_seconds << " seconds" << std::endl;
+    // auto end_time = std::chrono::high_resolution_clock::now();
+    // auto duration_seconds = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time).count();
+    // std::cout << "Linear Execution time: " << duration_seconds << " seconds" << std::endl;
 
     return result;
 }

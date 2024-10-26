@@ -38,6 +38,15 @@ add_executable(test_transformer
     tensorLib/src/nn/modules.cpp
     )
 
+add_executable(main
+    app/llm/src/main.cpp 
+    app/llm/src/llama2.cpp 
+    app/llm/src/Transformer.cpp 
+    app/llm/src/Tokenizer.cpp 
+    tensorLib/src/Tensor.cpp
+    tensorLib/src/nn/modules.cpp
+    )
+
 # Add include directories
 include_directories(tensorLib/include)
 include_directories(app/llm/include)
