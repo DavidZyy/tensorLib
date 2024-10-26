@@ -214,12 +214,13 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
 
         int row = result_indices[num_batch_dims];
         int col = result_indices[num_batch_dims + 1];
+        A_indices[A.ndim - 2] = row;
+        B_indices[B.ndim - 1 ]= col;
         dtype sum = 0;
-        for (int k = 0; k < A.shape()[A.ndim - 1]; ++k) {
-            A_indices[A.ndim - 2] = row;
+        int K = A.shape_[A.ndim - 1];
+        for (int k = 0; k < K; ++k) {
             A_indices[A.ndim - 1] = k;
             B_indices[B.ndim - 2] = k;
-            B_indices[B.ndim - 1]= col;
             sum += A.getData(A_indices) * B.getData(B_indices);
         }
 
