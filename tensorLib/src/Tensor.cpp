@@ -250,6 +250,12 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
         A = A.view(A_new_shape);
         for (int i = 0; i < diff; ++i) A_new_shape[i] = B.shape()[i];
         A = A.broadcast_to(A_new_shape);
+    } else {
+        for (int i = 0; i < A.shape().size()-2; ++i) {
+            if (A.shape()[i] != B.shape()[i]) {
+                throw std::invalid_argument("Shape mismatch: the batch dimensions must be broadcastable.");
+            }
+        }
     }
 
     // A.shape()[0: num_batch_dim] == B.shape[0: num_batch_dim] now
