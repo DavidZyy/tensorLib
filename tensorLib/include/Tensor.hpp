@@ -359,9 +359,10 @@ Tensor<dtype> ones(const std::vector<int>& shape) {
 
 // Function to create a tensor filled with random numbers from a normal distribution
 template <typename dtype>
-Tensor<dtype> randn(const std::vector<int>& shape, dtype mean = 0.0, dtype stddev = 1.0) {
+Tensor<dtype> randn(const std::vector<int>& shape, dtype mean = 0.0, dtype stddev = 0.18) {
+// Tensor<dtype> randn(const std::vector<int>& shape, dtype mean = 0.0, dtype stddev = 1.0) { // too big
     Tensor<dtype> result = Tensor<dtype>(shape);
-    
+
     // Set up random number generation for normal distribution
     std::random_device rd;
     std::mt19937 generator(rd());
@@ -425,6 +426,7 @@ Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs) {
     }
 
     return result;
+    // return input;
 }
 
 

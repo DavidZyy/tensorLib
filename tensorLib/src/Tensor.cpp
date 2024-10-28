@@ -198,6 +198,7 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
     // A = A.contiguous().broadcast_to(A_broadcast_shape).contiguous(); // contiguous use lots of time
     // B = B.contiguous().broadcast_to(B_broadcast_shape).contiguous();
 
+    // can we get rid of the contiguous() ??
     A = A.contiguous().broadcast_to(A_broadcast_shape);
     B = B.contiguous().broadcast_to(B_broadcast_shape);
 
@@ -217,8 +218,8 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
 
         // height = A.shape_[A.ndim-2], width = B.shape_[B.ndim-1] = B.stride_[B.ndim-2], K = A.shape_[A.ndim-1] = B.shape_[B.ndim-2] = A.stride_[A.ndim-2]
         // xxx.stride_[dim-1] = 1
-        int row = result_indices[num_batch_dims];  // (0 < row < height)
-        int col = result_indices[num_batch_dims + 1];  // (0 < col < width)
+        int row = result_indices[num_batch_dims];  // (0 <= row < height)
+        int col = result_indices[num_batch_dims + 1];  // (0 <= col < width)
         int K = A.shape_[A.ndim - 1];
 
         size_t Aoff = 0;
@@ -899,11 +900,14 @@ Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other, dt
  */
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::applyBinaryScalarOperation(dtype scalar, dtype(*op)(dtype, dtype)) const {
-    Tensor<dtype> result = this->contiguous();
+    // Tensor<dtype> result = this->contiguous();
+    Tensor<dtype> result(this->shape());
+    Tensor<dtype> this_contiguous = this->contiguous();
 
     #pragma omp parallel for
     for (int i = 0; i < result.num_elements; ++i) { // broadcast may get error, for it does not have num_elements elems actually.
-        result.data_[i] = op(result.data_[i], scalar);
+        // result.data_[i] = op(result.data_[i], scalar);
+        result.data_[i] = op(this_contiguous.data_[i], scalar);
     }
 
     return result;

@@ -1,6 +1,7 @@
 #include "llama2.hpp"
 #include "Tensor.hpp"
 #include "Tokenizer.hpp"
+#include <ostream>
 #include <vector>
 
 // if do not write below, will get error undefined reference to Llama2's methods
@@ -30,7 +31,7 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
         logits = logits.getItem(slices); // (bsz, vocab_size), get the last of dim=1
         auto next_token = logits.argmax(-1); // (bsz, )
 
-        // std::cout << next_token.data_[0] << " ";
+        // std::cout << next_token.data_[0] << " " << std::flush;
         std::cout << this->tokenizer.decode(-1, next_token.data_[0]) << std::flush; // use flush to output immediately, not cache in buffer
 
         slices = {{}, {cur_pos, cur_pos+1}};

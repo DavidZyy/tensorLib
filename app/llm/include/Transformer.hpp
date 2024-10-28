@@ -10,7 +10,7 @@ public:
     int n_layers;
     int n_heads;
     int vocab_size;
-    // int n_kv_heads; (= n_heads), by default.
+    int n_kv_heads; // (= n_heads), by default.
 
     int max_batch_size; // (=1), by default, we will process one batch at a time for simplicity.
     int max_seq_len;  // this is the sum of len(prompt) + len(generate)
@@ -23,7 +23,7 @@ public:
     Attention(ModelArgs args);
 
     Tensor<dtype> forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask); // not const, cache will be modified
-private:
+// private:
     // int n_kv_heads; // assum n_kn_heads == n_heads now for simplicity
     int n_heads;
     // int n_rep; // n_heads / n_kv_heads
@@ -40,7 +40,7 @@ public:
     FeedForward(int dim, int hidden_dim); // no need multiple_of here, use llama2.c way.
 
     Tensor<dtype> forward(const Tensor<dtype>& x) const override;
-private:
+// private:
     int dim, hidden_dim;
     nn::Linear<dtype> w1, w2, w3;
 };
@@ -53,7 +53,7 @@ public:
 
     Tensor<dtype> forward(const Tensor<dtype>& x) const override;
     Tensor<dtype> _norm(Tensor<dtype> x) const;
-private:
+// private:
     float eps;
     int dim;
     Tensor<dtype> weight;
@@ -66,7 +66,7 @@ public:
     TransformerBlock(int layer_id, ModelArgs args);
 
     Tensor<dtype> forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask); //(not const, Attention.cache will be modified) cannot use override here, because the function signature(parameters) is different with the base module
-private:
+// private:
     int n_heads;
     int dim;
     int head_dim;
@@ -82,7 +82,7 @@ public:
     Transformer(ModelArgs& args);
 
     Tensor<dtype> forward(const Tensor<dtype>& tokens, int start_pos) const;
-private:
+// private:
     int n_layers;
     int vocab_size;
     int head_dim;

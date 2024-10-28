@@ -93,24 +93,37 @@ Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) const {
     // std::cout << "x:" << std::endl << x << std::endl;
     auto origin_shape = x.shape();
     auto temp = x;
+    // std::cout << "x:" << std::endl << x << std::endl;
     temp = temp.pow(2);
+    // std::cout << "x:" << std::endl << x << std::endl;
     temp = temp.mean(-1, true);
     // std::cout << "temp:" << std::endl << temp << std::endl;
     temp = temp.broadcast_to(origin_shape);
     // std::cout << "temp:" << std::endl << temp << std::endl;
     temp = temp + this->eps;
     temp = temp.rsqrt();
-    return x * temp; 
+    // std::cout << "x:" << std::endl << x << std::endl;
+    // std::cout << "temp:" << std::endl << temp << std::endl;
+    // return x * temp; 
+    auto result = x * temp;
+    // std::cout << result << std::endl;
+    return result;
 }
 
 template <typename dtype>
 Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x) const {
+    // std::cout << x << std::endl;
+    // std::cout << weight << std::endl;
     // x : (bsz, seqlen, dim)
     // weight : (dim)
-    auto result = this->_norm(x);
+    auto result1 = this->_norm(x);
+    // std::cout << result1 << std::endl;
     auto weight = this->weight.view({1, 1, this->dim});
     weight = weight.broadcast_to(x.shape());
-    return result * weight;
+    auto result2 = result1 * weight;
+
+    // std::cout << result2 << std::endl;
+    return result2;
 }
 
 template <typename dtype>
@@ -129,6 +142,8 @@ TransformerBlock<dtype>::TransformerBlock(int layer_id, ModelArgs args) {
 template <typename dtype>
 Tensor<dtype> TransformerBlock<dtype>::forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask) {
     auto temp1 = this->attention_norm.forward(x);
+    // std::cout << this->attention_norm.weight << std::endl;
+    // std::cout << "temp1: " << temp1 << std::endl;
     auto h = x + this->attention.forward(temp1, start_pos, freqs, mask);
     auto out = h + this->feed_forward.forward(this->ffn_norm.forward(h));
     return out;
@@ -193,11 +208,14 @@ Tensor<dtype> Transformer<dtype>::forward(const Tensor<dtype>& tokens, int start
     auto bsz = tokens.shape()[0];
     auto seqlen = tokens.shape()[1];
     auto h = this->tok_embeddings.forward(tokens);
+    // std::cout << h << std::endl;
     auto freqs = this->freqs.slice(start_pos, start_pos+seqlen, 0);
     auto mask = this->get_mask(seqlen);
     for (int i = 0; i < this->n_layers; i++) {
         auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(this->layers[i]);
         h = layer->forward(h, start_pos, freqs, mask);
+        // std::cout << "layer " << i << " done" << std::endl;
+        // std::cout << h << std::endl;
     }
     h = this->norm.forward(h);
     auto result = this->output.forward(h);

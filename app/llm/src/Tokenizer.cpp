@@ -62,10 +62,10 @@ Tokenizer::Tokenizer(const std::string& tokenizer_path, int vocab_size) : vocab_
 std::vector<int> Tokenizer::encode(const std::string& text, bool bos, bool eos) {
     std::vector<int> tokens;
 
-    if (text.empty()) {
-        std::cerr << "cannot encode empty text" << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
+    // if (text.empty()) {
+    //     std::cerr << "cannot encode empty text" << std::endl;
+    //     std::exit(EXIT_FAILURE);
+    // }
     
     // set the sorted_vocab for find "token ID" according to the "token string".
     if (this->sorted_vocab.empty()) {
