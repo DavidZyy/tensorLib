@@ -206,6 +206,7 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
     output_shape.push_back(B.shape_[B.ndim - 1]);
     int height = A.shape_[A.ndim - 2];
     int width = B.shape_[B.ndim - 1];
+    int K = A.shape_[A.ndim - 1];
 
     // now execute batched matmul
     Tensor<dtype> result(output_shape);
@@ -214,20 +215,40 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
 
     #pragma omp parallel for
     for (size_t idx = 0; idx < result_elements; ++idx) {
-        std::vector<int> result_indices = result.getIndicesFromLinearIndex(idx);
+//         std::vector<int> result_indices = result.getIndicesFromLinearIndex(idx);
+// 
+//         // height = A.shape_[A.ndim-2], width = B.shape_[B.ndim-1] = B.stride_[B.ndim-2], K = A.shape_[A.ndim-1] = B.shape_[B.ndim-2] = A.stride_[A.ndim-2]
+//         // xxx.stride_[dim-1] = 1
+//         int row = result_indices[num_batch_dims];  // (0 <= row < height)
+//         int col = result_indices[num_batch_dims + 1];  // (0 <= col < width)
+// 
+//         size_t Aoff = 0;
+//         size_t Boff = 0;
+//         for (int i = 0; i < num_batch_dims; ++i) {
+//             Aoff += result_indices[i] * A.stride_[i];
+//             Boff += result_indices[i] * B.stride_[i];
+//         }
 
-        // height = A.shape_[A.ndim-2], width = B.shape_[B.ndim-1] = B.stride_[B.ndim-2], K = A.shape_[A.ndim-1] = B.shape_[B.ndim-2] = A.stride_[A.ndim-2]
-        // xxx.stride_[dim-1] = 1
-        int row = result_indices[num_batch_dims];  // (0 <= row < height)
-        int col = result_indices[num_batch_dims + 1];  // (0 <= col < width)
-        int K = A.shape_[A.ndim - 1];
+        ///////////////////////////////// fuse above ops ////////////////////////////////
+        size_t linear_index = idx;
+        size_t Aoff=0, Boff=0;
+        int row, col;
+        for (int i = result.ndim-1; i >= 0; --i) {
+            int cur_dim_id = linear_index % result.shape_[i];
+            linear_index /= result.shape_[i];
 
-        size_t Aoff = 0;
-        size_t Boff = 0;
-        for (int i = 0; i < num_batch_dims; ++i) {
-            Aoff += result_indices[i] * A.stride_[i];
-            Boff += result_indices[i] * B.stride_[i];
+            if (i < num_batch_dims) { 
+                Aoff += cur_dim_id * A.stride_[i];
+                Boff += cur_dim_id * B.stride_[i];
+            } else if (i == num_batch_dims) { // result.ndim - 2
+                row = cur_dim_id;
+            } else if (i == num_batch_dims + 1) { // result.ndim - 1
+                col = cur_dim_id;
+            }
         }
+
+        /////////////////////////////////////////////////////////////////////////////////
+
         Aoff += row * K;
         // Boff += col * B.stride_[B.ndim - 1];
         Boff += col;
