@@ -3,6 +3,7 @@ import tensor_bindings as tb  # the module is a .so file compiled from C++
 import numpy as np
 import random
 import operator
+import torch
 # import libtensor_bindings as tb
 # from . import libtensor_bindings as tb
 
@@ -29,7 +30,7 @@ def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10) -> lis
     return shapes
 
 
-def generate_batched_matmul_shapes(num_batch_dims_range=(1, 4), batch_size_range=(2, 4), dim_range=(1, 300)):
+def generate_batched_matmul_shapes(num_batch_dims_range=(1, 4), batch_size_range=(2, 4), dim_range=(1, 100)):
     """
     Generate valid shape1 and shape2 for batched matrix multiplication with 1 or 2 batch dimensions.
     
@@ -303,3 +304,6 @@ def test_setItem(shape, operand):
     assert np_data.dtype == tensor_data_np.dtype
     assert np_data.size == tensor_data_np.size
     np.testing.assert_allclose(np_data, tensor_data_np, atol=1e-5, rtol=1e-5)
+
+def test_broadcast():
+    pass

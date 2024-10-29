@@ -147,6 +147,7 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
 
 /**
  * batched matrix multiplication 
+ * NOTE!!! THE IMPLEMENTATION MAY HAVE BUG WHEN TENSOR IS NOT CONTIGUOUS IN THE LAST 2 DIMENTIONS!!!!
  * @tparam dtype 
  */
 template <typename dtype>
@@ -199,8 +200,11 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
     // B = B.contiguous().broadcast_to(B_broadcast_shape).contiguous();
 
     // can we get rid of the contiguous() ??
-    A = A.contiguous().broadcast_to(A_broadcast_shape);
-    B = B.contiguous().broadcast_to(B_broadcast_shape);
+    // get rid of contiguous func...
+    // A = A.contiguous().broadcast_to(A_broadcast_shape);
+    // B = B.contiguous().broadcast_to(B_broadcast_shape);
+    A = A.broadcast_to(A_broadcast_shape);
+    B = B.broadcast_to(B_broadcast_shape);
 
     output_shape.push_back(A.shape_[A.ndim - 2]);
     output_shape.push_back(B.shape_[B.ndim - 1]);
@@ -217,7 +221,7 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
     for (size_t idx = 0; idx < result_elements; ++idx) {
 //         std::vector<int> result_indices = result.getIndicesFromLinearIndex(idx);
 // 
-//         // height = A.shape_[A.ndim-2], width = B.shape_[B.ndim-1] = B.stride_[B.ndim-2], K = A.shape_[A.ndim-1] = B.shape_[B.ndim-2] = A.stride_[A.ndim-2]
+//         // height = A.shape_[A.ndim-2], width = B.shape_[B.ndim-1] = B.stride_[B.ndim-2], K = A.shape_[A.ndim-1] = B.shape_[B.ndim-2] = A.stride_[A.ndim-2](the precondition is tensor is contiguous)
 //         // xxx.stride_[dim-1] = 1
 //         int row = result_indices[num_batch_dims];  // (0 <= row < height)
 //         int col = result_indices[num_batch_dims + 1];  // (0 <= col < width)
@@ -231,7 +235,7 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
 
         ///////////////////////////////// fuse above ops ////////////////////////////////
         size_t linear_index = idx;
-        size_t Aoff=0, Boff=0;
+        size_t Aoff=A.offset_, Boff=B.offset_;
         int row, col;
         for (int i = result.ndim-1; i >= 0; --i) {
             int cur_dim_id = linear_index % result.shape_[i];
@@ -248,16 +252,20 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
         }
 
         /////////////////////////////////////////////////////////////////////////////////
+        auto t1 = A.stride_[A.ndim - 1];
+        auto t2 = B.stride_[B.ndim - 2];
 
-        Aoff += row * K;
-        // Boff += col * B.stride_[B.ndim - 1];
-        Boff += col;
+        Aoff += row * A.stride_[A.ndim - 2];
+        // Aoff += row * K;
+        Boff += col * B.stride_[B.ndim - 1];
+        // Boff += col;
         dtype sum = 0;
+        // if B.stride_[B.ndim - 2] == B.shape_[B.ndim - 1] always true? here, the last 2 dim of B is contiguous, so it must be true.
+        // seems not true above, if a shape (3,) is broadcast_to (2, 3), the stride of dim-2 is 0, not 3.
         for (int k = 0; k < K; ++k) {
             // sum += A.data_[Aoff + k * A.stride_[A.ndim-1]] * B.data_[Boff + k * B.stride_[B.ndim-2]]; 
-            // if B.stride_[B.ndim - 2] == B.shape_[B.ndim - 1] always true? here, the last 2 dim of B is contiguous, so it must be true.
-            // seems not true above, if a shape (3,) is broadcast_to (2, 3), the stride of dim-2 is 0, not 3.
-            sum += A.data_[Aoff + k] * B.data_[Boff + k * width];
+            // sum += A.data_[Aoff + k] * B.data_[Boff + k * width];
+            sum += A.data_[Aoff + k * t1] * B.data_[Boff + k * t2];
         }
 
         // Store the result in the output tensor
@@ -590,6 +598,33 @@ std::vector<std::vector<int>> Tensor<dtype>::process_slices(const std::vector<st
  * 
  * so when broadcast_to a shape().size() greater than current shape().size(), you should add 1 in current shape()'s dimension which to be broadcasted.
  */
+// template<typename dtype>
+// Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) const {
+//     if (this->shape() == new_shape) 
+//         return *this;
+// 
+//     auto prepend_shape = this->shape(); // if this->shape().size() < new_shape().size, prepend 1 before this->shape().
+// 
+//     if (prepend_shape.size() > new_shape.size()) {
+//         throw std::invalid_argument("The new shape must be greater than or equal to the original shape.");
+//     } else if (prepend_shape.size() < new_shape.size()) {
+//         prepend_shape.insert(prepend_shape.begin(), new_shape.size() - prepend_shape.size(), 1);
+//     }
+// 
+//     auto new_tensor = this->view(prepend_shape);
+// 
+//     // now prepend_shape.size() == new_shape.size()
+//     std::vector<int> new_stride;
+//     for (int i=0; i < new_shape.size(); i++) {
+//         if ((new_shape[i] != prepend_shape[i]) && prepend_shape[i] != 1) {
+//             throw std::invalid_argument("The dimension to be broadcasted must be 1.");
+//         }
+//         new_stride.push_back(prepend_shape[i] == 1 ? 0 : new_tensor.stride_[i]);
+//     }
+// 
+//     return Tensor<dtype>(std::move(new_shape), std::move(new_stride), new_tensor.offset_, new_tensor.data_);
+// }
+
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) const {
     if (this->shape() == new_shape) 
@@ -597,13 +632,16 @@ Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) con
 
     auto prepend_shape = this->shape(); // if this->shape().size() < new_shape().size, prepend 1 before this->shape().
 
+    auto prepend_stride = this->stride_;
+
     if (prepend_shape.size() > new_shape.size()) {
         throw std::invalid_argument("The new shape must be greater than or equal to the original shape.");
     } else if (prepend_shape.size() < new_shape.size()) {
-        prepend_shape.insert(prepend_shape.begin(), new_shape.size() - prepend_shape.size(), 1);
+        prepend_shape.insert(prepend_shape.begin(), new_shape.size() - this->shape_.size(), 1);
+        prepend_stride.insert(prepend_stride.begin(), new_shape.size() - this->shape_.size(), 0);
     }
 
-    auto new_tensor = this->view(prepend_shape);
+    // auto new_tensor = this->view(prepend_shape);
 
     // now prepend_shape.size() == new_shape.size()
     std::vector<int> new_stride;
@@ -611,10 +649,11 @@ Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) con
         if ((new_shape[i] != prepend_shape[i]) && prepend_shape[i] != 1) {
             throw std::invalid_argument("The dimension to be broadcasted must be 1.");
         }
-        new_stride.push_back(prepend_shape[i] == 1 ? 0 : new_tensor.stride_[i]);
+        // new_stride.push_back(prepend_shape[i] == 1 ? 0 : new_tensor.stride_[i]);
+        new_stride.push_back(prepend_shape[i] == 1 ? 0 : prepend_stride[i]);
     }
 
-    return Tensor<dtype>(std::move(new_shape), std::move(new_stride), new_tensor.offset_, new_tensor.data_);
+    return Tensor<dtype>(std::move(new_shape), std::move(new_stride), this->offset_, this->data_);
 }
 
 // negative operator
@@ -925,6 +964,20 @@ Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other, dt
         a = a.broadcast_to(new_shape); 
         b = b.broadcast_to(new_shape);
     }
+
+    // maybe we can do not call contiguous() to make it faster...
+    /**
+        import torch
+        # Create a base tensor and a non-contiguous tensor
+        a = torch.rand(3, 1)   # Shape (3, 1)
+        b = torch.rand(3, 3).permute(1, 0)  # Shape (3, 3) but non-contiguous
+
+        # Perform an operation that requires broadcasting
+        result = a + b  # Broadcasting will occur here
+
+        print(result)
+        print(result.is_contiguous())  # The result might be non-contiguous if any input was non-contiguous
+     */
 
     a = a.contiguous(); // if broadcast have influence on the result of contiguous?? (seems no, because contiguous will allocate actually memory for array)
     b = b.contiguous();
