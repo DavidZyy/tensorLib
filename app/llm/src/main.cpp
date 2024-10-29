@@ -13,8 +13,8 @@
 
 // const std::string prompt = "One";
 const std::string prompt = "In your daily life";
-const std::string tokenizer_path = "./tokenizer.bin";
-const std::string checkpoint = "./stories15M.bin";
+const std::string tokenizer_path = "../tokenizer.bin";
+const std::string checkpoint = "../stories15M.bin";
 
 // from llama2.c project
 typedef struct {

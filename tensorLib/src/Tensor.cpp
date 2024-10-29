@@ -321,13 +321,21 @@ Tensor<dtype> Tensor<dtype>::slice(int startIdx, int endIdx, int dim) const {
     }
 
     // copy
-    Tensor<dtype> result = *this;
-    result.shape_[dim] = endIdx - startIdx;
-    result.num_elements = result.num_elements / this->shape_[dim] * result.shape_[dim];
+//     Tensor<dtype> result = *this;
+//     result.shape_[dim] = endIdx - startIdx;
+//     result.num_elements = result.num_elements / this->shape_[dim] * result.shape_[dim];
+// 
+//     result.offset_ = this->offset_ + startIdx * this->stride_[dim];
+    std::vector<std::vector<int>> slices;
+    for (int i=0; i<this->ndim; i++) {
+        if (i == dim) {
+            slices.push_back({startIdx, endIdx});
+        } else {
+            slices.push_back({}); // select whole
+        }
+    }
 
-    result.offset_ = this->offset_ + startIdx * this->stride_[dim];
-
-    return result;
+    return getItem(slices);
 }
 
 /**
@@ -344,27 +352,36 @@ Tensor<dtype> Tensor<dtype>::select(int dim, int index) const {
         throw std::invalid_argument("Invalid slice range.");
     }
 
-    // one dimension is removed
-    std::vector<int> new_shape(this->shape().size()-1);
-    std::vector<int> new_stride(this->shape().size()-1);
-
-    for (int i=0; i < new_shape.size(); i++) {
-        if (i < dim) {
-            new_shape[i] = this->shape_[i];
-            new_stride[i] = this->stride_[i];
+//     // one dimension is removed
+//     std::vector<int> new_shape(this->shape().size()-1);
+//     std::vector<int> new_stride(this->shape().size()-1);
+// 
+//     for (int i=0; i < new_shape.size(); i++) {
+//         if (i < dim) {
+//             new_shape[i] = this->shape_[i];
+//             new_stride[i] = this->stride_[i];
+//         } else {
+//             new_shape[i] = this->shape_[i+1];
+//             new_stride[i] = this->stride_[i+1];
+//         }
+//     }
+// 
+//     Tensor<dtype> result(new_shape);
+//     result.data_ = this->data_;
+//     result.offset_ = this->offset_ + this->stride_[dim] * index;
+//     result.stride_ = new_stride;
+// 
+//     // std::cout<<"result data address: "<<&result.data_[0]<<" this data address: "<<&this->data_[0]<<std::endl;
+//     return result;  
+    std::vector<std::vector<int>> slices;
+    for (int i=0; i<this->ndim; i++) {
+        if (i == dim) {
+            slices.push_back({index, index+1});
         } else {
-            new_shape[i] = this->shape_[i+1];
-            new_stride[i] = this->stride_[i+1];
+            slices.push_back({});
         }
     }
-
-    Tensor<dtype> result(new_shape);
-    result.data_ = this->data_;
-    result.offset_ = this->offset_ + this->stride_[dim] * index;
-    result.stride_ = new_stride;
-
-    // std::cout<<"result data address: "<<&result.data_[0]<<" this data address: "<<&this->data_[0]<<std::endl;
-    return result;
+    return getItem(slices);
 }
 
 template <typename dtype>
@@ -387,8 +404,10 @@ Tensor<dtype> Tensor<dtype>::contiguous() const {
 
     # pragma omp parallel for
     for (int i=0; i < this->num_elements; i++) {
-        std::vector<int> cur_idx = this->getIndicesFromLinearIndex(i);
-        size_t linearIdx = this->calculateLinearIndex(cur_idx);
+        // merge this two operation, names it convert idx???
+        // std::vector<int> cur_idx = this->getIndicesFromLinearIndex(i);
+        // size_t linearIdx = this->calculateLinearIndex(cur_idx);
+        size_t linearIdx = this->convertIdx(i);
         result.data_[i] = this->data_[linearIdx];
     }
     return result;
@@ -438,9 +457,10 @@ Tensor<float> Tensor<dtype>::dequantize() const {
 
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) const {
+    // assert(this->shape().size() == this->ndim);
     slices = process_slices(slices);
 
-    if (slices.size() != this->shape().size()) {
+    if (slices.size() != this->ndim) {
         throw std::invalid_argument("The number of slices must be equal to the number of dimensions.");
     }
 
@@ -448,7 +468,7 @@ Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) cons
     std::vector<int> new_stride;
     int new_offset = this->offset_;
     
-    for (int i=0; i < slices.size(); i++) {
+    for (int i=0; i < this->ndim; i++) {
         int start = slices[i][0], stop = slices[i][1], step = slices[i][2];
 
         new_shape.push_back((stop - start + (step - 1)) / step);
@@ -486,8 +506,9 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<
     
     # pragma omp parallel for
     for (int i = 0; i < out.num_elements; i++) {
-        std::vector<int> cur_idx = out.getIndicesFromLinearIndex(i);
-        size_t linearIdx = out.calculateLinearIndex(cur_idx);
+        // std::vector<int> cur_idx = out.getIndicesFromLinearIndex(i);
+        // size_t linearIdx = out.calculateLinearIndex(cur_idx);
+        size_t linearIdx = out.convertIdx(i);
         out.data_[linearIdx] = value.data_[i]; // index value use i directly, value should be contiguous.
     }
 }
@@ -505,8 +526,10 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, dtype value) 
     
     # pragma omp parallel for
     for (int i=0; i < out.num_elements; i++) {
-        std::vector<int> cur_idx = out.getIndicesFromLinearIndex(i);
-        size_t linearIdx = out.calculateLinearIndex(cur_idx);
+        // std::vector<int> cur_idx = out.getIndicesFromLinearIndex(i);
+        // size_t linearIdx = out.calculateLinearIndex(cur_idx);
+        size_t linearIdx = out.convertIdx(i);
+        // std::cout << "linearIdx: " << linearIdx << " linearIdx2: " << linearIdx2 << std::endl;
         out.data_[linearIdx] = value;
     }
 }

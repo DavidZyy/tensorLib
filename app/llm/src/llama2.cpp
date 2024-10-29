@@ -11,7 +11,7 @@ template class Llama2<float>;
 template <typename dtype>
 Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
     // int total_len = 128;
-    int total_len = 20;
+    int total_len = 50;
     Tensor<dtype> tokens({1, total_len}); // (bsz, max_seq_len)
     int prompt_len = prompt_tokens.size();
 

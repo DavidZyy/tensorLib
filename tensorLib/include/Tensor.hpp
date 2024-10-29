@@ -234,16 +234,52 @@ private:
      *  but below stride method seems can not used in setItem or contiguous method(no contiguous?).
      */
     inline std::vector<int> getIndicesFromLinearIndex(size_t linear_index) const {
-        std::vector<int> indices(this->shape_.size(), 0);
+        // assert(this->shape_.size() == this->ndim);
+        // std::vector<int> indices(this->ndim);
+        std::vector<int> indices(this->shape_.size());
         
         // Iterate from the last dimension to the first(0 dim), because the data is stored contiguously form last dim(the last dim's stride is 1).
-        for (int i = shape_.size() - 1; i >= 0; --i) {
+        // for (int i = this->ndim - 1; i >= 0; --i) {
+        for (int i = this->shape_.size()-1; i >= 0; --i) {
             indices[i] = linear_index % shape_[i];
             linear_index /= shape_[i];
         }
     
         return indices;
     }
+
+    /**
+     * fuse getIndicesFromLinearIndex and calculateLinearIndex
+     */
+    inline size_t convertIdx(size_t linear_index) const {
+        size_t linear_index_new = 0;
+
+        for (int i = this->ndim - 1; i >= 0; --i) {
+            int cur_dim_id = linear_index % this->shape_[i];
+            linear_index /= this->shape_[i];
+            linear_index_new += cur_dim_id * this->stride_[i];
+        }
+
+        return linear_index_new + this->offset_;
+    }
+
+//     inline std::vector<int> getIndicesFromLinearIndex(size_t linear_index) const {
+//     std::vector<int> indices(this->shape_.size());
+//     std::vector<size_t> strides(this->shape_.size());
+// 
+//     strides.back() = 1;
+//     for (int i = shape_.size() - 2; i >= 0; --i) {
+//         strides[i] = strides[i + 1] * shape_[i + 1];
+//     }
+// 
+//     for (int i = 0; i < shape_.size(); ++i) {
+//         indices[i] = linear_index / strides[i];
+//         linear_index %= strides[i];
+//     }
+//     
+//     return indices;
+// }
+
 
     // can handle non-contiguous Tensor
 //     inline std::vector<int> getIndicesFromLinearIndex(size_t linear_index) const {
@@ -436,8 +472,10 @@ inline size_t Tensor<dtype>::calculateLinearIndex(const std::vector<int>& indice
     // if (indices.size() != shape_.size() || indices.size() != ndim) {
     //     throw std::invalid_argument("Error: Indices size does not match tensor dimension");
     // }
+    // assert(indices.size() == this->ndim);
 
     size_t linear_index = 0;
+    // for (size_t i = 0; i < this->ndim; ++i) {
     for (size_t i = 0; i < indices.size(); ++i) {
         // if (indices[i] < 0 || indices[i] >= shape_[i]) {
         //     throw std::out_of_range("Error: Index out of range");
