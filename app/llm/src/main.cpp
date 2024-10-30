@@ -17,7 +17,8 @@ const std::string prompt = "";
 const std::string tokenizer_path = "../tokenizer.bin";
 // const std::string checkpoint = "../stories15M.bin";
 // const std::string checkpoint = "../stories42M.bin";
-const std::string checkpoint = "../stories110M.bin";
+// const std::string checkpoint = "../stories110M.bin";
+// const std::string checkpoint = "/raid/home/zhuyangyang/LLAMA/llama2.c/llama2_7b.bin";
 
 // from llama2.c project
 typedef struct {
@@ -99,10 +100,10 @@ void memory_map_weights(Llama2<float>& generator, float* ptr, int shared_weight)
     // generator.model.norm
 }
 
-void read_weights(Llama2<float>& generator,  int shared_weight) {
+void read_weights(char* checkpoint, Llama2<float>& generator,  int shared_weight) {
     ModelArgs p = generator.model.params;
-    FILE *file = fopen(checkpoint.c_str(), "rb");
-    if (!file) { fprintf(stderr, "Couldn't open file %s\n", checkpoint.c_str()); exit(EXIT_FAILURE); }
+    FILE *file = fopen(checkpoint, "rb");
+    if (!file) { fprintf(stderr, "Couldn't open file %s\n", checkpoint); exit(EXIT_FAILURE); }
 
     int head_size = p.dim / p.n_heads;
     size_t n_layers = p.n_layers;
@@ -191,15 +192,19 @@ void read_weights(Llama2<float>& generator,  int shared_weight) {
     ptr = new float[p.dim]; //allocate 
     fread(ptr, sizeof(float), p.dim, file);
     generator.model.norm.weight.data_ = std::shared_ptr<float[]>(ptr);
-    // std::cout << "norm " << std::endl;
-    // std::cout << generator.model.norm.weight << std::endl;
-    // ptr += p.dim;
-    // ptr += p.seq_len * head_size / 2; // skip what used to be freq_cis_real (for RoPE)
-    // ptr += p.seq_len * head_size / 2; // skip what used to be freq_cis_imag (for RoPE)
-    // ptr += 256 * head_size / 2; // skip what used to be freq_cis_real (for RoPE)
-    // ptr += 256 * head_size / 2; // skip what used to be freq_cis_imag (for RoPE)
-    assert(shared_weight == 1);
-    generator.model.output.weight.data_ = shared_weight ? generator.model.tok_embeddings.weight.data_ : std::shared_ptr<float[]>(ptr);
+
+    if (shared_weight) {
+        generator.model.output.weight.data_ = generator.model.tok_embeddings.weight.data_;
+    } else {
+        // fseek(file, p.max_seq_len * head_size, SEEK_CUR); // rope
+        ptr = new float[p.max_seq_len * head_size];
+        fread(ptr, sizeof(float), p.max_seq_len* head_size, file);
+        delete [] ptr;
+        ptr = new float[p.vocab_size * p.dim];
+        fread(ptr, sizeof(float), p.vocab_size * p.dim, file);
+        generator.model.output.weight.data_ = std::shared_ptr<float[]>(ptr);
+    }
+
     // generator.model.norm
     fclose(file);
 }
@@ -207,9 +212,9 @@ void read_weights(Llama2<float>& generator,  int shared_weight) {
 /**
  * read args and parameters from checkpoint file.
  */
-Llama2<float> read_checkpoint() {
-    FILE *file = fopen(checkpoint.c_str(), "rb");
-    if (!file) { fprintf(stderr, "Couldn't open file %s\n", checkpoint.c_str()); exit(EXIT_FAILURE); }
+Llama2<float> read_checkpoint(char * checkpoint) {
+    FILE *file = fopen(checkpoint, "rb");
+    if (!file) { fprintf(stderr, "Couldn't open file %s\n", checkpoint); exit(EXIT_FAILURE); }
     Config config;
     if (fread(&config, sizeof(Config), 1, file) != 1) { exit(EXIT_FAILURE); }
     int shared_weight = config.vocab_size > 0 ? 1 : 0;
@@ -238,11 +243,11 @@ Llama2<float> read_checkpoint() {
 // 
 //     float* weights_ptr = *data + sizeof(Config)/sizeof(float);
     // memory_map_weights(generator, weights_ptr, shared_weight);
-    read_weights(generator, shared_weight);
+    read_weights(checkpoint, generator, shared_weight);
     return generator;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     ModelArgs args;
     // args.dim = 256;
     args.dim = 16;
@@ -259,7 +264,7 @@ int main() {
     // float **data = new float*;
     // int* fd = new int;
     // size_t* file_size = new size_t;
-    auto generator = read_checkpoint();
+    auto generator = read_checkpoint(argv[1]);
     generator.text_completion(prompt);
 
     // munmap data and close fd here!

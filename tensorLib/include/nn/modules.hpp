@@ -47,8 +47,8 @@ public:
 template <typename dtype>
 Linear<dtype>::Linear(int in_features, int out_features)
     : in_features(in_features), out_features(out_features),
-      // weight(Tensor<dtype>(std::vector<int>{out_features, in_features}))
-      weight(randn<dtype>({out_features, in_features})) {
+      weight(Tensor<dtype>(std::vector<int>{out_features, in_features})){
+      // weight(randn<dtype>({out_features, in_features})) { // randn use a lot of time when parameter initialization
 } // maybe should add kaiming uniform first !!
 
 // template <typename dtype>
@@ -224,7 +224,8 @@ public:
 template <typename dtype>
 Embedding<dtype>::Embedding(int num_embeddings, int embedding_dim)
     : num_embeddings(num_embeddings), embedding_dim(embedding_dim),
-      weight(randn<dtype>({num_embeddings, embedding_dim})) {}
+      weight(Tensor<dtype>({num_embeddings, embedding_dim})) {}
+      // weight(randn<dtype>({num_embeddings, embedding_dim})) {}
 // num_embeddings(num_embeddings), embedding_dim(embedding_dim),
 // weight(Tensor<dtype>({num_embeddings, embedding_dim})) {}
 
