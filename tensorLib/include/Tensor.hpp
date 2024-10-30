@@ -74,6 +74,8 @@ public:
     // print methed // Declaration of friend function
     template <typename T>
     friend std::ostream& operator<<(std::ostream& os, const Tensor<T>& tensor);
+    template <typename T>
+    friend std::ostream& outputTensor(std::ostream& os, const Tensor<T>& tensor);
 
     // Method to get shape
     const std::vector<int>& shape() const {
@@ -122,7 +124,7 @@ public:
     template<typename T> friend Tensor<T> randn(const std::vector<int>& shape, T mean, T std);
 
     template<typename T>
-    friend Tensor<T> apply_rotary_emb(Tensor<T> input, Tensor<T> freqs);
+    friend Tensor<T> apply_rotary_emb(Tensor<T> input, Tensor<T> freqs, int start_pos);
 
     Tensor<dtype> transpose(int dim0, int dim1) const;
     Tensor<dtype> permute(const std::vector<int>& new_axes) const;
@@ -362,6 +364,21 @@ std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
     return os;
 }
 
+template <typename dtype>
+std::ostream& outputTensor(std::ostream& os, const Tensor<dtype>& tensor) {
+    const auto& shape = tensor.shape();
+    const auto& data = tensor.data();
+
+    if (shape.size() == 0) {
+        // os << "[]";
+        os << tensor.data_[0];
+    } else {
+        tensor.printTensor(os, 0, {});
+    }
+
+    return os;
+}
+
 template <typename T>
 Tensor<T> maximum(Tensor<T> a, Tensor<T> b) {
     // assume b is a scala.
@@ -430,7 +447,7 @@ bool Tensor<dtype>::is_contiguous(const Tensor<dtype>& t) const {
  * input's shape is [B, T, n_heads, head_dim]
  */
 template <typename dtype>
-Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs) {
+Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs, int start_pos) {
     if (input.shape().size() != 4 || freqs.shape().size() != 2) {
         throw std::invalid_argument("Invalid shape.");
     }
@@ -442,12 +459,13 @@ Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs) {
 
     Tensor<dtype> result(input.shape());
 
-    #pragma omp parallel for collapse(4)
+    // #pragma omp parallel for collapse(4)
     for (int i = 0; i < B; ++i) {
         for (int j = 0; j < T; ++j) {
             for (int k = 0; k < n_heads; ++k) {
                 for (int l = 0; l < head_dim; l += 2) {
-                    dtype theta = freqs.data_[j * freqs.shape()[0] + l / 2];
+                    // dtype theta = freqs.data_[j * freqs.shape()[0] + l / 2];
+                    dtype theta = start_pos * 1.0f / std::pow(10000.0f, (float)l / (float)head_dim);
                     dtype cos_theta = std::cos(theta);
                     dtype sin_theta = std::sin(theta);
 
@@ -455,7 +473,7 @@ Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs) {
                     auto v1 = input.getData({i, j, k, l + 1});
 
                     result.setData({i, j, k, l}, v0 * cos_theta - v1 * sin_theta);
-                    result.setData({i, j, k, l + 1}, v0 * cos_theta + v1 * sin_theta);
+                    result.setData({i, j, k, l + 1}, v0 * sin_theta + v1 * cos_theta);
                 }
             }
         }

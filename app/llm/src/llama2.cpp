@@ -10,8 +10,10 @@ template class Llama2<float>;
 
 template <typename dtype>
 Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
+    // int total_len = 1024;
+    int total_len = 256;
     // int total_len = 128;
-    int total_len = 50;
+    // int total_len = 12;
     Tensor<dtype> tokens({1, total_len}); // (bsz, max_seq_len)
     int prompt_len = prompt_tokens.size();
 
@@ -30,7 +32,11 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
         auto logits = model.forward(tokens.getItem(slices), prev_pos);  // logits.shape = (bsz, seq_len, vocab_size), seq_len = cur_pos - prev_pos
         slices = {{}, {logits.shape_[1]-1, logits.shape_[1]}, {}};
         logits = logits.getItem(slices); // (bsz, vocab_size), get the last of dim=1
+
+        // std::cout << logits << std::endl;
+
         auto next_token = logits.argmax(-1); // (bsz, )
+        if (next_token.data_[0] == 1) break;
 
         // std::cout << next_token.data_[0] << " " << std::flush;
         std::cout << this->tokenizer.decode(-1, next_token.data_[0]) << std::flush; // use flush to output immediately, not cache in buffer

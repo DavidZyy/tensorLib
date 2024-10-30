@@ -305,5 +305,11 @@ def test_setItem(shape, operand):
     assert np_data.size == tensor_data_np.size
     np.testing.assert_allclose(np_data, tensor_data_np, atol=1e-5, rtol=1e-5)
 
+
 def test_broadcast():
     pass
+
+
+def test_reshape():
+    pass
+

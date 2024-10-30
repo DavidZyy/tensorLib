@@ -33,8 +33,8 @@ Tensor<dtype> Attention<dtype>::forward(const Tensor<dtype>& x, int start_pos, c
     xk = xk.view({bsz, seqlen, n_heads, head_dim});
     xv = xv.view({bsz, seqlen, n_heads, head_dim});
 
-    xq = apply_rotary_emb(xq, freqs);
-    xk = apply_rotary_emb(xk, freqs);
+    xq = apply_rotary_emb(xq, freqs, start_pos);
+    xk = apply_rotary_emb(xk, freqs, start_pos);
 
     // put the computed k, v into kv_cache
     std::vector<std::vector<int>> slices  = {{0, bsz}, {start_pos, start_pos+seqlen}, {}, {}};

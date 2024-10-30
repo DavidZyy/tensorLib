@@ -1020,3 +1020,9 @@ template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(dtype scalar) c
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(dtype scalar) const { return applyBinaryScalarOperation(scalar, multiply<dtype>); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(dtype scalar) const { return applyBinaryScalarOperation(scalar, divide<dtype>); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::pow(dtype scalar) const { return applyBinaryScalarOperation(scalar, power<dtype>); }
+
+
+/** can be called in gdb, operator << can not be called... */
+void print_tensor_float(const Tensor<float>& tensor) {
+    std::cout << tensor << std::endl << std::endl;
+}

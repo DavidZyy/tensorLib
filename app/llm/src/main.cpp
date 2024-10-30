@@ -11,11 +11,13 @@
 #include <sys/mman.h>
 #include <unistd.h> // Add this line at the top of your file
 
-// const std::string prompt = "One";
-const std::string prompt = "In your daily life";
+// const std::string prompt = "Once";
+const std::string prompt = "";
+// const std::string prompt = "Once upon a time";
 const std::string tokenizer_path = "../tokenizer.bin";
-const std::string checkpoint = "../stories15M.bin";
+// const std::string checkpoint = "../stories15M.bin";
 // const std::string checkpoint = "../stories42M.bin";
+const std::string checkpoint = "../stories110M.bin";
 
 // from llama2.c project
 typedef struct {
