@@ -9,34 +9,7 @@
 #include <vector>
 #include <ostream>
 #include <atomic>
-
-// Forward declaration of Tensor class
-// template <typename dtype>
-// class Tensor;
-
-// Nested indexing using []
-// tensor[i][j][k][t] return a tensor which shape 1, not a dtype.
-// template <typename dtype>
-// struct TensorProxy {
-//     Tensor<dtype>& tensor;
-//     std::vector<int> indices;
-// 
-//     // Constructor
-//     TensorProxy(Tensor<dtype>& t, std::vector<int> idx) : tensor(t), indices(std::move(idx)) {}
-// 
-//     // Overloaded operator[] for nested indexing
-//     TensorProxy operator[](int idx) {
-//         indices.push_back(idx);
-//         return *this;
-//     }
-// 
-//     // Assignment operator to set value in the tensor
-//     dtype& operator=(dtype value) {
-//         tensor.setData(indices, value);
-//         // size_t linear_index = calculateLinearIndex(indices);
-//         return tensor(indices);
-//     }
-// };
+#include "Device.hpp"
 
 static std::atomic<size_t> memoryUsage(0);
 
@@ -63,9 +36,9 @@ class Tensor {
 public:
     // Constructor
     Tensor() = default;
-    Tensor(const std::vector<int>& shape);
-    Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data);
-    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data);
+    Tensor(const std::vector<int>& shape, const std::string& device = "cpu");
+    Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data, const std::string& device = "cpu");
+    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device = "cpu");
     template<typename OtherType> Tensor(const Tensor<OtherType>& other); // support static cast
 
     // Destructor
@@ -265,35 +238,10 @@ private:
         return linear_index_new + this->offset_;
     }
 
-//     inline std::vector<int> getIndicesFromLinearIndex(size_t linear_index) const {
-//     std::vector<int> indices(this->shape_.size());
-//     std::vector<size_t> strides(this->shape_.size());
-// 
-//     strides.back() = 1;
-//     for (int i = shape_.size() - 2; i >= 0; --i) {
-//         strides[i] = strides[i + 1] * shape_[i + 1];
-//     }
-// 
-//     for (int i = 0; i < shape_.size(); ++i) {
-//         indices[i] = linear_index / strides[i];
-//         linear_index %= strides[i];
-//     }
-//     
-//     return indices;
-// }
+    // Device<dtype> device; // error, abstract class can not be member
 
-
-    // can handle non-contiguous Tensor
-//     inline std::vector<int> getIndicesFromLinearIndex(size_t linear_index) const {
-//         std::vector<int> indices(shape_.size(), 0);
-// 
-//         for (int i = 0; i < shape_.size(); ++i) {
-//             indices[i] = linear_index / stride_[i];
-//             linear_index %= stride_[i];
-//         }
-// 
-//         return indices;
-//     }
+    // num_elements should not put in device, maybe should put in Tensor ...
+    std::shared_ptr<Device<dtype>> device;
 };
 
 // Definition of the conversion constructor outside the class
