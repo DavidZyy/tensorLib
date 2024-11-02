@@ -24,7 +24,7 @@ template class Tensor<float>;
 // template class Tensor<uint8_t>;
 
 template <typename dtype>
-Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::string& device) : ndim(shape.size()), shape_(shape), offset_(0) {
+Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::string& device) : ndim(shape.size()), shape_(shape), offset_(0), device_type(device) {
         num_elements = 1; // even shape is empty, it should have 1 elem, means a scala.
         for (int dim : shape) {
             num_elements *= dim;
@@ -65,7 +65,7 @@ template <typename dtype>
 // Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>&& data) 
 //     : ndim(shape.size()), shape_(shape), data_(std::move(data)), offset_(0) {    // use move semantic
 Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data, const std::string& device)
-    : ndim(shape.size()), shape_(shape), data_(data), offset_(0) {
+    : ndim(shape.size()), shape_(shape), data_(data), offset_(0), device_type(device) {
         // Calculate the total number of elements in the tensor
         num_elements = 1;
         for (int dim : shape) {
@@ -99,7 +99,7 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype
  */
 template <typename dtype>
 Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device):
-ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), data_(data) {
+ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), data_(data), device_type(device) {
     this-> num_elements = 1;
     for (int dim : shape) {
         this->num_elements *= dim;
@@ -146,9 +146,8 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
 
         for (int i = 0; i < shape_[depth]; ++i) {
             if (i > 0) os << ", ";
-            // os << std::setw(3) << data_[idx + i];
-            // os << std::setw(3) << data_[idx + i + offset_];
-            os << std::setw(3) << data_[idx + i*stride_[depth] + offset_];
+            // os << std::setw(3) << data_[idx + i*stride_[depth] + offset_];
+            os << std::setw(3) << this->device->getDataLinear(idx + i*stride_[depth] + offset_);
         }
         os << "]";
     } else {
@@ -305,6 +304,10 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
 template <typename dtype>
 // Tensor<dtype> Tensor<dtype>::batched_matmul(const Tensor<dtype>& other) const {
 Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
+    if (this->device_type != other.device_type) {
+        throw std::invalid_argument("Tensors must be on the same device.");
+    }
+
     // Ensure dimensionality is compatible for matrix multiplication
     if (this->ndim < 2 || other.ndim < 2) {
         throw std::invalid_argument("Tensors must have at least 2 dimensions for matmul.");
@@ -1055,6 +1058,10 @@ std::vector<int> Tensor<dtype>::get_broadcast_shape(std::vector<int>& shape_a, s
  */
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const {
+    if (this->device_type != other.device_type) {
+        throw std::invalid_argument("The device type of the two tensors must be the same.");
+    }
+
     Tensor<dtype> a = *this, b = other;
     
     // implicit broadcasting

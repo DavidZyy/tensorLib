@@ -6,6 +6,7 @@
 #include <iostream>
 #include <memory>
 #include <random>
+#include <string>
 #include <vector>
 #include <ostream>
 #include <atomic>
@@ -92,6 +93,7 @@ public:
     template<typename T>
     friend Tensor<T> maximum(Tensor<T> a, Tensor<T> b);
 
+    template<typename T> friend Tensor<T> full(const std::vector<int>& shape, T fill_value, const std::string& device);
     template<typename T> friend Tensor<T> zeros(const std::vector<int>& shape);
     template<typename T> friend Tensor<T> ones(const std::vector<int>& shape);
     template<typename T> friend Tensor<T> randn(const std::vector<int>& shape, T mean, T std);
@@ -165,6 +167,7 @@ public:
     std::vector<int> stride_;
     int ndim;
     std::vector<int> shape_;
+    std::string device_type;
 private:
 
     // helper method for operator<<
@@ -302,6 +305,7 @@ std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
     const auto& shape = tensor.shape();
     const auto& data = tensor.data();
 
+    // scalar
     if (shape.size() == 0) {
         // os << "[]";
         os << tensor.data_[0];
@@ -312,6 +316,10 @@ std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
     return os;
 }
 
+/**
+ * same as operator<<, used for debug, since operator<< can not be called in vscode DEBUG CONSOLE.
+ * @tparam dtype 
+ */
 template <typename dtype>
 std::ostream& outputTensor(std::ostream& os, const Tensor<dtype>& tensor) {
     const auto& shape = tensor.shape();
@@ -349,12 +357,19 @@ Tensor<dtype> zeros(const std::vector<int>& shape) {
     return result;
 }
 
+// template <typename dtype>
+// Tensor<dtype> ones(const std::vector<int>& shape) {
+//     Tensor<dtype> result = Tensor<dtype>(shape);
+//     for(auto i = 0; i < result.num_elements; ++i) {
+//         result.data_[i] = 1;
+//     }
+//     return result;
+// }
+
 template <typename dtype>
-Tensor<dtype> ones(const std::vector<int>& shape) {
-    Tensor<dtype> result = Tensor<dtype>(shape);
-    for(auto i = 0; i < result.num_elements; ++i) {
-        result.data_[i] = 1;
-    }
+Tensor<dtype> full(const std::vector<int>& shape, dtype fill_value, const std::string& device = "cpu") {
+    Tensor<dtype> result = Tensor<dtype>(shape, device);
+    result.device->full(result.num_elements, fill_value);
     return result;
 }
 

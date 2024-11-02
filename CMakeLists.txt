@@ -150,3 +150,7 @@ set_target_properties(tensorLib
 
 ################################## linke library to application ##########################################################
 
+# Add tests
+add_executable(test_device tensorLib/test/test_device.cpp)
+target_link_libraries(test_device PRIVATE tensorLib)
+

@@ -3,22 +3,24 @@
 #include "omp.h"
 #include <cstddef>
 
+template class CPU<float>;
+template class CPU<int>;
 
 /**
  * matmul operation on CPU
  * @tparam dtype 
  */
 template<typename dtype>
-void CPU<dtype>::matmul(dtype* lhs, dtype* rhs, dtype* result, 
-        std::vector<int>& lhs_stride, 
-        std::vector<int>& rhs_stride, 
+void CPU<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result, 
+        const std::vector<int>& lhs_stride, 
+        const std::vector<int>& rhs_stride, 
         size_t lhs_offset,
         size_t rhs_offset,
-        std::vector<int>& result_shape, 
+        const std::vector<int>& result_shape, 
         size_t result_elements,
         size_t K
-        ) {
-
+        ) 
+{
     size_t ndim = result_shape.size();
 
     #pragma omp parallel for
@@ -26,7 +28,6 @@ void CPU<dtype>::matmul(dtype* lhs, dtype* rhs, dtype* result,
 
         size_t linear_index = idx;
         size_t Aoff = lhs_offset, Boff = rhs_offset;
-        int row, col;
 
         for (int i = ndim - 1; i >= 0; --i) {
             int cur_dim_id = linear_index % result_shape[i];
@@ -48,4 +49,17 @@ void CPU<dtype>::matmul(dtype* lhs, dtype* rhs, dtype* result,
         result[idx] = sum;
     }
 
+}
+
+template <typename dtype>
+void CPU<dtype>::full (size_t num_elements, dtype fill_value){
+    #pragma omp parallel for
+    for (size_t i = 0; i < num_elements; ++i) {
+        this->data_[i] = fill_value;
+    }
+}
+
+template <typename dtype>
+dtype CPU<dtype>:: getDataLinear(size_t linear_index) const{
+    return this->data_[linear_index];
 }

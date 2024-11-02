@@ -9,9 +9,10 @@
       "type": "cppdbg",
       "request": "launch",
       // "program": "${workspaceFolder}/build/${fileBasenameNoExtension}",
-      "program": "${workspaceFolder}/build/main",
+      // "program": "${workspaceFolder}/build/main",
+      "program": "${workspaceFolder}/build/test_device",
       "args": [
-        "/raid/home/zhuyangyang/LLAMA/llama2.c/llama2_7b.bin",
+        // "/raid/home/zhuyangyang/LLAMA/llama2.c/llama2_7b.bin",
         // "../stories15M.bin",
         // "../stories42M.bin",
         // "../stories110M.bin",
