@@ -1,8 +1,31 @@
+#include "CUDA.hpp"
 #include "Tensor.hpp"
+#include <cstring>
+#include <cuda_runtime_api.h>
+#include <driver_types.h>
 #include <ostream>
 #include <chrono>
 
-int main() {
+Tensor<int> originTensor(const std::vector<int>& shape, const std::string& device_type) {
+    Tensor<int> tensor(shape, device_type);
+    
+    int *data = new int[tensor.num_elements];
+
+    for(auto i=0; i<tensor.num_elements; i++)
+        data[i] = i;
+
+    if (device_type == "cpu") {
+        std::memcpy(tensor.device->getDataPtr(), data,  tensor.num_elements * sizeof(int));
+    } else if (device_type == "cuda") {
+        CUDA_CHECK(cudaMemcpy(tensor.device->getDataPtr(), data, tensor.num_elements * sizeof(int), cudaMemcpyHostToDevice))
+    }
+
+    delete [] data;
+
+    return tensor;
+}
+
+void test_matmul() {
     Tensor<float> a = full({10000, 10000}, 1.0f, "cpu");
     Tensor<float> b = full({10000,10000}, 1.0f, "cuda");
 
@@ -25,4 +48,48 @@ int main() {
 
     // std::cout << "c: " << std::endl << c << std::endl;
     // std::cout << "d: " << std::endl << d << std::endl;
+}
+
+void test_contiguous() {
+    Tensor<int> a = originTensor({3, 4}, "cpu");
+    Tensor<int> b = originTensor({3, 4}, "cuda");
+
+    std::cout << "a: " << std::endl << a << std::endl;
+    std::cout << "b: " << std::endl << b << std::endl;
+
+    a = a.transpose(0, 1);
+    b = b.transpose(0, 1);
+
+    std::cout << "a: " << std::endl << a << std::endl;
+    for (int i = 0; i < a.num_elements; i++) {
+        std::cout << a.device->getDataLinear(i) << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "b: " << std::endl << b << std::endl;
+    for (int i = 0; i < b.num_elements; i++) {
+        std::cout << b.device->getDataLinear(i) << " ";
+    }
+    std::cout << std::endl;
+
+    // seems have bug...
+    a = a.contiguous();
+    b = b.contiguous();
+
+    std::cout << "a: " << std::endl << a << std::endl;
+    for (int i = 0; i < a.num_elements; i++) {
+        std::cout << a.device->getDataLinear(i) << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "b: " << std::endl << b << std::endl;
+    for (int i = 0; i < b.num_elements; i++) {
+        std::cout << b.device->getDataLinear(i) << " ";
+    }
+    std::cout << std::endl;
+
+}
+
+int main() {
+    test_contiguous();
 }

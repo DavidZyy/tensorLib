@@ -37,10 +37,11 @@ class Tensor {
 public:
     // Constructor
     Tensor() = default;
-    Tensor(const std::vector<int>& shape, const std::string& device = "cpu");
-    Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data, const std::string& device = "cpu");
-    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device = "cpu");
-    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, dtype *data_ptr, const std::string& device = "cpu");
+    Tensor(const std::vector<int>& shape, const std::string& device_type = "cpu");
+    Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data, const std::string& device_type = "cpu");
+    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device_type = "cpu");
+    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, dtype *data_ptr, const std::string& device_type = "cpu");
+    Tensor(const std::vector<int>& shape, const std::shared_ptr<Device<dtype>>& device, const std::string& device_type = "cpu");
     template<typename OtherType> Tensor(const Tensor<OtherType>& other); // support static cast
 
     // Destructor
@@ -198,7 +199,7 @@ private:
 
     // General template for inline unary operations
     inline Tensor<dtype> applyUnaryOperation(dtype (*func)(dtype)) const {
-        Tensor<dtype> result(this->shape_);
+        Tensor<dtype> result(this->shape_, this->device_type);
         
         // Inline parallel loop for performance (OpenMP enabled)
         #pragma omp parallel for

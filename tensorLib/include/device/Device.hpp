@@ -23,6 +23,12 @@ public:
     virtual void full (size_t num_elements, dtype fill_value) = 0;
     // get data by linear index
     virtual dtype getDataLinear(size_t liner_index) const = 0;
+    virtual void contiguous(
+        dtype* result, 
+        const std::vector<int>& shape,
+        const std::vector<int>& stride, 
+        size_t offset,
+        size_t num_elements) = 0;
 
 // private:
 };

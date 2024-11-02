@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 #include <iomanip>
+#include "Device.hpp"
 #include "iostream"
 #include "math.h"
 #include "omp.h"
@@ -24,7 +25,7 @@ template class Tensor<float>;
 // template class Tensor<uint8_t>;
 
 template <typename dtype>
-Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::string& device) : ndim(shape.size()), shape_(shape), offset_(0), device_type(device) {
+Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::string& device_type) : ndim(shape.size()), shape_(shape), offset_(0), device_type(device_type) {
         num_elements = 1; // even shape is empty, it should have 1 elem, means a scala.
         for (int dim : shape) {
             num_elements *= dim;
@@ -45,9 +46,9 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::string& device) 
             }
         }
 
-        if (device == "cpu") {
+        if (device_type == "cpu") {
             this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(num_elements));
-        } else if (device == "cuda") {
+        } else if (device_type == "cuda") {
             this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(num_elements));
         } else {
             throw std::invalid_argument("Invalid device name");
@@ -55,8 +56,8 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::string& device) 
 }
 
 template <typename dtype>
-Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data, const std::string& device)
-    : ndim(shape.size()), shape_(shape), data_(data), offset_(0), device_type(device) {
+Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data, const std::string& device_type)
+    : ndim(shape.size()), shape_(shape), data_(data), offset_(0), device_type(device_type) {
         // Calculate the total number of elements in the tensor
         num_elements = 1;
         for (int dim : shape) {
@@ -75,9 +76,9 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype
         }
 
         
-        if (device == "cpu") {
+        if (device_type == "cpu") {
             this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(num_elements));
-        } else if (device == "cuda") {
+        } else if (device_type == "cuda") {
             this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(num_elements));
         } else {
             throw std::invalid_argument("Invalid device name");
@@ -89,16 +90,16 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype
  * @tparam dtype 
  */
 template <typename dtype>
-Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device):
-ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), data_(data), device_type(device) {
+Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device_type):
+ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), data_(data), device_type(device_type) {
     this-> num_elements = 1;
     for (int dim : shape) {
         this->num_elements *= dim;
     }
 
-    if (device == "cpu") {
+    if (device_type == "cpu") {
         this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(num_elements));
-    } else if (device == "cuda") {
+    } else if (device_type == "cuda") {
         this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(num_elements));
     } else {
         throw std::invalid_argument("Invalid device name");
@@ -112,20 +113,43 @@ ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset
  * @tparam dtype 
  */
 template <typename dtype>
-Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, dtype* data_ptr, const std::string& device):
-ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), device_type(device) {
+Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, dtype* data_ptr, const std::string& device_type):
+ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), device_type(device_type) {
     this-> num_elements = 1;
     for (int dim : shape) {
         this->num_elements *= dim;
     }
 
-    if (device == "cpu") {
+    if (device_type == "cpu") {
         this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(data_ptr));
-    } else if (device == "cuda") {
+    } else if (device_type == "cuda") {
         this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(data_ptr));
     } else {
         throw std::invalid_argument("Invalid device name");
     }
+}
+
+template <typename dtype>
+Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<Device<dtype>>& device, const std::string& device_type) 
+: ndim(shape.size()), shape_(shape), offset_(0), device_type(device_type)
+{
+        this->num_elements = 1;
+        for (int dim : shape) {
+            this->num_elements *= dim;
+        }
+
+        // Allocate memory for data, offset, and stride arrays
+        this->stride_ = std::vector<int>(ndim);
+
+        // Initialize offset and stride arrays
+        if (ndim > 0) {
+            this->stride_[ndim - 1] = 1;
+            for (int i = ndim - 2; i >= 0; --i) {
+                this->stride_[i] = this->stride_[i + 1] * this->shape_[i + 1];
+            }
+        }
+
+        this->device = device;
 }
 
 template <typename dtype>
@@ -185,138 +209,7 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
     }
 }
 
-/**
- * batched matrix multiplication 
- * NOTE!!! THE IMPLEMENTATION MAY HAVE BUG WHEN TENSOR IS NOT CONTIGUOUS IN THE LAST 2 DIMENTIONS!!!!
- * @tparam dtype 
- */
-// template <typename dtype>
-// // Tensor<dtype> Tensor<dtype>::batched_matmul(const Tensor<dtype>& other) const {
-// Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
-//     // Ensure dimensionality is compatible for matrix multiplication
-//     if (this->ndim < 2 || other.ndim < 2) {
-//         throw std::invalid_argument("Tensors must have at least 2 dimensions for matmul.");
-//     }
-// 
-//     // The last dimension of A should match the second-to-last dimension of B
-//     if (this->shape_[this->ndim - 1] != other.shape_[other.ndim - 2]) {
-//         throw std::invalid_argument("Shape mismatch: the number of columns in the first tensor must match the number of rows in the second tensor.");
-//     }
-// 
-//     Tensor<dtype> A = *this;
-//     Tensor<dtype> B = other;
-// 
-//     size_t num_batch_dims = std::max(A.ndim - 2, B.ndim - 2);
-//     size_t dim_diff = std::abs(static_cast<int>(A.ndim) - static_cast<int>(B.ndim));
-// 
-//     // If needed, prepend dimensions to match larger tensor size
-//     std::vector<int> A_broadcast_shape = A.shape_;
-//     std::vector<int> B_broadcast_shape = B.shape_;
-//     std::vector<int> output_shape;
-// 
-//     // for example, A.shape = (2, 2, 3, 4, 5), B.shape = (3, 5, 4), after this, B.shape will be (1, 1, 3, 5, 4) -> (2, 2, 3, 5, 4)
-//     if (A.ndim < B.ndim) {
-//         A_broadcast_shape.insert(A_broadcast_shape.begin(), dim_diff, 1);
-//     } else if (B.ndim < A.ndim) {
-//         B_broadcast_shape.insert(B_broadcast_shape.begin(), dim_diff, 1);
-//     }
-// 
-//     // Adjust batch dimensions to be broadcast-compatible
-//     for (size_t i = 0; i < num_batch_dims; ++i) {
-//         if (A_broadcast_shape[i] != B_broadcast_shape[i]) {
-//             if (A_broadcast_shape[i] == 1) {
-//                 A_broadcast_shape[i] = B_broadcast_shape[i];
-//             } else if (B_broadcast_shape[i] == 1) {
-//                 B_broadcast_shape[i] = A_broadcast_shape[i];
-//             } else {
-//                 throw std::invalid_argument("Shape mismatch: the batch dimensions must be broadcastable.");
-//             }
-//         }
-//         output_shape.push_back(A_broadcast_shape[i]);
-//     }
-// 
-//     // Update A and B to their broadcast shapes
-//     // A = A.contiguous().broadcast_to(A_broadcast_shape).contiguous(); // contiguous use lots of time
-//     // B = B.contiguous().broadcast_to(B_broadcast_shape).contiguous();
-// 
-//     // can we get rid of the contiguous() ??
-//     // get rid of contiguous func...
-//     // A = A.contiguous().broadcast_to(A_broadcast_shape);
-//     // B = B.contiguous().broadcast_to(B_broadcast_shape);
-//     A = A.broadcast_to(A_broadcast_shape);
-//     B = B.broadcast_to(B_broadcast_shape);
-// 
-//     output_shape.push_back(A.shape_[A.ndim - 2]);
-//     output_shape.push_back(B.shape_[B.ndim - 1]);
-//     int height = A.shape_[A.ndim - 2];
-//     int width = B.shape_[B.ndim - 1];
-//     int K = A.shape_[A.ndim - 1];
-// 
-//     // now execute batched matmul
-//     Tensor<dtype> result(output_shape);
-// 
-//     size_t result_elements = result.num_elements;
-// 
-//     #pragma omp parallel for
-//     for (size_t idx = 0; idx < result_elements; ++idx) {
-// //         std::vector<int> result_indices = result.getIndicesFromLinearIndex(idx);
-// // 
-// //         // height = A.shape_[A.ndim-2], width = B.shape_[B.ndim-1] = B.stride_[B.ndim-2], K = A.shape_[A.ndim-1] = B.shape_[B.ndim-2] = A.stride_[A.ndim-2](the precondition is tensor is contiguous)
-// //         // xxx.stride_[dim-1] = 1
-// //         int row = result_indices[num_batch_dims];  // (0 <= row < height)
-// //         int col = result_indices[num_batch_dims + 1];  // (0 <= col < width)
-// // 
-// //         size_t Aoff = 0;
-// //         size_t Boff = 0;
-// //         for (int i = 0; i < num_batch_dims; ++i) {
-// //             Aoff += result_indices[i] * A.stride_[i];
-// //             Boff += result_indices[i] * B.stride_[i];
-// //         }
-// 
-//         ///////////////////////////////// fuse above ops ////////////////////////////////
-//         size_t linear_index = idx;
-//         size_t Aoff=A.offset_, Boff=B.offset_;
-//         int row, col;
-//         for (int i = result.ndim-1; i >= 0; --i) {
-//             int cur_dim_id = linear_index % result.shape_[i];
-//             linear_index /= result.shape_[i];
-// 
-//             if (i < num_batch_dims) { 
-//                 Aoff += cur_dim_id * A.stride_[i];
-//                 Boff += cur_dim_id * B.stride_[i];
-//             } else if (i == num_batch_dims) { // result.ndim - 2
-//                 row = cur_dim_id;
-//             } else if (i == num_batch_dims + 1) { // result.ndim - 1
-//                 col = cur_dim_id;
-//             }
-//         }
-// 
-//         /////////////////////////////////////////////////////////////////////////////////
-//         auto t1 = A.stride_[A.ndim - 1];
-//         auto t2 = B.stride_[B.ndim - 2];
-// 
-//         Aoff += row * A.stride_[A.ndim - 2];
-//         // Aoff += row * K;
-//         Boff += col * B.stride_[B.ndim - 1];
-//         // Boff += col;
-//         dtype sum = 0;
-//         // if B.stride_[B.ndim - 2] == B.shape_[B.ndim - 1] always true? here, the last 2 dim of B is contiguous, so it must be true.
-//         // seems not true above, if a shape (3,) is broadcast_to (2, 3), the stride of dim-2 is 0, not 3.
-//         for (int k = 0; k < K; ++k) {
-//             // sum += A.data_[Aoff + k * A.stride_[A.ndim-1]] * B.data_[Boff + k * B.stride_[B.ndim-2]]; 
-//             // sum += A.data_[Aoff + k] * B.data_[Boff + k * width];
-//             sum += A.data_[Aoff + k * t1] * B.data_[Boff + k * t2];
-//         }
-// 
-//         // Store the result in the output tensor
-//         result.data_[idx] = sum;
-//     }
-// 
-//     return result;
-// }
-
 template <typename dtype>
-// Tensor<dtype> Tensor<dtype>::batched_matmul(const Tensor<dtype>& other) const {
 Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
     if (this->device_type != other.device_type) {
         throw std::invalid_argument("Tensors must be on the same device.");
@@ -394,32 +287,6 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
 }
 
 /**
- * can not just compare this->data_ and other.data_, because this just means the data_
- * in physical is equal, not the logical.
- * @tparam dtype 
- */
-template <typename dtype>
-Tensor<int> Tensor<dtype>::operator==(const Tensor<dtype>& other) const {
-    if (this->shape() != other.shape()) {
-        throw std::invalid_argument("This shape and other shape is not equal.");
-    }
-
-    assert(shape_.size() == 1);
-
-    Tensor<int> result(this->shape());
-
-    for (int i = 0; i < shape_[0]; i++) {
-        if (this->data_[i] == other.data_[i]) {
-            result.setData({i}, 1);
-        } else {
-            result.setData({i}, 0);
-        }
-    }
-
-    return result;
-}
-
-/**
  * view use the same data as the original tensor, and reshape copy the data.
  * @tparam dtype 
  */
@@ -439,12 +306,8 @@ Tensor<dtype> Tensor<dtype>::view(const std::vector<int>& shape) const {
         throw std::invalid_argument("The number of elements is not equal.");
     }
 
-    /**
-     * but it seems that this constructor execute a deep copy, not a shadow copy. 
-     * it maybe optimized it later.
-     */
-    Tensor<dtype> result(shape, this->data());
-    // Tensor<dtype> result(shape, std::move(this->data()));  // maybe result should take over ownership of data_.
+    // Tensor<dtype> result(shape, this->data());
+    Tensor<dtype> result(shape, this->device, this->device_type);
 
     return result;
 }
@@ -467,12 +330,6 @@ Tensor<dtype> Tensor<dtype>::slice(int startIdx, int endIdx, int dim) const {
         throw std::invalid_argument("Invalid slice range.");
     }
 
-    // copy
-//     Tensor<dtype> result = *this;
-//     result.shape_[dim] = endIdx - startIdx;
-//     result.num_elements = result.num_elements / this->shape_[dim] * result.shape_[dim];
-// 
-//     result.offset_ = this->offset_ + startIdx * this->stride_[dim];
     std::vector<std::vector<int>> slices;
     for (int i=0; i<this->ndim; i++) {
         if (i == dim) {
@@ -499,27 +356,6 @@ Tensor<dtype> Tensor<dtype>::select(int dim, int index) const {
         throw std::invalid_argument("Invalid slice range.");
     }
 
-//     // one dimension is removed
-//     std::vector<int> new_shape(this->shape().size()-1);
-//     std::vector<int> new_stride(this->shape().size()-1);
-// 
-//     for (int i=0; i < new_shape.size(); i++) {
-//         if (i < dim) {
-//             new_shape[i] = this->shape_[i];
-//             new_stride[i] = this->stride_[i];
-//         } else {
-//             new_shape[i] = this->shape_[i+1];
-//             new_stride[i] = this->stride_[i+1];
-//         }
-//     }
-// 
-//     Tensor<dtype> result(new_shape);
-//     result.data_ = this->data_;
-//     result.offset_ = this->offset_ + this->stride_[dim] * index;
-//     result.stride_ = new_stride;
-// 
-//     // std::cout<<"result data address: "<<&result.data_[0]<<" this data address: "<<&this->data_[0]<<std::endl;
-//     return result;  
     std::vector<std::vector<int>> slices;
     for (int i=0; i<this->ndim; i++) {
         if (i == dim) {
@@ -547,16 +383,15 @@ Tensor<dtype> Tensor<dtype>::contiguous() const {
         return *this;
     }
 
-    Tensor<dtype> result(this->shape());
+    Tensor<dtype> result(this->shape(), this->device_type);
 
-    # pragma omp parallel for
-    for (int i=0; i < this->num_elements; i++) {
-        // merge this two operation, names it convert idx???
-        // std::vector<int> cur_idx = this->getIndicesFromLinearIndex(i);
-        // size_t linearIdx = this->calculateLinearIndex(cur_idx);
-        size_t linearIdx = this->convertIdx(i);
-        result.data_[i] = this->data_[linearIdx];
-    }
+    this->device->contiguous(
+        result.device->getDataPtr(), 
+        this->shape_,
+        this->stride_,
+        this->offset_,
+        this->num_elements);
+
     return result;
 }
 
@@ -565,42 +400,42 @@ Tensor<dtype> Tensor<dtype>::contiguous() const {
  * in case of overflow when perform matmul.
  * @tparam dtype 
  */
-template <typename dtype>
-Tensor<int> Tensor<dtype>::quantize() const {
-    Tensor<int> result(this->shape());
-
-    // int8 quantization -127 ~ 127
-    dtype Q_MAX = 127.0f;
-
-    // find the max absolute value in the tensor
-    dtype wmax = 0.0;
-    for (int i=0; i < this->num_elements; i++) {
-        dtype val = fabs(this->data_[i]);
-        if (val > wmax) {
-            wmax = val;
-        }
-    }
-
-    result.scale = wmax / Q_MAX;
-
-    for (int i=0; i < this->num_elements; i++) {
-        result.data_[i] = (int)(this->data_[i] / result.scale);
-    }
-
-    return result;
-}
-
-
-template <typename dtype>
-Tensor<float> Tensor<dtype>::dequantize() const {
-    Tensor<float> result(this->shape());
-
-    for (int i=0; i < this->num_elements; i++) {
-        result.data_[i] = this->data_[i] * this->scale;
-    }
-
-    return result;
-}
+// template <typename dtype>
+// Tensor<int> Tensor<dtype>::quantize() const {
+//     Tensor<int> result(this->shape());
+// 
+//     // int8 quantization -127 ~ 127
+//     dtype Q_MAX = 127.0f;
+// 
+//     // find the max absolute value in the tensor
+//     dtype wmax = 0.0;
+//     for (int i=0; i < this->num_elements; i++) {
+//         dtype val = fabs(this->data_[i]);
+//         if (val > wmax) {
+//             wmax = val;
+//         }
+//     }
+// 
+//     result.scale = wmax / Q_MAX;
+// 
+//     for (int i=0; i < this->num_elements; i++) {
+//         result.data_[i] = (int)(this->data_[i] / result.scale);
+//     }
+// 
+//     return result;
+// }
+// 
+// 
+// template <typename dtype>
+// Tensor<float> Tensor<dtype>::dequantize() const {
+//     Tensor<float> result(this->shape());
+// 
+//     for (int i=0; i < this->num_elements; i++) {
+//         result.data_[i] = this->data_[i] * this->scale;
+//     }
+// 
+//     return result;
+// }
 
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) const {
@@ -637,6 +472,10 @@ Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) cons
  */
 template <typename dtype>
 void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype>& value) {
+    if (value.device_type != this->device_type) {
+        throw std::invalid_argument("The device type of value must be equal to the device type of the tensor.");
+    }
+
     // value = value.contiguous();
     if (!is_contiguous(value)) {
         throw std::invalid_argument("The value must be contiguous.");
@@ -924,7 +763,7 @@ Tensor<dtype> Tensor<dtype>::reduce(int axis, bool keepdims, dtype(*op)(dtype, d
     auto view = get_reduce_view(axis);
     auto new_shape = get_reduce_shape(axis, keepdims);
 
-    Tensor<dtype> result(new_shape);
+    Tensor<dtype> result(new_shape, this->device_type);
 
     int reduce_size = this->shape()[axis];
     
@@ -973,7 +812,7 @@ Tensor<int> Tensor<dtype>::reduce_arg(int axis, bool keepdims, bool(*comp)(dtype
     auto view = get_reduce_view(axis);
     auto new_shape = get_reduce_shape(axis, keepdims);
 
-    Tensor<int> result(new_shape);
+    Tensor<int> result(new_shape, this->device_type);
 
     int reduce_size = this->shape()[axis];
     
@@ -1104,7 +943,7 @@ Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other, dt
     a = a.contiguous(); // if broadcast have influence on the result of contiguous?? (seems no, because contiguous will allocate actually memory for array)
     b = b.contiguous();
 
-    Tensor<dtype> result(this->shape());
+    Tensor<dtype> result(this->shape(), this->device_type);
     #pragma omp parallel for
     for (int i = 0; i < this->num_elements; ++i) {
         result.data_[i] = op(a.data_[i], b.data_[i]);
@@ -1120,7 +959,7 @@ Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other, dt
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::applyBinaryScalarOperation(dtype scalar, dtype(*op)(dtype, dtype)) const {
     // Tensor<dtype> result = this->contiguous();
-    Tensor<dtype> result(this->shape());
+    Tensor<dtype> result(this->shape(), this->device_type);
     Tensor<dtype> this_contiguous = this->contiguous();
 
     #pragma omp parallel for

@@ -60,6 +60,22 @@ void CPU<dtype>::full (size_t num_elements, dtype fill_value){
 }
 
 template <typename dtype>
-dtype CPU<dtype>:: getDataLinear(size_t linear_index) const{
+dtype CPU<dtype>::getDataLinear(size_t linear_index) const{
     return this->data_[linear_index];
+}
+
+template <typename dtype>
+void CPU<dtype>::contiguous(
+    dtype* result, 
+    const std::vector<int>& shape,
+    const std::vector<int>& stride, 
+    size_t offset,
+    size_t num_elements) {
+
+    # pragma omp parallel for
+    for (int i=0; i < num_elements; i++) {
+        size_t linearIdx = this->convertIdx(i, shape, stride, offset);
+        result[i] = this->data_[linearIdx];
+    }
+
 }

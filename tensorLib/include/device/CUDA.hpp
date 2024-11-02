@@ -26,6 +26,12 @@ public:
     dtype* getDataPtr() override { return data_; }
     void full (size_t num_elements, dtype fill_value) override;
     dtype getDataLinear(size_t liner_index) const override;
+    void contiguous(
+        dtype* result, 
+        const std::vector<int>& shape,
+        const std::vector<int>& stride, 
+        size_t offset,
+        size_t num_elements) override;
 
 // private:
     // std::shared_ptr<dtype[]> data_;
