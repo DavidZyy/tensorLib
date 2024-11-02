@@ -360,7 +360,7 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
     int K = A.shape_[A.ndim - 1];
 
     // now execute batched matmul
-    Tensor<dtype> result(output_shape);
+    Tensor<dtype> result(output_shape, this->device_type); // for get pass device will get bug !!
 
     size_t result_elements = result.num_elements;
 

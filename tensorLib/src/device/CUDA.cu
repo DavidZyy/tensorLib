@@ -1,6 +1,7 @@
 #include "CUDA.hpp"
 #include "Tensor.hpp"
 #include <cstddef>
+#include <cstdio>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 #include <library_types.h>
@@ -68,14 +69,6 @@ __global__ void matmulKernel(const dtype* lhs, const dtype* rhs, dtype* result,
 
 // Wrapper function to launch the CUDA kernel
 template <typename dtype>
-// void CUDA<dtype>::matmul(dtype* lhs, dtype* rhs, dtype* result, 
-//                         std::vector<int>& lhs_stride, 
-//                         std::vector<int>& rhs_stride, 
-//                         size_t lhs_offset,
-//                         size_t rhs_offset,
-//                         std::vector<int>& result_shape, 
-//                         size_t result_elements,
-//                         size_t K) 
 void CUDA<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result, 
     const std::vector<int>& lhs_stride, 
     const std::vector<int>& rhs_stride, 
@@ -91,12 +84,7 @@ void CUDA<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
     int* d_lhs_stride;
     int* d_rhs_stride;
     int* d_result_shape;
-    CUDA_CHECK(cudaMalloc((void **)&d_lhs_stride, ndim * sizeof(int)));
-//     cudaError_t error = cudaMalloc(&d_lhs_stride, ndim * sizeof(int));
-// if (error != cudaSuccess) {
-//     std::cerr << "error: " << cudaGetErrorString(error) << std::endl;
-//     return;
-// }
+    CUDA_CHECK(cudaMalloc(&d_lhs_stride, ndim * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_rhs_stride, ndim * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_result_shape, ndim * sizeof(int)));
 
@@ -112,16 +100,7 @@ void CUDA<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
                                                 d_lhs_stride, d_rhs_stride, 
                                                 lhs_offset, rhs_offset, 
                                                 d_result_shape, result_elements, K, ndim);
-
-// cudaError_t error = cudaGetLastError();
-// if (error != cudaSuccess) {
-//     std::cerr << "Kernel launch error: " << cudaGetErrorString(error) << std::endl;
-//     return;
-// }
-    // CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
-    // int *t;
-    // CUDA_CHECK(cudaMalloc(&t, ndim * sizeof(int)));
+    CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaFree(d_lhs_stride));
     CUDA_CHECK(cudaFree(d_rhs_stride));
     CUDA_CHECK(cudaFree(d_result_shape));

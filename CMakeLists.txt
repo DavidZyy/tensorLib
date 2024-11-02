@@ -126,6 +126,15 @@ find_package(OpenMP REQUIRED)
         message(FATAL_ERROR "OpenMP not found in the system, please install it first.")
     endif()
 
+# Add CUDA support
+find_package(CUDA REQUIRED)
+    if (CUDA_FOUND)
+        include_directories(${CUDA_INCLUDE_DIRS})
+        link_directories(${CUDA_TOOLKIT_ROOT_DIR}/lib64)
+    else()
+        message(FATAL_ERROR "CUDA not found in the system, please install it first.")
+    endif()
+
 # Add source files to create the library
 set(SRC
     tensorLib/src/device/CPU.cpp
@@ -147,6 +156,11 @@ set_target_properties(tensorLib
     PROPERTIES
     PREFIX ""
 )
+
+# vscode Debug cuda kernel, see https://stackoverflow.com/questions/67888279/debugging-cuda-kernels-with-vs-code
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(tensorLib PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-G>)
+endif()
 
 ################################## linke library to application ##########################################################
 

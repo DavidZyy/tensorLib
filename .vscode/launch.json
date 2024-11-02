@@ -4,10 +4,23 @@
 // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
 "version": "0.2.0",
 "configurations": [
+  // debug cuda kernel
+  {
+    "name": "CUDA C++: Launch",
+    "type": "cuda-gdb",
+    "request": "launch",
+    "miDebuggerPath": "/usr/local/cuda/bin/cuda-gdb",
+    "program": "${workspaceFolder}/build/test_device",
+    "preLaunchTask": "build", // see tasks.json
+  },
+
     {
       "name": "(gdb) Launch",
       "type": "cppdbg",
       "request": "launch",
+      // "request": "attach",
+      // "MIMode": "gdb",
+      "miDebuggerPath": "/usr/local/cuda/bin/cuda-gdb",
       // "program": "${workspaceFolder}/build/${fileBasenameNoExtension}",
       // "program": "${workspaceFolder}/build/main",
       "program": "${workspaceFolder}/build/test_device",
@@ -27,7 +40,6 @@
         }
       ],
       "externalConsole": false,
-      "MIMode": "gdb",
       "internalConsoleOptions": "openOnSessionStart",
       "setupCommands": [
           {
@@ -48,7 +60,8 @@
             "ignoreFailures": false
           }
       ],
-      "preLaunchTask": "build" // see tasks.json
-    }
+      "preLaunchTask": "build", // see tasks.json
+    },
+
   ]
 }

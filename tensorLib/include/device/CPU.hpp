@@ -21,16 +21,6 @@ public:
         size_t result_elements,
         size_t K) override;
 
-    // device's function maily operate on data_
-    // void matmul(dtype* lhs, dtype* rhs, dtype* result,
-    //     std::vector<int>& lhs_stride, 
-    //     std::vector<int>& rhs_stride, 
-    //     size_t lhs_offset,
-    //     size_t rhs_offset,
-    //     std::vector<int>& result_shape,
-    //     size_t result_elements,
-    //     size_t K) override;
- 
     dtype* getData() override { return data_; }
     void full (size_t num_elements, dtype fill_value) override;
     dtype getDataLinear(size_t liner_index) const override;
