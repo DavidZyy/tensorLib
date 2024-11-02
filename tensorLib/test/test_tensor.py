@@ -93,13 +93,14 @@ def test_convert(shape):
 
 bached_matmul_shapes = [generate_batched_matmul_shapes() for _ in range(50)]
 @pytest.mark.parametrize("shape1, shape2", bached_matmul_shapes)
-def test_batched_matmul(shape1, shape2):
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_batched_matmul(shape1, shape2, device):
     A = np.random.randn(*shape1).astype(np.float32)  # must convert to float32!!! or it will be float64!!
     B = np.random.randn(*shape2).astype(np.float32)
     C = np.matmul(A, B)
 
-    A_t = tb.convert_to_tensor(A)
-    B_t = tb.convert_to_tensor(B)
+    A_t = tb.convert_to_tensor(A, device)
+    B_t = tb.convert_to_tensor(B, device)
     C_t = A_t.matmul(B_t)
     C_t_a = tb.convert_to_numpy(C_t)
 

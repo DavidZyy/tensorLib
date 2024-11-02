@@ -40,6 +40,7 @@ public:
     Tensor(const std::vector<int>& shape, const std::string& device = "cpu");
     Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data, const std::string& device = "cpu");
     Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device = "cpu");
+    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, dtype *data_ptr, const std::string& device = "cpu");
     template<typename OtherType> Tensor(const Tensor<OtherType>& other); // support static cast
 
     // Destructor
@@ -168,6 +169,7 @@ public:
     int ndim;
     std::vector<int> shape_;
     std::string device_type;
+    std::shared_ptr<Device<dtype>> device;
 private:
 
     // helper method for operator<<
@@ -244,7 +246,6 @@ private:
     // Device<dtype> device; // error, abstract class can not be member
 
     // num_elements should not put in device, maybe should put in Tensor ...
-    std::shared_ptr<Device<dtype>> device;
 };
 
 // Definition of the conversion constructor outside the class

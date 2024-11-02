@@ -9,6 +9,7 @@ class CPU : public Device<dtype> {
 public:
     // Default constructor
     CPU() : data_(nullptr) {}
+    CPU(dtype *ptr) {data_ = ptr;}
     CPU(size_t num_elements) { data_ = new dtype[num_elements]; }
     ~CPU() override { delete[] data_; }
 
@@ -21,7 +22,7 @@ public:
         size_t result_elements,
         size_t K) override;
 
-    dtype* getData() override { return data_; }
+    dtype* getDataPtr() override { return data_; }
     void full (size_t num_elements, dtype fill_value) override;
     dtype getDataLinear(size_t liner_index) const override;
 

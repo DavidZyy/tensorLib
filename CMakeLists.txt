@@ -157,14 +157,39 @@ set_target_properties(tensorLib
     PREFIX ""
 )
 
+# Enable position-independent code
+set_target_properties(tensorLib PROPERTIES POSITION_INDEPENDENT_CODE ON)  # for tensor_bindings.so
+
 # vscode Debug cuda kernel, see https://stackoverflow.com/questions/67888279/debugging-cuda-kernels-with-vs-code
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(tensorLib PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-G>)
 endif()
 
-################################## linke library to application ##########################################################
+################################## tests ##########################################################
 
 # Add tests
 add_executable(test_device tensorLib/test/test_device.cpp)
 target_link_libraries(test_device PRIVATE tensorLib)
 
+
+################################## tensor_bindings module ##########################################################
+
+# pybind11
+find_package(pybind11 REQUIRED)
+include_directories(${pybind11_INCLUDE_DIRS})
+
+find_package(Python3 REQUIRED)
+include_directories(${Python3_INCLUDE_DIRS})
+
+# Add your source files
+add_library(tensor_bindings MODULE tensorLib/test/tensor_bindings.cpp)
+
+# Set the output name without the 'lib' prefix
+set_target_properties(tensor_bindings
+    PROPERTIES
+    PREFIX ""
+)
+
+# Link with pybind11
+target_link_libraries(tensor_bindings PRIVATE pybind11::module tensorLib)
+# pybind11_strip(tensor_bindings)

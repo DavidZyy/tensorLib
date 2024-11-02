@@ -19,7 +19,7 @@ public:
         size_t result_elements,
         size_t K) = 0;
 
-    virtual dtype* getData() = 0;  // Pure virtual getter for data_
+    virtual dtype* getDataPtr() = 0;  // Pure virtual getter for data_
     virtual void full (size_t num_elements, dtype fill_value) = 0;
     // get data by linear index
     virtual dtype getDataLinear(size_t liner_index) const = 0;

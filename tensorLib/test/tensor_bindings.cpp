@@ -1,10 +1,13 @@
 #include <cassert>
+#include <cstring>
+#include <new>
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include <pybind11/operators.h>
 #include "Tensor.hpp"
+#include "CUDA.hpp"
 #include <sstream>
 
 // Function to convert vector to string
@@ -198,12 +201,22 @@ PYBIND11_MODULE(tensor_bindings, m) {
         std::transform(numpy_strides.begin(), numpy_strides.end(), numpy_strides.begin(),
                [](int& c) { return c * sizeof(float); });
         // assert(t.offset_ == 0); // not yet handle this case now.
-        float* data_ptr = t.data_.get();
-        return py::array_t<float>(t.shape_, numpy_strides, data_ptr + t.offset_);
+        // float* data_ptr = t.data_.get();
+
+        float *data_ptr = new float[t.num_elements];
+        if (t.device_type == "cpu") {
+            std::memcpy(data_ptr, t.device->getDataPtr() + t.offset_, t.num_elements * sizeof(float));
+        } else if (t.device_type == "cuda") {
+            CUDA_CHECK(cudaMemcpy(data_ptr, t.device->getDataPtr() + t.offset_, t.num_elements * sizeof(float), cudaMemcpyDeviceToHost));
+        } else {
+            throw std::runtime_error("Unsupported device type: " + t.device_type);
+        }
+
+        return py::array_t<float>(t.shape_, numpy_strides, data_ptr);
     });
 
     // convert a numpy array to Tensor
-    m.def("convert_to_tensor", [](py::array_t<float> a) {
+    m.def("convert_to_tensor", [](py::array_t<float> a, const std::string& device) {
         // Get shape and strides from the numpy array and convert them to std::vector<int>
         std::vector<int> shape(a.ndim());
         std::vector<int> strides(a.ndim());
@@ -213,13 +226,20 @@ PYBIND11_MODULE(tensor_bindings, m) {
             strides[i] = static_cast<int>(a.strides(i) / sizeof(float)); // Convert byte strides to element strides
         }
 
-        // Wrap the numpy array data into a shared_ptr with a custom deleter (to avoid double-free)
-        auto data_ptr = std::shared_ptr<float[]>(a.mutable_data(), [](float* p) {
-            // Numpy owns the memory, so no need to delete p
-        });
+        float *data_ptr = nullptr;
+
+        if (device == "cpu") {
+            data_ptr = new float[a.size()];
+            std::memcpy(data_ptr, a.data(), a.size() * sizeof(float));
+        } else if (device == "cuda") {
+            CUDA_CHECK(cudaMalloc(&data_ptr, a.size() * sizeof(float)));
+            CUDA_CHECK(cudaMemcpy(data_ptr, a.data(), a.size() * sizeof(float), cudaMemcpyHostToDevice));
+        } else {
+            throw std::invalid_argument("Invalid device type. Supported types are 'cpu' and 'cuda'.");
+        }
 
         // Construct and return the Tensor object
-        return Tensor<float>(std::move(shape), std::move(strides), 0, data_ptr);
+        return Tensor<float>(std::move(shape), std::move(strides), 0, data_ptr, device);
     });
 
 
