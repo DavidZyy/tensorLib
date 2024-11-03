@@ -288,11 +288,12 @@ def compute_shape_after_slices(slices: list[list[int]]) -> tuple[int]:
 setitem_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=100)
 @pytest.mark.parametrize("shape", setitem_shapes)
 @pytest.mark.parametrize("operand", ["scalar", "tensor"])
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
 # @pytest.mark.parametrize("operand", ["tensor"])
-def test_setItem(shape, operand):
-    np_data, _ = generate_random_tensor(shape)
+def test_setItem(shape, operand, device):
+    np_data, _ = generate_random_tensor(shape, device)
     np_data_copy = np_data.copy()  # deep copy, so np_data and tensor_data are use the different memory
-    tensor_data = tb.convert_to_tensor(np_data_copy)
+    tensor_data = tb.convert_to_tensor(np_data_copy, device)
     slices = generate_random_slices(shape)
     slice_shape = compute_shape_after_slices(slices)
 
@@ -300,7 +301,7 @@ def test_setItem(shape, operand):
         np_set = random.uniform(-10, 10)
         tensor_set = np_set
     else:
-        np_set, tensor_set = generate_random_tensor(slice_shape)
+        np_set, tensor_set = generate_random_tensor(slice_shape, device)
 
     np_slices = tuple(slice(*slc) if slc else slice(None) for slc in slices)
 

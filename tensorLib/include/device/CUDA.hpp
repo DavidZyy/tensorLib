@@ -34,12 +34,40 @@ public:
         size_t offset,
         size_t num_elements) override;
 
+    void setItemEwise(
+        dtype* src,
+        const std::vector<int>& shape,
+        const std::vector<int>& stride,
+        size_t offset,
+        size_t num_elements) override;
+
+    void setItemScalar(
+        dtype value,
+        const std::vector<int>& shape,
+        const std::vector<int>& stride,
+        size_t offset,
+        size_t num_elements) override;
 // private:
-    // std::shared_ptr<dtype[]> data_;
     dtype *data_;
-    // size_t num_elements;
 };
 
+__device__ inline size_t convertIdx(
+    size_t linear_index, 
+    const int* shape, 
+    const int* stride, 
+    size_t offset, 
+    int dim_size) 
+{
+    size_t linear_index_new = 0;
+    
+    for (int i = dim_size - 1; i >= 0; --i) {
+        int cur_dim_id = linear_index % shape[i];
+        linear_index /= shape[i];
+        linear_index_new += cur_dim_id * stride[i];
+    }
+    
+    return linear_index_new + offset;
+}
 
 #define CUDA_CHECK(call)                                                    \
 {                                                                           \

@@ -29,7 +29,18 @@ public:
         const std::vector<int>& stride, 
         size_t offset,
         size_t num_elements) = 0;
-
+    virtual void setItemEwise(
+        dtype* src,
+        const std::vector<int>& shape,
+        const std::vector<int>& stride,
+        size_t offset,
+        size_t num_elements) = 0;
+    virtual void setItemScalar(
+        dtype value,
+        const std::vector<int>& shape,
+        const std::vector<int>& stride,
+        size_t offset,
+        size_t num_elements) = 0;
 // private:
         size_t size; // number of elements, the total bytes of data_ is: size * sizeof(dtype)
 };

@@ -35,18 +35,31 @@ public:
         size_t offset,
         size_t num_elements) override;
 
+    void setItemEwise(
+        dtype* src,
+        const std::vector<int>& shape,
+        const std::vector<int>& stride,
+        size_t offset,
+        size_t num_elements) override;
+
+    void setItemScalar(
+        dtype value,
+        const std::vector<int>& shape,
+        const std::vector<int>& stride,
+        size_t offset,
+        size_t num_elements) override;
 // private:
     dtype *data_;
-    inline size_t convertIdx(size_t linear_index, const std::vector<int>& shape, const std::vector<int>& stride, size_t offset) const {
-        size_t linear_index_new = 0;
+};
 
-        for (int i = shape.size() - 1; i >= 0; --i) {
-            int cur_dim_id = linear_index % shape[i];
-            linear_index /= shape[i];
-            linear_index_new += cur_dim_id * stride[i];
-        }
+inline size_t convertIdx(size_t linear_index, const std::vector<int>& shape, const std::vector<int>& stride, size_t offset) {
+    size_t linear_index_new = 0;
 
-        return linear_index_new + offset;
+    for (int i = shape.size() - 1; i >= 0; --i) {
+        int cur_dim_id = linear_index % shape[i];
+        linear_index /= shape[i];
+        linear_index_new += cur_dim_id * stride[i];
     }
 
-};
+    return linear_index_new + offset;
+}

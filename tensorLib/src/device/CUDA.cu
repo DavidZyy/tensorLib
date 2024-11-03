@@ -130,6 +130,31 @@ dtype CUDA<dtype>:: getDataLinear(size_t linear_index) const {
     return result;
 }
 
+// template <typename dtype>
+// __global__ void contiguous_kernel(
+//     dtype* result,
+//     const dtype* data,
+//     const int* shape,
+//     const int* stride,
+//     size_t offset,
+//     size_t num_elements,
+//     int dim_size) 
+// {
+//     int i = blockIdx.x * blockDim.x + threadIdx.x;
+//     if (i < num_elements) {
+//         size_t linear_index_new = 0;
+//         size_t linear_index = i;
+// 
+//         for (int j = dim_size - 1; j >= 0; --j) {
+//             int cur_dim_id = linear_index % shape[j];
+//             linear_index /= shape[j];
+//             linear_index_new += cur_dim_id * stride[j];
+//         }
+// 
+//         result[i] = data[linear_index_new + offset];
+//     }
+// }
+
 template <typename dtype>
 __global__ void contiguous_kernel(
     dtype* result,
@@ -142,16 +167,9 @@ __global__ void contiguous_kernel(
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < num_elements) {
-        size_t linear_index_new = 0;
-        size_t linear_index = i;
-
-        for (int j = dim_size - 1; j >= 0; --j) {
-            int cur_dim_id = linear_index % shape[j];
-            linear_index /= shape[j];
-            linear_index_new += cur_dim_id * stride[j];
-        }
-
-        result[i] = data[linear_index_new + offset];
+        size_t linear_index_new = convertIdx(i, shape, stride, offset, dim_size);
+        
+        result[i] = data[linear_index_new];
     }
 }
 
@@ -166,12 +184,12 @@ void CUDA<dtype>::contiguous(
     // Allocate memory for shape and stride on the device
     int* d_shape;
     int* d_stride;
-    cudaMalloc(&d_shape, shape.size() * sizeof(int));
-    cudaMalloc(&d_stride, stride.size() * sizeof(int));
+    CUDA_CHECK(cudaMalloc(&d_shape, shape.size() * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_stride, stride.size() * sizeof(int)));
 
     // Copy shape and stride data to device
-    cudaMemcpy(d_shape, shape.data(), shape.size() * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_stride, stride.data(), stride.size() * sizeof(int), cudaMemcpyHostToDevice);
+    CUDA_CHECK(cudaMemcpy(d_shape, shape.data(), shape.size() * sizeof(int), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_stride, stride.data(), stride.size() * sizeof(int), cudaMemcpyHostToDevice));
 
     // Calculate grid and block dimensions
     int threads_per_block = 256;
@@ -180,8 +198,108 @@ void CUDA<dtype>::contiguous(
     // Launch the kernel
     contiguous_kernel<<<num_blocks, threads_per_block>>>(
         result, this->data_, d_shape, d_stride, offset, num_elements, shape.size());
+    CUDA_CHECK(cudaGetLastError());
 
     // Free device memory for shape and stride
-    cudaFree(d_shape);
-    cudaFree(d_stride);
+    CUDA_CHECK(cudaFree(d_shape));
+    CUDA_CHECK(cudaFree(d_stride));
 }
+
+template <typename dtype>
+__global__ void setItemEwiseKernel(
+    dtype* data,
+    const dtype* src,
+    const int* shape,
+    const int* stride,
+    size_t offset,
+    size_t num_elements,
+    int dim_size) 
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_elements) {
+        size_t linearIdx = convertIdx(i, shape, stride, offset, dim_size);
+        data[linearIdx] = src[i];
+    }
+}
+
+template <typename dtype>
+void CUDA<dtype>::setItemEwise(
+    dtype* src,
+    const std::vector<int>& shape,
+    const std::vector<int>& stride,
+    size_t offset,
+    size_t num_elements) 
+{
+    // Allocate device memory for shape and stride arrays
+    int* d_shape;
+    int* d_stride;
+    CUDA_CHECK(cudaMalloc(&d_shape, shape.size() * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_stride, stride.size() * sizeof(int)));
+
+    // Copy shape and stride data from host to device
+    CUDA_CHECK(cudaMemcpy(d_shape, shape.data(), shape.size() * sizeof(int), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_stride, stride.data(), stride.size() * sizeof(int), cudaMemcpyHostToDevice));
+
+    // Define grid and block dimensions
+    int blockSize = 256;
+    int gridSize = (num_elements + blockSize - 1) / blockSize;
+
+    // Launch the kernel
+    setItemEwiseKernel<<<gridSize, blockSize>>>(
+        this->data_, src, d_shape, d_stride, offset, num_elements, shape.size());
+
+    CUDA_CHECK(cudaGetLastError());
+    // Free device memory
+    CUDA_CHECK(cudaFree(d_shape));
+    CUDA_CHECK(cudaFree(d_stride));
+}
+
+template <typename dtype>
+__global__ void setItemScalarKernel(
+    dtype* data,
+    const dtype value,
+    const int* shape,
+    const int* stride,
+    size_t offset,
+    size_t num_elements,
+    int dim_size) 
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_elements) {
+        size_t linearIdx = convertIdx(i, shape, stride, offset, dim_size);
+        data[linearIdx] = value;
+    }
+}
+
+template <typename dtype>
+void CUDA<dtype>::setItemScalar(
+    dtype value,
+    const std::vector<int>& shape,
+    const std::vector<int>& stride,
+    size_t offset,
+    size_t num_elements) 
+{
+    // Allocate device memory for shape and stride arrays
+    int* d_shape;
+    int* d_stride;
+    CUDA_CHECK(cudaMalloc(&d_shape, shape.size() * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_stride, stride.size() * sizeof(int)));
+
+    // Copy shape and stride data from host to device
+    CUDA_CHECK(cudaMemcpy(d_shape, shape.data(), shape.size() * sizeof(int), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_stride, stride.data(), stride.size() * sizeof(int), cudaMemcpyHostToDevice));
+
+    // Define grid and block dimensions
+    int blockSize = 256;
+    int gridSize = (num_elements + blockSize - 1) / blockSize;
+
+    // Launch the kernel
+    setItemScalarKernel<<<gridSize, blockSize>>>(
+        this->data_, value, d_shape, d_stride, offset, num_elements, shape.size());
+
+    CUDA_CHECK(cudaGetLastError());
+    // Free device memory
+    CUDA_CHECK(cudaFree(d_shape));
+    CUDA_CHECK(cudaFree(d_stride));
+}
+

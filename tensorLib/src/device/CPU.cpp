@@ -74,8 +74,38 @@ void CPU<dtype>::contiguous(
 
     # pragma omp parallel for
     for (int i=0; i < num_elements; i++) {
-        size_t linearIdx = this->convertIdx(i, shape, stride, offset);
+        size_t linearIdx = convertIdx(i, shape, stride, offset);
         result[i] = this->data_[linearIdx];
     }
-
 }
+
+template <typename dtype>
+void CPU<dtype>::setItemEwise(
+    dtype* src,
+    const std::vector<int>& shape,
+    const std::vector<int>& stride,
+    size_t offset,
+    size_t num_elements) {
+
+    # pragma omp parallel for
+    for (int i=0; i < num_elements; i++) {
+        size_t linearIdx = convertIdx(i, shape, stride, offset);
+        this->data_[linearIdx] = src[i];
+    }
+}
+
+template <typename dtype>
+void CPU<dtype>::setItemScalar(
+    dtype value,
+    const std::vector<int>& shape,
+    const std::vector<int>& stride,
+    size_t offset,
+    size_t num_elements) {
+
+    # pragma omp parallel for
+    for (int i=0; i < num_elements; i++) {
+        size_t linearIdx = convertIdx(i, shape, stride, offset);
+        this->data_[linearIdx] = value;
+    }
+}
+

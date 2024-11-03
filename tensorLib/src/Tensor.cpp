@@ -494,19 +494,18 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<
     // get item first, the new tensor shared the same data with the original tensor in memory.
     slices = process_slices(slices);
 
-    auto out = getItem(slices);
+    auto out = getItem(slices); // get the item tensor, the out shared the same underlying data with this tensor.
 
     if (out.shape() != value.shape()) {
         throw std::invalid_argument("The shape of value must be equal to the shape of the slice.");
     }
     
-    # pragma omp parallel for
-    for (int i = 0; i < out.num_elements; i++) {
-        // std::vector<int> cur_idx = out.getIndicesFromLinearIndex(i);
-        // size_t linearIdx = out.calculateLinearIndex(cur_idx);
-        size_t linearIdx = out.convertIdx(i);
-        out.data_[linearIdx] = value.data_[i]; // index value use i directly, value should be contiguous.
-    }
+    out.device->setItemEwise(
+        value.device->getDataPtr(),
+        out.shape_,
+        out.stride_,
+        out.offset_,
+        out.num_elements);
 }
 
 /**
@@ -520,14 +519,12 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, dtype value) 
 
     auto out = getItem(slices);
     
-    # pragma omp parallel for
-    for (int i=0; i < out.num_elements; i++) {
-        // std::vector<int> cur_idx = out.getIndicesFromLinearIndex(i);
-        // size_t linearIdx = out.calculateLinearIndex(cur_idx);
-        size_t linearIdx = out.convertIdx(i);
-        // std::cout << "linearIdx: " << linearIdx << " linearIdx2: " << linearIdx2 << std::endl;
-        out.data_[linearIdx] = value;
-    }
+    out.device->setItemScalar(
+        value,
+        out.shape_,
+        out.stride_,
+        out.offset_,
+        out.num_elements);
 }
 
 /**
