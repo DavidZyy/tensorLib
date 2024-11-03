@@ -6,8 +6,8 @@
 template <typename dtype>
 class Device {
 public:
-    // Device() = default;
-    // Device(size_t num_elements);
+    Device() : size(0) {}
+    Device(size_t num_elements) : size(num_elements) {}
     virtual ~Device() = default;
 
     virtual void matmul(const dtype* lhs, const dtype* rhs, dtype* result, 
@@ -31,5 +31,6 @@ public:
         size_t num_elements) = 0;
 
 // private:
+        size_t size; // number of elements, the total bytes of data_ is: size * sizeof(dtype)
 };
 

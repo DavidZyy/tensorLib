@@ -12,8 +12,8 @@ template class CUDA<float>;
 template class CUDA<int>;
 
 template <typename dtype>
-CUDA<dtype>::CUDA(size_t num_elements) {
-    CUDA_CHECK(cudaMalloc(&this->data_, num_elements * sizeof(dtype)));
+CUDA<dtype>::CUDA(size_t size) : Device<dtype>(size) {
+    CUDA_CHECK(cudaMalloc(&this->data_, size * sizeof(dtype)));
 }
 
 template <typename dtype>

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Device.hpp"
+#include <cstddef>
 #include <vector>
 #include <cuda_runtime.h>
 #include <stdexcept>
@@ -9,9 +10,9 @@
 template <typename dtype>
 class CUDA : public Device<dtype> {
 public:
-    CUDA() : data_(nullptr) {}
-    CUDA(dtype* ptr) {data_ = ptr;}
-    CUDA(size_t num_elements);
+    CUDA() : Device<dtype>(0), data_(nullptr) {}
+    CUDA(size_t size, dtype* ptr) : Device<dtype>(size), data_(ptr) {}
+    CUDA(size_t size);
     ~CUDA() override;
 
     void matmul(const dtype* lhs, const dtype* rhs, dtype* result, 

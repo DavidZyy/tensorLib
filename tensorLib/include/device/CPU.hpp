@@ -8,9 +8,12 @@ template <typename dtype>
 class CPU : public Device<dtype> {
 public:
     // Default constructor
-    CPU() : data_(nullptr) {}
-    CPU(dtype *ptr) {data_ = ptr;}
-    CPU(size_t num_elements) { data_ = new dtype[num_elements]; }
+    CPU() : Device<dtype>(0), data_(nullptr) {}
+    CPU(size_t size, dtype *ptr) : Device<dtype>(size), data_(ptr) {}
+    CPU(size_t size) : Device<dtype>(size) { 
+        data_ = new dtype[size]; 
+    }
+
     ~CPU() override { delete[] data_; }
 
     void matmul(const dtype* lhs, const dtype* rhs, dtype* result, 

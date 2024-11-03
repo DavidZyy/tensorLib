@@ -108,30 +108,30 @@ ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset
 
 /**
  * use std::move semantic to construct a Tensor with given shape, stride, offset, maybe faster ?
- * NOTE: this constructor is used in tensor_bindings.convert_to_tensor(), the data pointer should on device you pass, and freed by this
+ * NOTE: this constructor is used in tensor_bindings.convert_to_tensor(), the data pointer data_ptr should on device you pass, and freed by this
  * tensor, or it may cause error!
  * @tparam dtype 
  */
-template <typename dtype>
-Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, dtype* data_ptr, const std::string& device_type):
-ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), device_type(device_type) {
-    this-> num_elements = 1;
-    for (int dim : shape) {
-        this->num_elements *= dim;
-    }
-
-    if (device_type == "cpu") {
-        this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(data_ptr));
-    } else if (device_type == "cuda") {
-        this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(data_ptr));
-    } else {
-        throw std::invalid_argument("Invalid device name");
-    }
-}
+// template <typename dtype>
+// Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, dtype* data_ptr, const std::string& device_type):
+// ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), device_type(device_type) {
+//     this-> num_elements = 1;
+//     for (int dim : shape) {
+//         this->num_elements *= dim;
+//     }
+// 
+//     if (device_type == "cpu") {
+//         this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(data_ptr));
+//     } else if (device_type == "cuda") {
+//         this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(data_ptr));
+//     } else {
+//         throw std::invalid_argument("Invalid device name");
+//     }
+// }
 
 template <typename dtype>
 Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<Device<dtype>>& device, const std::string& device_type) 
-: ndim(shape.size()), shape_(shape), offset_(0), device_type(device_type)
+: ndim(shape.size()), shape_(shape), offset_(0), device(device), device_type(device_type)
 {
         this->num_elements = 1;
         for (int dim : shape) {
@@ -148,8 +148,15 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<Devic
                 this->stride_[i] = this->stride_[i + 1] * this->shape_[i + 1];
             }
         }
+}
 
-        this->device = device;
+template <typename dtype>
+Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<Device<dtype>>& device, const std::string& device_type):
+ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), device(device), device_type(device_type) {
+    this-> num_elements = 1;
+    for (int dim : shape) {
+        this->num_elements *= dim;
+    }
 }
 
 template <typename dtype>
@@ -459,7 +466,10 @@ Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) cons
     }
 
     // Tensor<dtype> result(std::move(new_shape), std::move(new_stride), std::move(new_offset), this->data_);
-    Tensor<dtype> result(std::move(new_shape), std::move(new_stride), new_offset, this->data_);
+    // ERROR!! this->device->getDataPtr() will be double freed !!!
+    // Tensor<dtype> result(std::move(new_shape), std::move(new_stride), new_offset, this->device->getDataPtr(), this->device_type);
+    // error in this function
+    Tensor<dtype> result(std::move(new_shape), std::move(new_stride), new_offset, this->device, this->device_type);
     return result;
 }
 

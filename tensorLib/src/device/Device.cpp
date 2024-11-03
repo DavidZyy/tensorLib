@@ -10,7 +10,3 @@
 // template class Device<float>;
 
 // template class Device<uint8_t>;
-
-// template<typename dtype>
-// Device<dtype>::Device(size_t num_elements) {
-// }

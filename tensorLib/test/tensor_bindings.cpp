@@ -1,13 +1,16 @@
 #include <cassert>
 #include <cstring>
+#include <memory>
 #include <new>
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include <pybind11/operators.h>
+#include "Device.hpp"
 #include "Tensor.hpp"
 #include "CUDA.hpp"
+#include "CPU.hpp"
 #include <sstream>
 
 // Function to convert vector to string
@@ -200,14 +203,13 @@ PYBIND11_MODULE(tensor_bindings, m) {
         std::vector<int> numpy_strides = t.stride_;
         std::transform(numpy_strides.begin(), numpy_strides.end(), numpy_strides.begin(),
                [](int& c) { return c * sizeof(float); });
-        // assert(t.offset_ == 0); // not yet handle this case now.
-        // float* data_ptr = t.data_.get();
-
-        float *data_ptr = new float[t.num_elements];
+        // float *data_ptr = new float[t.num_elements]; // error, not enough
+        float *data_ptr = new float[t.device->size - t.offset_];
         if (t.device_type == "cpu") {
-            std::memcpy(data_ptr, t.device->getDataPtr() + t.offset_, t.num_elements * sizeof(float));
+            // std::memcpy(data_ptr, t.device->getDataPtr() + t.offset_, t.num_elements * sizeof(float)); // error !!
+            std::memcpy(data_ptr, t.device->getDataPtr() + t.offset_, (t.device->size - t.offset_) * sizeof(float)); // should copy all data after offset_, or may cause error due to stride ...
         } else if (t.device_type == "cuda") {
-            CUDA_CHECK(cudaMemcpy(data_ptr, t.device->getDataPtr() + t.offset_, t.num_elements * sizeof(float), cudaMemcpyDeviceToHost));
+            CUDA_CHECK(cudaMemcpy(data_ptr, (float *)(t.device->getDataPtr()) + t.offset_, (t.device->size - t.offset_) * sizeof(float), cudaMemcpyDeviceToHost));
         } else {
             throw std::runtime_error("Unsupported device type: " + t.device_type);
         }
@@ -227,18 +229,22 @@ PYBIND11_MODULE(tensor_bindings, m) {
         }
 
         float *data_ptr = nullptr;
+        std::shared_ptr<Device<float>> device;
 
         if (device_type == "cpu") {
             data_ptr = new float[a.size()];
             std::memcpy(data_ptr, a.data(), a.size() * sizeof(float));
+            device = std::shared_ptr<CPU<float>>(new CPU<float>(a.size(), data_ptr));
         } else if (device_type == "cuda") {
             CUDA_CHECK(cudaMalloc(&data_ptr, a.size() * sizeof(float)));
             CUDA_CHECK(cudaMemcpy(data_ptr, a.data(), a.size() * sizeof(float), cudaMemcpyHostToDevice));
+            device = std::shared_ptr<CUDA<float>>(new CUDA<float>(a.size(), data_ptr));
         } else {
             throw std::invalid_argument("Invalid device type. Supported types are 'cpu' and 'cuda'.");
         }
 
         // Construct and return the Tensor object
-        return Tensor<float>(std::move(shape), std::move(strides), 0, data_ptr, device_type);
+        // return Tensor<float>(std::move(shape), std::move(strides), 0, data_ptr, device_type);
+        return Tensor<float>(std::move(shape), std::move(strides), 0, device, device_type);
     });
 }

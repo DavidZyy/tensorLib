@@ -40,8 +40,9 @@ public:
     Tensor(const std::vector<int>& shape, const std::string& device_type = "cpu");
     Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data, const std::string& device_type = "cpu");
     Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device_type = "cpu");
-    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, dtype *data_ptr, const std::string& device_type = "cpu");
+    // Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, dtype *data_ptr, const std::string& device_type = "cpu");
     Tensor(const std::vector<int>& shape, const std::shared_ptr<Device<dtype>>& device, const std::string& device_type = "cpu");
+    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<Device<dtype>>& device, const std::string& device_type);
     template<typename OtherType> Tensor(const Tensor<OtherType>& other); // support static cast
 
     // Destructor

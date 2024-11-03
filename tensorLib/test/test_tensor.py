@@ -231,10 +231,10 @@ def test_unary_methods(shape, op_name, np_op):
     np.testing.assert_allclose(np_result, tensor_result_a, atol=1e-5, rtol=1e-5)
 
 
-def generate_random_tensor(shape) -> tuple[np.ndarray, tb.Tensor_fp32]:
+def generate_random_tensor(shape, device) -> tuple[np.ndarray, tb.Tensor_fp32]:
     """Helper function to create a random numpy array and tensor with the same shape."""
     np_data = np.random.randn(*shape).astype(np.float32)
-    tensor_data = tb.convert_to_tensor(np_data)
+    tensor_data = tb.convert_to_tensor(np_data, device)
     return np_data, tensor_data
 
 
@@ -250,9 +250,16 @@ def generate_random_slices(shape) -> list[list[int]]:
 
 getitem_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=10)
 @pytest.mark.parametrize("shape", getitem_shapes)
-def test_getItem(shape):
-    np_data, tensor_data = generate_random_tensor(shape)
+# @pytest.mark.parametrize("shape", [(10, 3)])
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+# @pytest.mark.parametrize("device", ["cpu"])
+def test_getItem(shape, device):
+    np_data, tensor_data = generate_random_tensor(shape, device)
     slices = generate_random_slices(shape)
+
+    # np_data = np.ones((10, 3)).astype(np.float32)
+    # tensor_data = tb.convert_to_tensor(np_data, device)
+    # slices = [[6,8,1],[2,3,1]]
 
     # Convert slice format to Python slicing for numpy compatibility
     np_slices = tuple(slice(*slc) if slc else slice(None) for slc in slices)
