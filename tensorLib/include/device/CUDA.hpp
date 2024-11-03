@@ -51,24 +51,6 @@ public:
     dtype *data_;
 };
 
-__device__ inline size_t convertIdx(
-    size_t linear_index, 
-    const int* shape, 
-    const int* stride, 
-    size_t offset, 
-    int dim_size) 
-{
-    size_t linear_index_new = 0;
-    
-    for (int i = dim_size - 1; i >= 0; --i) {
-        int cur_dim_id = linear_index % shape[i];
-        linear_index /= shape[i];
-        linear_index_new += cur_dim_id * stride[i];
-    }
-    
-    return linear_index_new + offset;
-}
-
 #define CUDA_CHECK(call)                                                    \
 {                                                                           \
     const cudaError_t error = call;                                         \
@@ -105,4 +87,39 @@ inline std::string cublasGetErrorString(cublasStatus_t status) {
         case CUBLAS_STATUS_LICENSE_ERROR:    return "CUBLAS_STATUS_LICENSE_ERROR";
         default:                             return "Unknown cuBLAS error";
     }
+}
+
+// copy from CMU10-414 homework project
+#define MAX_VEC_SIZE 8
+struct CudaVec {
+  uint32_t size;
+  int32_t data[MAX_VEC_SIZE];
+};
+
+static CudaVec VecToCuda(const std::vector<int>& x) {
+  CudaVec shape;
+  if (x.size() > MAX_VEC_SIZE) throw std::runtime_error("Exceeded CUDA supported max dimesions");
+  shape.size = x.size();
+  for (size_t i = 0; i < x.size(); i++) {
+    shape.data[i] = x[i];
+  }
+  return shape;
+}
+
+__device__ inline size_t convertIdx(
+    size_t linear_index, 
+    CudaVec shape,
+    CudaVec stride, 
+    size_t offset) 
+{
+    int dim_size = shape.size;
+    size_t linear_index_new = 0;
+    
+    for (int i = dim_size - 1; i >= 0; --i) {
+        int cur_dim_id = linear_index % shape.data[i];
+        linear_index /= shape.data[i];
+        linear_index_new += cur_dim_id * stride.data[i];
+    }
+    
+    return linear_index_new + offset;
 }
