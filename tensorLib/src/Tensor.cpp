@@ -580,105 +580,27 @@ Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) con
     return Tensor<dtype>(std::move(new_shape), std::move(new_stride), this->offset_, this->device, this->device_type);
 }
 
+////////////////////////////////////////////////////// unary operations ///////////////////////////////////////////////////////////////////////////////
+
 template <typename dtype>
-inline Tensor<dtype> Tensor<dtype>::operator-() const {
+Tensor<dtype> Tensor<dtype>::applyUnaryOperation(void (Device<dtype>::*func)(dtype*, size_t)) const {
     Tensor<dtype> result(this->shape_, this->device_type);
-    this->device->neg(
-        result.device->getDataPtr(),
-        result.num_elements
-    );
+    (this->device.get()->*func)(result.device->getDataPtr(), result.num_elements);
     return result;
 }
 
-template <typename dtype>
-inline Tensor<dtype> Tensor<dtype>::sin() const {
-    Tensor<dtype> result(this->shape_, this->device_type);
-    this->device->sin(
-        result.device->getDataPtr(),
-        result.num_elements
-    );
-    return result;
-}
 
-template <typename dtype>
-inline Tensor<dtype> Tensor<dtype>::cos() const {
-    Tensor<dtype> result(this->shape_, this->device_type);
-    this->device->cos(
-        result.device->getDataPtr(),
-        result.num_elements
-    );
-    return result;
-}
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::operator-() const { return applyUnaryOperation(&Device<dtype>::neg); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::sin() const { return applyUnaryOperation(&Device<dtype>::sin); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::cos() const { return applyUnaryOperation(&Device<dtype>::cos); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::exp() const { return applyUnaryOperation(&Device<dtype>::exp); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::log() const { return applyUnaryOperation(&Device<dtype>::log); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::abs() const { return applyUnaryOperation(&Device<dtype>::abs); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::tanh() const { return applyUnaryOperation(&Device<dtype>::tanh); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::silu() const { return applyUnaryOperation(&Device<dtype>::silu); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::sqrt() const { return applyUnaryOperation(&Device<dtype>::sqrt); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::rsqrt() const { return applyUnaryOperation(&Device<dtype>::rsqrt); }
 
-template <typename dtype>
-inline Tensor<dtype> Tensor<dtype>::exp() const {
-    Tensor<dtype> result(this->shape_, this->device_type);
-    this->device->exp(
-        result.device->getDataPtr(),
-        result.num_elements
-    );
-    return result;
-}
-
-template <typename dtype>
-inline Tensor<dtype> Tensor<dtype>::log() const {
-    Tensor<dtype> result(this->shape_, this->device_type);
-    this->device->log(
-        result.device->getDataPtr(),
-        result.num_elements
-    );
-    return result;
-}
-
-template <typename dtype>
-inline Tensor<dtype> Tensor<dtype>::abs() const {
-    Tensor<dtype> result(this->shape_, this->device_type);
-    this->device->abs(
-        result.device->getDataPtr(),
-        result.num_elements
-    );
-    return result;
-}
-
-template <typename dtype>
-inline Tensor<dtype> Tensor<dtype>::tanh() const {
-    Tensor<dtype> result(this->shape_, this->device_type);
-    this->device->tanh(
-        result.device->getDataPtr(),
-        result.num_elements
-    );
-    return result;
-}
-
-template <typename dtype>
-inline Tensor<dtype> Tensor<dtype>::silu() const {
-    Tensor<dtype> result(this->shape_, this->device_type);
-    this->device->silu(
-        result.device->getDataPtr(),
-        result.num_elements
-    );
-    return result;
-}
-
-template <typename dtype>
-inline Tensor<dtype> Tensor<dtype>::sqrt() const {
-    Tensor<dtype> result(this->shape_, this->device_type);
-    this->device->sqrt(
-        result.device->getDataPtr(),
-        result.num_elements
-    );
-    return result;
-}
-
-template <typename dtype>
-inline Tensor<dtype> Tensor<dtype>::rsqrt() const {
-    Tensor<dtype> result(this->shape_, this->device_type);
-    this->device->rsqrt(
-        result.device->getDataPtr(),
-        result.num_elements
-    );
-    return result;
-}
 
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::permute(const std::vector<int>& new_axes) const {
@@ -905,6 +827,58 @@ std::vector<int> Tensor<dtype>::get_broadcast_shape(std::vector<int>& shape_a, s
  * maybe should support implicit broadcasting 
  * @tparam dtype 
  */
+// template <typename dtype>
+// Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const {
+//     if (this->device_type != other.device_type) {
+//         throw std::invalid_argument("The device type of the two tensors must be the same.");
+//     }
+// 
+//     Tensor<dtype> a = *this, b = other;
+//     
+//     // implicit broadcasting
+//     if (this->shape() != other.shape()) {
+//         std::vector<int> shape_a = this->shape();
+//         std::vector<int> shape_b = other.shape();
+//         auto new_shape = get_broadcast_shape(shape_a, shape_b);
+//         a = a.broadcast_to(new_shape); 
+//         b = b.broadcast_to(new_shape);
+//     }
+// 
+//     // maybe we can do not call contiguous() to make it faster...
+//     /**
+//         import torch
+//         # Create a base tensor and a non-contiguous tensor
+//         a = torch.rand(3, 1)   # Shape (3, 1)
+//         b = torch.rand(3, 3).permute(1, 0)  # Shape (3, 3) but non-contiguous
+// 
+//         # Perform an operation that requires broadcasting
+//         result = a + b  # Broadcasting will occur here
+// 
+//         print(result)
+//         print(result.is_contiguous())  # The result might be non-contiguous if any input was non-contiguous
+//      */
+// 
+//     a = a.contiguous(); // if broadcast have influence on the result of contiguous?? (seems no, because contiguous will allocate actually memory for array)
+//     b = b.contiguous();
+// 
+//     Tensor<dtype> result(this->shape(), this->device_type);
+//     #pragma omp parallel for
+//     for (int i = 0; i < this->num_elements; ++i) {
+//         result.data_[i] = op(a.data_[i], b.data_[i]);
+//     }
+// 
+//     return result;
+// }
+// 
+// template <typename dtype> Tensor<dtype> Tensor<dtype>::operator+(const Tensor<dtype>& other) const { return applyBinaryOperation(other, add<dtype>); }
+// template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(const Tensor<dtype>& other) const { return applyBinaryOperation(other, subtract<dtype>); }
+// template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const { return applyBinaryOperation(other, multiply<dtype>); }
+// template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(const Tensor<dtype>& other) const { return applyBinaryOperation(other, divide<dtype>); }
+
+/**
+ * maybe should support implicit broadcasting 
+ * @tparam dtype 
+ */
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const {
     if (this->device_type != other.device_type) {
@@ -936,7 +910,7 @@ Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other, dt
         print(result.is_contiguous())  # The result might be non-contiguous if any input was non-contiguous
      */
 
-    a = a.contiguous(); // if broadcast have influence on the result of contiguous?? (seems no, because contiguous will allocate actually memory for array)
+    a = a.contiguous();
     b = b.contiguous();
 
     Tensor<dtype> result(this->shape(), this->device_type);
@@ -947,6 +921,12 @@ Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other, dt
 
     return result;
 }
+
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator+(const Tensor<dtype>& other) const { return applyBinaryOperation(other, add<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(const Tensor<dtype>& other) const { return applyBinaryOperation(other, subtract<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const { return applyBinaryOperation(other, multiply<dtype>); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(const Tensor<dtype>& other) const { return applyBinaryOperation(other, divide<dtype>); }
+
 
 /**
  * if this is a broadcasted tensor, need to use contiguous() firtst, or the num_elements is not the actual elem size of the tensor data_.
@@ -967,17 +947,11 @@ Tensor<dtype> Tensor<dtype>::applyBinaryScalarOperation(dtype scalar, dtype(*op)
     return result;
 }
 
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator+(const Tensor<dtype>& other) const { return applyBinaryOperation(other, add<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(const Tensor<dtype>& other) const { return applyBinaryOperation(other, subtract<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const { return applyBinaryOperation(other, multiply<dtype>); }
-template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(const Tensor<dtype>& other) const { return applyBinaryOperation(other, divide<dtype>); }
-
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator+(dtype scalar) const { return applyBinaryScalarOperation(scalar, add<dtype>); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(dtype scalar) const { return applyBinaryScalarOperation(scalar, subtract<dtype>); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(dtype scalar) const { return applyBinaryScalarOperation(scalar, multiply<dtype>); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(dtype scalar) const { return applyBinaryScalarOperation(scalar, divide<dtype>); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::pow(dtype scalar) const { return applyBinaryScalarOperation(scalar, power<dtype>); }
-
 
 /** can be called in gdb, operator << can not be called... */
 void print_tensor_float(const Tensor<float>& tensor) {

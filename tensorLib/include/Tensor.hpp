@@ -199,17 +199,19 @@ private:
     Tensor<int> reduce_arg(int axis, bool keepdims, bool(*comp)(dtype, dtype)) const;
 
     // General template for inline unary operations
-    inline Tensor<dtype> applyUnaryOperation(dtype (*func)(dtype)) const {
-        Tensor<dtype> result(this->shape_, this->device_type);
-        
-        // Inline parallel loop for performance (OpenMP enabled)
-        #pragma omp parallel for
-        for (size_t i = 0; i < this->num_elements; ++i) {
-            result.data_[i] = func(this->data_[i]);  // Apply function to each element
-        }
-        
-        return result;
-    }
+    // inline Tensor<dtype> applyUnaryOperation(dtype (*func)(dtype)) const {
+    //     Tensor<dtype> result(this->shape_, this->device_type);
+    //     
+    //     // Inline parallel loop for performance (OpenMP enabled)
+    //     #pragma omp parallel for
+    //     for (size_t i = 0; i < this->num_elements; ++i) {
+    //         result.data_[i] = func(this->data_[i]);  // Apply function to each element
+    //     }
+    //     
+    //     return result;
+    // }
+
+    Tensor<dtype> applyUnaryOperation(void (Device<dtype>::*func)(dtype*, size_t)) const;
 
     /**
      * seems this shape msethod can handle non-contiguous Tensor, both this and below can be used in matmul(contiguous?),
