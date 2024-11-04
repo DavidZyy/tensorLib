@@ -1,6 +1,5 @@
 #pragma once
 #include <cstddef>
-#include <memory>
 #include <vector>
 
 template <typename dtype>
@@ -41,7 +40,20 @@ public:
         const std::vector<int>& stride,
         size_t offset,
         size_t num_elements) = 0;
+
+    // unary operations
+    virtual void neg(dtype* result, size_t num_elements) = 0;
+    virtual void sin(dtype* result, size_t num_elements) = 0;
+    virtual void cos(dtype* result, size_t num_elements) = 0;
+    virtual void exp(dtype* result, size_t num_elements) = 0;
+    virtual void log(dtype* result, size_t num_elements) = 0;
+    virtual void abs(dtype* result, size_t num_elements) = 0;
+    virtual void tanh(dtype* result, size_t num_elements) = 0;
+    virtual void silu(dtype* result, size_t num_elements) = 0;
+    virtual void sqrt(dtype* result, size_t num_elements) = 0;
+    virtual void rsqrt(dtype* result, size_t num_elements) = 0;
+
 // private:
-        size_t size; // number of elements, the total bytes of data_ is: size * sizeof(dtype)
+    size_t size; // number of elements, the total bytes of data_ is: size * sizeof(dtype)
 };
 

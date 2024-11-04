@@ -141,6 +141,8 @@ PYBIND11_MODULE(tensor_bindings, m) {
         .def(py::self * py::self)
         .def(py::self / py::self)
 
+        .def("broadcast_to", &Tensor<float>::broadcast_to)
+
         // set, get item
         .def("__getitem__", [](const Tensor<float>& self, const py::list& py_slices) {
             // Convert Python list of slices to std::vector<std::vector<int>>

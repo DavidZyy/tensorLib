@@ -1,11 +1,10 @@
 #include "CUDA.hpp"
-#include "Tensor.hpp"
 #include <cstddef>
 #include <cstdio>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 #include <library_types.h>
-#include <stdexcept>
+#include <iostream>
 #include <vector>
 
 template class CUDA<float>;
@@ -216,4 +215,165 @@ void CUDA<dtype>::setItemScalar(
         this->data_, value, VecToCuda(shape), VecToCuda(stride), offset, num_elements);
 
     CUDA_CHECK(cudaGetLastError());
+}
+
+template <typename dtype>
+__global__ void unaryKernel(dtype* result, const dtype* src, size_t num_elements, dtype (*func)(dtype)) {
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_elements) {
+        result[i] = func(src[i]);
+    }
+}
+
+// General template for CUDA unary operations
+template <typename dtype>
+void applyUnaryOperation(dtype* result, dtype* src, size_t num_elements, dtype (*func)(dtype)) {
+    int blockSize = 256;  // Number of threads per block (adjust based on optimization needs)
+    int gridSize = (num_elements + blockSize - 1) / blockSize;  // Number of blocks
+
+    unaryKernel<<<gridSize, blockSize>>>(result, src, num_elements, func);
+
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+template <typename dtype>
+__device__ dtype negateFunc(dtype x) {
+    return -x;
+}
+
+template <typename dtype>
+void CUDA<dtype>::neg(dtype* result, size_t num_elements) {
+    applyUnaryOperation(result, this->data_, num_elements, negateFunc<dtype>);
+}
+
+template <typename dtype>
+__device__ dtype sinFunc(dtype x) {
+    if constexpr (std::is_same<dtype, int>::value) {
+        // If dtype is an integer type, cast x to float and calculate sine, or it will link to std::sin, which is not supported on CUDA
+        return static_cast<dtype>(sin(static_cast<float>(x)));
+    } else {
+        return sin(x);
+    }
+}
+
+template <typename dtype>
+void CUDA<dtype>::sin(dtype* result, size_t num_elements) {
+    applyUnaryOperation(result, this->data_, num_elements, sinFunc<dtype>);
+}
+
+template <typename dtype>
+__device__ dtype cosFunc(dtype x) {
+    if constexpr (std::is_same<dtype, int>::value) {
+        return static_cast<dtype>(cos(static_cast<float>(x)));
+    } else {
+        return cos(x);
+    }
+}
+
+template <typename dtype>
+void CUDA<dtype>::cos(dtype* result, size_t num_elements) {
+    applyUnaryOperation(result, this->data_, num_elements, cosFunc<dtype>);
+}
+
+template <typename dtype>
+__device__ dtype expFunc(dtype x) {
+    if constexpr (std::is_same<dtype, int>::value) {
+        return static_cast<dtype>(exp(static_cast<float>(x)));
+    } else {
+        return exp(x);
+    }
+}
+
+template <typename dtype>
+void CUDA<dtype>::exp(dtype* result, size_t num_elements) {
+    applyUnaryOperation(result, this->data_, num_elements, expFunc<dtype>);
+}
+
+template <typename dtype>
+__device__ dtype logFunc(dtype x) {
+    if constexpr (std::is_same<dtype, int>::value) {
+        return static_cast<dtype>(log(static_cast<float>(x)));
+    } else {
+        return log(x);
+    }
+}
+
+template <typename dtype>
+void CUDA<dtype>::log(dtype* result, size_t num_elements) {
+    applyUnaryOperation(result, this->data_, num_elements, logFunc<dtype>);
+}
+
+template <typename dtype>
+__device__ dtype absFunc(dtype x) {
+    return abs(x);
+}
+
+template <typename dtype>
+void CUDA<dtype>::abs(dtype* result, size_t num_elements) {
+    applyUnaryOperation(result, this->data_, num_elements, absFunc<dtype>);
+}
+
+template <typename dtype>
+__device__ dtype tanhFunc(dtype x) {
+    if constexpr (std::is_same<dtype, int>::value) {
+        return static_cast<dtype>(tanh(static_cast<float>(x)));
+    } else {
+        return tanh(x);
+    }
+}
+
+template <typename dtype>
+void CUDA<dtype>::tanh(dtype* result, size_t num_elements) {
+    applyUnaryOperation(result, this->data_, num_elements, tanhFunc<dtype>);
+}
+
+template <typename dtype>
+__device__ dtype siluFunc(dtype x) {
+    if constexpr (std::is_same<dtype, int>::value) {
+        return static_cast<dtype>(static_cast<float>(x) * (1 / (1 + exp(-static_cast<float>(x)))));
+    } else {
+        return x * (1 / (1 + exp(-x)));
+    }
+}
+
+template <typename dtype>
+void CUDA<dtype>::silu(dtype* result, size_t num_elements) {
+    applyUnaryOperation(result, this->data_, num_elements, siluFunc<dtype>);
+}
+
+template <typename dtype>
+__device__ dtype sqrtFunc(dtype x) {
+    if (x >= 0) {
+        if constexpr (std::is_same<dtype, int>::value) {
+            return static_cast<dtype>(sqrt(static_cast<float>(x)));
+        } else {
+            return sqrt(x); // Rsqrt calculation
+        }
+    } else {
+        return nan("");
+    }
+}
+
+template <typename dtype>
+void CUDA<dtype>::sqrt(dtype* result, size_t num_elements) {
+    applyUnaryOperation(result, this->data_, num_elements, sqrtFunc<dtype>);
+}
+
+template <typename dtype>
+__device__ dtype rsqrtFunc(dtype x) {
+    if (x > 0) {
+        if constexpr (std::is_same<dtype, int>::value) {
+            return static_cast<dtype>(rsqrt(static_cast<float>(x)));
+        } else {
+            return rsqrt(x); // Rsqrt calculation
+        }
+    } else {
+        return nan("");
+    }
+}
+
+template <typename dtype>
+void CUDA<dtype>::rsqrt(dtype* result, size_t num_elements) {
+    applyUnaryOperation(result, this->data_, num_elements, rsqrtFunc<dtype>);
 }

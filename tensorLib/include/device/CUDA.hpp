@@ -47,6 +47,18 @@ public:
         const std::vector<int>& stride,
         size_t offset,
         size_t num_elements) override;
+
+    void neg(dtype* result, size_t num_elements) override;
+    void sin(dtype* result, size_t num_elements) override;
+    void cos(dtype* result, size_t num_elements)   override;
+    void exp(dtype* result, size_t num_elements)   override;
+    void log(dtype* result, size_t num_elements)   override;
+    void abs(dtype* result, size_t num_elements)   override;
+    void tanh(dtype* result, size_t num_elements)  override;
+    void silu(dtype* result, size_t num_elements)  override;
+    void sqrt(dtype* result, size_t num_elements)  override;
+    void rsqrt(dtype* result, size_t num_elements) override;
+
 // private:
     dtype *data_;
 };

@@ -48,8 +48,28 @@ public:
         const std::vector<int>& stride,
         size_t offset,
         size_t num_elements) override;
+    
+    // unary operations
+    void neg(dtype* result, size_t num_elements) override;
+    void sin(dtype* result, size_t num_elements) override;
+    void cos(dtype* result, size_t num_elements)   override;
+    void exp(dtype* result, size_t num_elements)   override;
+    void log(dtype* result, size_t num_elements)   override;
+    void abs(dtype* result, size_t num_elements)   override;
+    void tanh(dtype* result, size_t num_elements)  override;
+    void silu(dtype* result, size_t num_elements)  override;
+    void sqrt(dtype* result, size_t num_elements)  override;
+    void rsqrt(dtype* result, size_t num_elements) override;
+
 // private:
     dtype *data_;
+
+    inline void applyUnaryOperation(dtype *result, size_t num_elements, dtype (*func)(dtype)) {
+        #pragma omp parallel for
+        for (size_t i = 0; i < num_elements; ++i) {
+            result[i] = func(this->data_[i]);  // Apply function to each element
+        }
+    }
 };
 
 inline size_t convertIdx(size_t linear_index, const std::vector<int>& shape, const std::vector<int>& stride, size_t offset) {

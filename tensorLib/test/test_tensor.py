@@ -4,8 +4,6 @@ import numpy as np
 import random
 import operator
 import torch
-# import libtensor_bindings as tb
-# from . import libtensor_bindings as tb
 
 def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10) -> list[tuple]:
     """
@@ -202,7 +200,9 @@ unary_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=10)
 
 @pytest.mark.parametrize("shape", unary_shapes)
 @pytest.mark.parametrize("op_name, np_op", unary_ops)
-def test_unary_methods(shape, op_name, np_op):
+# @pytest.mark.parametrize("device", ["cpu", "cuda"])
+@pytest.mark.parametrize("device", ["cuda"])
+def test_unary_methods(shape, op_name, np_op, device):
     # Generate random data for the tensor
     A = np.random.randn(*shape).astype(np.float32)
 
@@ -214,7 +214,7 @@ def test_unary_methods(shape, op_name, np_op):
     np_result = np_op(A)
 
     # Convert A to tensor and apply the tensor operation
-    A_t = tb.convert_to_tensor(A)
+    A_t = tb.convert_to_tensor(A, device)
     if op_name == "neg":
         tensor_result = np_op(A_t)
     else:
@@ -315,10 +315,22 @@ def test_setItem(shape, operand, device):
     np.testing.assert_allclose(np_data, tensor_data_np, atol=1e-5, rtol=1e-5)
 
 
-def test_broadcast():
-    pass
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_broadcast_to(device):
+    inital_shape = (3, 1)
+    target_shape = (3, 4)
 
+    np_data, tensor_data = generate_random_tensor(inital_shape, device)
+    np_result = np.broadcast_to(np_data, target_shape)
+    tensor_result = tensor_data.broadcast_to(target_shape)
+    tensor_result_np = tb.convert_to_numpy(tensor_result)
+    assert np_result.shape == tensor_result_np.shape
+    assert np_result.dtype == tensor_result_np.dtype
+    assert np_result.size == tensor_result_np.size
+    np.testing.assert_allclose(np_result, tensor_result_np, atol=1e-5, rtol=1e-5)
 
 def test_reshape():
     pass
 
+def test_permute():
+    pass

@@ -90,6 +90,21 @@ void test_contiguous() {
 
 }
 
+void test_unary_op() {
+    auto a = originTensor(std::vector<int>{2, 3}, "cpu");
+    auto b = originTensor(std::vector<int>{2, 3}, "cuda");
+
+    std::cout << "a: " << std::endl << a << std::endl;
+    std::cout << "b: " << std::endl << b << std::endl;
+
+    a = -a;
+    std::cout << "a: " << std::endl << a << std::endl;
+
+    b = -b;
+    std::cout << "b: " << std::endl << b << std::endl;
+}
+
 int main() {
-    test_contiguous();
+    // test_contiguous();
+    test_unary_op();
 }

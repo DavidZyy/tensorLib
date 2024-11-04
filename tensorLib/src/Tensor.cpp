@@ -562,33 +562,6 @@ std::vector<std::vector<int>> Tensor<dtype>::process_slices(const std::vector<st
  * 
  * so when broadcast_to a shape().size() greater than current shape().size(), you should add 1 in current shape()'s dimension which to be broadcasted.
  */
-// template<typename dtype>
-// Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) const {
-//     if (this->shape() == new_shape) 
-//         return *this;
-// 
-//     auto prepend_shape = this->shape(); // if this->shape().size() < new_shape().size, prepend 1 before this->shape().
-// 
-//     if (prepend_shape.size() > new_shape.size()) {
-//         throw std::invalid_argument("The new shape must be greater than or equal to the original shape.");
-//     } else if (prepend_shape.size() < new_shape.size()) {
-//         prepend_shape.insert(prepend_shape.begin(), new_shape.size() - prepend_shape.size(), 1);
-//     }
-// 
-//     auto new_tensor = this->view(prepend_shape);
-// 
-//     // now prepend_shape.size() == new_shape.size()
-//     std::vector<int> new_stride;
-//     for (int i=0; i < new_shape.size(); i++) {
-//         if ((new_shape[i] != prepend_shape[i]) && prepend_shape[i] != 1) {
-//             throw std::invalid_argument("The dimension to be broadcasted must be 1.");
-//         }
-//         new_stride.push_back(prepend_shape[i] == 1 ? 0 : new_tensor.stride_[i]);
-//     }
-// 
-//     return Tensor<dtype>(std::move(new_shape), std::move(new_stride), new_tensor.offset_, new_tensor.data_);
-// }
-
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) const {
     if (this->shape() == new_shape) 
@@ -605,101 +578,148 @@ Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) con
         prepend_stride.insert(prepend_stride.begin(), new_shape.size() - this->shape_.size(), 0);
     }
 
-    // auto new_tensor = this->view(prepend_shape);
-
-    // now prepend_shape.size() == new_shape.size()
+    // now prepend_shape.size() equal to new_shape.size()
     std::vector<int> new_stride;
     for (int i=0; i < new_shape.size(); i++) {
         if ((new_shape[i] != prepend_shape[i]) && prepend_shape[i] != 1) {
             throw std::invalid_argument("The dimension to be broadcasted must be 1.");
         }
-        // new_stride.push_back(prepend_shape[i] == 1 ? 0 : new_tensor.stride_[i]);
         new_stride.push_back(prepend_shape[i] == 1 ? 0 : prepend_stride[i]);
     }
 
-    return Tensor<dtype>(std::move(new_shape), std::move(new_stride), this->offset_, this->data_);
+    return Tensor<dtype>(std::move(new_shape), std::move(new_stride), this->offset_, this->device, this->device_type);
 }
 
-// negative operator
 template <typename dtype>
 inline Tensor<dtype> Tensor<dtype>::operator-() const {
-    return applyUnaryOperation([](dtype x) -> dtype{
-        return -x;
-    });
+    Tensor<dtype> result(this->shape_, this->device_type);
+    this->device->neg(
+        result.device->getDataPtr(),
+        result.num_elements
+    );
+    return result;
 }
 
 template <typename dtype>
 inline Tensor<dtype> Tensor<dtype>::sin() const {
-    return applyUnaryOperation([](dtype x) -> dtype{
-        return std::sin(x);
-    });
+    Tensor<dtype> result(this->shape_, this->device_type);
+    this->device->sin(
+        result.device->getDataPtr(),
+        result.num_elements
+    );
+    return result;
 }
 
 template <typename dtype>
 inline Tensor<dtype> Tensor<dtype>::cos() const {
-    return applyUnaryOperation([](dtype x) -> dtype{
-        return std::cos(x);
-    });
+    Tensor<dtype> result(this->shape_, this->device_type);
+    this->device->cos(
+        result.device->getDataPtr(),
+        result.num_elements
+    );
+    return result;
 }
 
 template <typename dtype>
 inline Tensor<dtype> Tensor<dtype>::exp() const {
-    return applyUnaryOperation([](dtype x) -> dtype{
-        return std::exp(x);
-    });
+    Tensor<dtype> result(this->shape_, this->device_type);
+    this->device->exp(
+        result.device->getDataPtr(),
+        result.num_elements
+    );
+    return result;
 }
 
 template <typename dtype>
 inline Tensor<dtype> Tensor<dtype>::log() const {
-    return applyUnaryOperation([](dtype x) -> dtype{
-        return std::log(x);
-    });
+    Tensor<dtype> result(this->shape_, this->device_type);
+    this->device->log(
+        result.device->getDataPtr(),
+        result.num_elements
+    );
+    return result;
 }
 
 template <typename dtype>
 inline Tensor<dtype> Tensor<dtype>::abs() const {
-    return applyUnaryOperation([](dtype x) -> dtype{
-        return std::fabs(x);
-    });
+    Tensor<dtype> result(this->shape_, this->device_type);
+    this->device->abs(
+        result.device->getDataPtr(),
+        result.num_elements
+    );
+    return result;
 }
 
 template <typename dtype>
 inline Tensor<dtype> Tensor<dtype>::tanh() const {
-    return applyUnaryOperation([](dtype x) -> dtype{
-        return std::tanh(x);
-    });
+    Tensor<dtype> result(this->shape_, this->device_type);
+    this->device->tanh(
+        result.device->getDataPtr(),
+        result.num_elements
+    );
+    return result;
+}
+
+template <typename dtype>
+inline Tensor<dtype> Tensor<dtype>::silu() const {
+    Tensor<dtype> result(this->shape_, this->device_type);
+    this->device->silu(
+        result.device->getDataPtr(),
+        result.num_elements
+    );
+    return result;
 }
 
 // Custom logic with inline for "silu"
-template <typename dtype>
-inline Tensor<dtype> Tensor<dtype>::silu() const {
-    return applyUnaryOperation([](dtype x) -> dtype {
-        dtype sigmoid_x = 1 / (1 + std::exp(-x));
-        return x * sigmoid_x;
-    });
-}
+// template <typename dtype>
+// inline Tensor<dtype> Tensor<dtype>::silu() const {
+//     return applyUnaryOperation([](dtype x) -> dtype {
+//         dtype sigmoid_x = 1 / (1 + std::exp(-x));
+//         return x * sigmoid_x;
+//     });
+// }
 
 template <typename dtype>
 inline Tensor<dtype> Tensor<dtype>::sqrt() const {
-    return applyUnaryOperation([](dtype x) -> dtype {
-        if (x > 0) {
-            return std::sqrt(x); // Rsqrt calculation
-        } else {
-            throw std::domain_error("Cannot take rsqrt of non-positive values.");
-        }
-    });
+    Tensor<dtype> result(this->shape_, this->device_type);
+    this->device->sqrt(
+        result.device->getDataPtr(),
+        result.num_elements
+    );
+    return result;
 }
+
+// template <typename dtype>
+// inline Tensor<dtype> Tensor<dtype>::sqrt() const {
+//     return applyUnaryOperation([](dtype x) -> dtype {
+//         if (x > 0) {
+//             return std::sqrt(x); // Rsqrt calculation
+//         } else {
+//             throw std::domain_error("Cannot take rsqrt of non-positive values.");
+//         }
+//     });
+// }
 
 template <typename dtype>
 inline Tensor<dtype> Tensor<dtype>::rsqrt() const {
-    return applyUnaryOperation([](dtype x) -> dtype {
-        if (x > 0) {
-            return 1 / std::sqrt(x); // Rsqrt calculation
-        } else {
-            throw std::domain_error("Cannot take rsqrt of non-positive values.");
-        }
-    });
+    Tensor<dtype> result(this->shape_, this->device_type);
+    this->device->rsqrt(
+        result.device->getDataPtr(),
+        result.num_elements
+    );
+    return result;
 }
+
+// template <typename dtype>
+// inline Tensor<dtype> Tensor<dtype>::rsqrt() const {
+//     return applyUnaryOperation([](dtype x) -> dtype {
+//         if (x > 0) {
+//             return 1 / std::sqrt(x); // Rsqrt calculation
+//         } else {
+//             throw std::domain_error("Cannot take rsqrt of non-positive values.");
+//         }
+//     });
+// }
 
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::permute(const std::vector<int>& new_axes) const {
