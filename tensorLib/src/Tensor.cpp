@@ -375,16 +375,6 @@ Tensor<dtype> Tensor<dtype>::select(int dim, int index) const {
 }
 
 template <typename dtype>
-Tensor<dtype> Tensor<dtype>::transpose(int dim0, int dim1) const {
-    Tensor<dtype> result = *this;
-
-    std::swap(result.shape_[dim0], result.shape_[dim1]);
-    std::swap(result.stride_[dim0], result.stride_[dim1]);
-
-    return result;
-}
-
-template <typename dtype>
 Tensor<dtype> Tensor<dtype>::contiguous() const {
     if (is_contiguous(*this)) {
         return *this;
@@ -670,15 +660,6 @@ inline Tensor<dtype> Tensor<dtype>::silu() const {
     return result;
 }
 
-// Custom logic with inline for "silu"
-// template <typename dtype>
-// inline Tensor<dtype> Tensor<dtype>::silu() const {
-//     return applyUnaryOperation([](dtype x) -> dtype {
-//         dtype sigmoid_x = 1 / (1 + std::exp(-x));
-//         return x * sigmoid_x;
-//     });
-// }
-
 template <typename dtype>
 inline Tensor<dtype> Tensor<dtype>::sqrt() const {
     Tensor<dtype> result(this->shape_, this->device_type);
@@ -689,17 +670,6 @@ inline Tensor<dtype> Tensor<dtype>::sqrt() const {
     return result;
 }
 
-// template <typename dtype>
-// inline Tensor<dtype> Tensor<dtype>::sqrt() const {
-//     return applyUnaryOperation([](dtype x) -> dtype {
-//         if (x > 0) {
-//             return std::sqrt(x); // Rsqrt calculation
-//         } else {
-//             throw std::domain_error("Cannot take rsqrt of non-positive values.");
-//         }
-//     });
-// }
-
 template <typename dtype>
 inline Tensor<dtype> Tensor<dtype>::rsqrt() const {
     Tensor<dtype> result(this->shape_, this->device_type);
@@ -709,17 +679,6 @@ inline Tensor<dtype> Tensor<dtype>::rsqrt() const {
     );
     return result;
 }
-
-// template <typename dtype>
-// inline Tensor<dtype> Tensor<dtype>::rsqrt() const {
-//     return applyUnaryOperation([](dtype x) -> dtype {
-//         if (x > 0) {
-//             return 1 / std::sqrt(x); // Rsqrt calculation
-//         } else {
-//             throw std::domain_error("Cannot take rsqrt of non-positive values.");
-//         }
-//     });
-// }
 
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::permute(const std::vector<int>& new_axes) const {
@@ -734,7 +693,17 @@ Tensor<dtype> Tensor<dtype>::permute(const std::vector<int>& new_axes) const {
         new_stride.push_back(this->stride_[new_axes[i]]);
     }
 
-    return Tensor<dtype>(std::move(new_shape), std::move(new_stride), this->offset_, this->data_);
+    return Tensor<dtype>(std::move(new_shape), std::move(new_stride), this->offset_, this->device, this->device_type);
+}
+
+template <typename dtype>
+Tensor<dtype> Tensor<dtype>::transpose(int dim0, int dim1) const {
+    Tensor<dtype> result = *this;
+
+    std::swap(result.shape_[dim0], result.shape_[dim1]);
+    std::swap(result.stride_[dim0], result.stride_[dim1]);
+
+    return result;
 }
 
 template <typename dtype>

@@ -200,8 +200,7 @@ unary_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=10)
 
 @pytest.mark.parametrize("shape", unary_shapes)
 @pytest.mark.parametrize("op_name, np_op", unary_ops)
-# @pytest.mark.parametrize("device", ["cpu", "cuda"])
-@pytest.mark.parametrize("device", ["cuda"])
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_unary_methods(shape, op_name, np_op, device):
     # Generate random data for the tensor
     A = np.random.randn(*shape).astype(np.float32)
@@ -332,5 +331,18 @@ def test_broadcast_to(device):
 def test_reshape():
     pass
 
-def test_permute():
-    pass
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_permute(device):
+    initial_shape = (2, 3, 4)
+    permuted_shape = (3, 4, 2)
+    axes = (1, 2, 0)  # This is the permutation order
+
+    np_data, tensor_data = generate_random_tensor(initial_shape, device)
+    np_result = np.transpose(np_data, axes)  # Use NumPy to permute the dimensions
+    tensor_result = tensor_data.permute(axes)  # Call your permute method
+    tensor_result_np = tb.convert_to_numpy(tensor_result)  # Convert back to NumPy for comparison
+
+    assert np_result.shape == tensor_result_np.shape
+    assert np_result.dtype == tensor_result_np.dtype
+    assert np_result.size == tensor_result_np.size
+    np.testing.assert_allclose(np_result, tensor_result_np, atol=1e-5, rtol=1e-5)

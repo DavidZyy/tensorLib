@@ -174,22 +174,22 @@ target_link_libraries(test_device PRIVATE tensorLib)
 
 ################################## tensor_bindings module ##########################################################
 
-# # pybind11
-# find_package(pybind11 REQUIRED)
-# include_directories(${pybind11_INCLUDE_DIRS})
-# 
-# find_package(Python3 REQUIRED)
-# include_directories(${Python3_INCLUDE_DIRS})
-# 
-# # Add your source files
-# add_library(tensor_bindings MODULE tensorLib/test/tensor_bindings.cpp)
-# 
-# # Set the output name without the 'lib' prefix
-# set_target_properties(tensor_bindings
-#     PROPERTIES
-#     PREFIX ""
-# )
-# 
-# # Link with pybind11
-# target_link_libraries(tensor_bindings PRIVATE pybind11::module tensorLib)
-# # pybind11_strip(tensor_bindings)
+# pybind11
+find_package(pybind11 REQUIRED)
+include_directories(${pybind11_INCLUDE_DIRS})
+
+find_package(Python3 REQUIRED)
+include_directories(${Python3_INCLUDE_DIRS})
+
+# Add your source files
+add_library(tensor_bindings MODULE tensorLib/test/tensor_bindings.cpp)
+
+# Set the output name without the 'lib' prefix
+set_target_properties(tensor_bindings
+    PROPERTIES
+    PREFIX ""
+)
+
+# Link with pybind11
+target_link_libraries(tensor_bindings PRIVATE pybind11::module tensorLib)
+# pybind11_strip(tensor_bindings)
