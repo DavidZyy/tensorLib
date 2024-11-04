@@ -59,8 +59,24 @@ public:
     void sqrt(dtype* result, size_t num_elements)  override;
     void rsqrt(dtype* result, size_t num_elements) override;
 
+    // binary methods
+    void add(dtype* result, dtype* other, size_t num_elements) const override;
+    void sub(dtype* result, dtype* other, size_t num_elements) const override;
+    void mul(dtype* result, dtype* other, size_t num_elements) const override;
+    void div(dtype* result, dtype* other, size_t num_elements) const override;
+    void add(dtype* result, dtype scalar, size_t num_elements) const override; // could support Tensor + 1(not a lvalue), (dtype& scalar) can not support this
+    void sub(dtype* result, dtype scalar, size_t num_elements) const override;
+    void mul(dtype* result, dtype scalar, size_t num_elements) const override;
+    void div(dtype* result, dtype scalar, size_t num_elements) const override;
+    void pow(dtype* result, dtype scalar, size_t num_elements) const override;
+
 // private:
     dtype *data_;
+
+    template <dtype (*op)(dtype, dtype)>
+    void applyBinaryOperation(dtype* result, const dtype* other, size_t num_elements) const;
+    template <dtype (*op)(dtype, dtype)>
+    void applyBinaryScalarOperation(dtype* result,  dtype value, size_t num_elements) const;
 };
 
 #define CUDA_CHECK(call)                                                    \

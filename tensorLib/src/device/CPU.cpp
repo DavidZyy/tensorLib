@@ -158,3 +158,44 @@ template <typename dtype> void CPU<dtype>::silu(dtype* result, size_t num_elemen
 template <typename dtype> void CPU<dtype>::sqrt(dtype* result, size_t num_elements) { applyUnaryOperation<sqrtFunc<dtype>>(result, num_elements); }
 template <typename dtype> void CPU<dtype>::rsqrt(dtype* result, size_t num_elements) { applyUnaryOperation<rsqrtFunc<dtype>>(result, num_elements); }
 
+////////////////////////////////////////////////////// binary operations ///////////////////////////////////////////////////////////////////////////////
+template <typename dtype> static inline dtype addFunc(dtype a, dtype b) { return a + b; }
+template <typename dtype> static inline dtype subFunc(dtype a, dtype b) { return a - b; }
+template <typename dtype> static inline dtype mulFunc(dtype a, dtype b) { return a * b; }
+template <typename dtype> static inline dtype divFunc(dtype a, dtype b) {
+    if (b == 0) {
+        // or return inf / -inf ?
+        throw std::invalid_argument("Division by zero.");
+    }
+    return a / b;
+}
+template <typename dtype> static inline dtype powFunc(dtype a, dtype b) { return std::pow(a, b); }
+
+template <typename dtype>
+template <dtype (*op)(dtype, dtype)>
+void CPU<dtype>::applyBinaryOperation(dtype* result,  const dtype* other, size_t num_elements) const {
+    #pragma omp parallel for
+    for (size_t i = 0; i < num_elements; ++i) {
+        result[i] = op(this->data_[i], other[i]);  // Apply function to each element
+    }
+}
+
+template <typename dtype> void CPU<dtype>::add(dtype* result, dtype* other, size_t num_elements) const {applyBinaryOperation<addFunc<dtype>>(result, other, num_elements);}
+template <typename dtype> void CPU<dtype>::sub(dtype* result, dtype* other, size_t num_elements) const {applyBinaryOperation<subFunc<dtype>>(result, other, num_elements);}
+template <typename dtype> void CPU<dtype>::mul(dtype* result, dtype* other, size_t num_elements) const {applyBinaryOperation<mulFunc<dtype>>(result, other, num_elements);}
+template <typename dtype> void CPU<dtype>::div(dtype* result, dtype* other, size_t num_elements) const {applyBinaryOperation<divFunc<dtype>>(result, other, num_elements);}
+
+template <typename dtype>
+template <dtype (*op)(dtype, dtype)>
+void CPU<dtype>::applyBinaryScalarOperation(dtype* result, dtype value, size_t num_elements) const {
+    #pragma omp parallel for
+    for (size_t i = 0; i < num_elements; ++i) {
+        result[i] = op(this->data_[i], value);  // Apply function to each element
+    }
+}
+
+template <typename dtype> void CPU<dtype>::add(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<addFunc<dtype>>(result, value, num_elements);}
+template <typename dtype> void CPU<dtype>::sub(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<subFunc<dtype>>(result, value, num_elements);}
+template <typename dtype> void CPU<dtype>::mul(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<mulFunc<dtype>>(result, value, num_elements);}
+template <typename dtype> void CPU<dtype>::div(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<divFunc<dtype>>(result, value, num_elements);}
+template <typename dtype> void CPU<dtype>::pow(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<powFunc<dtype>>(result, value, num_elements);}

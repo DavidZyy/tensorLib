@@ -53,6 +53,17 @@ public:
     virtual void sqrt(dtype* result, size_t num_elements) = 0;
     virtual void rsqrt(dtype* result, size_t num_elements) = 0;
 
+    // binary methods
+    virtual void add(dtype* result, dtype* other, size_t num_elements) const = 0;
+    virtual void sub(dtype* result, dtype* other, size_t num_elements) const = 0;
+    virtual void mul(dtype* result, dtype* other, size_t num_elements) const = 0;
+    virtual void div(dtype* result, dtype* other, size_t num_elements) const = 0;
+    virtual void add(dtype* result, dtype scalar, size_t num_elements) const = 0; // could support Tensor + 1(not a lvalue), (dtype& scalar) can not support this
+    virtual void sub(dtype* result, dtype scalar, size_t num_elements) const = 0;
+    virtual void mul(dtype* result, dtype scalar, size_t num_elements) const = 0;
+    virtual void div(dtype* result, dtype scalar, size_t num_elements) const = 0;
+    virtual void pow(dtype* result, dtype scalar, size_t num_elements) const = 0;
+
 // private:
     size_t size; // number of elements, the total bytes of data_ is: size * sizeof(dtype)
 };

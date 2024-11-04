@@ -218,7 +218,6 @@ void CUDA<dtype>::setItemScalar(
 }
 
 ////////////////////////////////////////////////////// unary operations ///////////////////////////////////////////////////////////////////////////////
- 
 /**
  * pass function pointer like below have bug,
  * __global__ void unaryKernel(dtype* result, const dtype* src, size_t num_elements, dtype (*op)(dtype)),
@@ -237,10 +236,7 @@ template <typename dtype, dtype (*op)(dtype)>
 void applyUnaryOperation(dtype* result, dtype* src, size_t num_elements) {
     int blockSize = 256;  // Number of threads per block (adjust based on optimization needs)
     int gridSize = (num_elements + blockSize - 1) / blockSize;  // Number of blocks
-    
-    // Copy the function pointer to the device symbol
     unaryKernel<dtype, op><<<gridSize, blockSize>>>(result, src, num_elements);
-
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 }
@@ -385,3 +381,63 @@ template <typename dtype>
 void CUDA<dtype>::rsqrt(dtype* result, size_t num_elements) {
     applyUnaryOperation<dtype, rsqrtFunc<dtype>>(result, this->data_, num_elements);
 }
+
+////////////////////////////////////////////////////// binary operations ///////////////////////////////////////////////////////////////////////////////
+template <typename dtype> static inline __device__ dtype addFunc(dtype x, dtype y) { return x + y; }
+template <typename dtype> static inline __device__ dtype subFunc(dtype x, dtype y) { return x - y; }
+template <typename dtype> static inline __device__ dtype mulFunc(dtype x, dtype y) { return x * y; }
+template <typename dtype> static inline __device__ dtype divFunc(dtype a, dtype b) {
+    if (b == 0) {
+        // or return inf / -inf ?
+        return nan("");
+    }
+    return a / b;
+}
+template <typename dtype> static inline __device__ dtype powFunc(dtype a, dtype b) { return pow(a, b); }
+
+template <typename dtype, dtype (*op)(dtype, dtype)>
+__global__ void binaryKernel(dtype* result, const dtype* src1, const dtype* src2, size_t num_elements) {
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_elements) {
+        result[i] = op(src1[i], src2[i]);
+    }
+}
+
+template <typename dtype>
+template <dtype (*op)(dtype, dtype)>
+void CUDA<dtype>::applyBinaryOperation(dtype* result,  const dtype* other, size_t num_elements) const {
+    int blockSize = 256;  // Number of threads per block (adjust based on optimization needs)
+    int gridSize = (num_elements + blockSize - 1) / blockSize;  // Number of blocks
+    binaryKernel<dtype, op><<<gridSize, blockSize>>>(result, this->data_, other, num_elements);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+template <typename dtype, dtype (*op)(dtype, dtype)>
+__global__ void binaryScalarKernel(dtype* result, const dtype* src1, dtype value, size_t num_elements) {
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_elements) {
+        result[i] = op(src1[i], value);
+    }
+}
+
+template <typename dtype>
+template <dtype (*op)(dtype, dtype)>
+void CUDA<dtype>::applyBinaryScalarOperation(dtype* result,  dtype value, size_t num_elements) const {
+    int blockSize = 256;  // Number of threads per block (adjust based on optimization needs)
+    int gridSize = (num_elements + blockSize - 1) / blockSize;  // Number of blocks
+    binaryScalarKernel<dtype, op><<<gridSize, blockSize>>>(result, this->data_, value, num_elements);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+template <typename dtype> void CUDA<dtype>::add(dtype* result, dtype* other, size_t num_elements) const {applyBinaryOperation<addFunc<dtype>>(result, other, num_elements);}
+template <typename dtype> void CUDA<dtype>::sub(dtype* result, dtype* other, size_t num_elements) const {applyBinaryOperation<subFunc<dtype>>(result, other, num_elements);}
+template <typename dtype> void CUDA<dtype>::mul(dtype* result, dtype* other, size_t num_elements) const {applyBinaryOperation<mulFunc<dtype>>(result, other, num_elements);}
+template <typename dtype> void CUDA<dtype>::div(dtype* result, dtype* other, size_t num_elements) const {applyBinaryOperation<divFunc<dtype>>(result, other, num_elements);}
+
+template <typename dtype> void CUDA<dtype>::add(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<addFunc<dtype>>(result, value, num_elements);}
+template <typename dtype> void CUDA<dtype>::sub(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<subFunc<dtype>>(result, value, num_elements);}
+template <typename dtype> void CUDA<dtype>::mul(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<mulFunc<dtype>>(result, value, num_elements);}
+template <typename dtype> void CUDA<dtype>::div(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<divFunc<dtype>>(result, value, num_elements);}
+template <typename dtype> void CUDA<dtype>::pow(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<powFunc<dtype>>(result, value, num_elements);}

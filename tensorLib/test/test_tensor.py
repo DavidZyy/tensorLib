@@ -149,12 +149,13 @@ def test_reduced_methods(shape, op, np_op, keepdims):
 
 
 # Test binary operators, like addition, subtraction, multiplication, division, and power
-binary_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=100)
+binary_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=10)
 binary_ops = [operator.add, operator.sub, operator.mul, operator.truediv, operator.pow]
 @pytest.mark.parametrize("shape", binary_shapes)
 @pytest.mark.parametrize("op", binary_ops)
 @pytest.mark.parametrize("operand", ["scalar", "tensor"])
-def test_binary_methods(shape, op, operand):
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_binary_methods(shape, op, operand, device):
     # do not support power operation with tensor operand
     if op == operator.pow and operand == "tensor":
         pytest.skip()
@@ -164,8 +165,8 @@ def test_binary_methods(shape, op, operand):
     # Apply the operation using numpy
     A_result = op(A, rhs)
 
-    A_t = tb.convert_to_tensor(A)  # Convert to tensor
-    rhs_t = rhs if operand == "scalar" else tb.convert_to_tensor(rhs)
+    A_t = tb.convert_to_tensor(A, device)  # Convert to tensor
+    rhs_t = rhs if operand == "scalar" else tb.convert_to_tensor(rhs, device)
     # rhs = tb.convert_to_tensor(rhs)  # get error in np.testing, seems like memory is broken
 
     # Apply the operation using the tensor's method

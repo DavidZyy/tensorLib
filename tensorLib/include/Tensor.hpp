@@ -189,8 +189,8 @@ private:
     std::vector<int> get_reduce_shape(int axis, bool keepdims) const;
 
     // helper function for ewise or scalar methods
-    Tensor<dtype> applyBinaryOperation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const;
-    Tensor<dtype> applyBinaryScalarOperation(dtype scalar, dtype(*op)(dtype, dtype)) const;
+    // Tensor<dtype> applyBinaryOperation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const;
+    // Tensor<dtype> applyBinaryScalarOperation(dtype scalar, dtype(*op)(dtype, dtype)) const;
 
     std::vector<int> get_broadcast_shape(std::vector<int>& shape_a, std::vector<int>& shape_b) const; // without const, will cause error.
 
@@ -213,6 +213,10 @@ private:
 
     template <void (Device<dtype>::*func)(dtype*, size_t)>
     Tensor<dtype> applyUnaryOperation() const;
+    template <void (Device<dtype>::*func)(dtype*, dtype*, size_t) const >
+    Tensor<dtype> applyBinaryOperation(const Tensor<dtype>& other) const;
+    template <void (Device<dtype>::*func)(dtype*, dtype, size_t) const >
+    Tensor<dtype> applyBinaryScalarOperation(dtype scalar) const;
 
     /**
      * seems this shape msethod can handle non-contiguous Tensor, both this and below can be used in matmul(contiguous?),
@@ -294,7 +298,7 @@ static inline dtype multiply(dtype a, dtype b) {
 template <typename dtype>
 static inline dtype divide(dtype a, dtype b) {
     if (b == 0) {
-        // or return inf(-inf) ?
+        // or return inf / -inf ?
         throw std::invalid_argument("Division by zero.");
     }
     return a / b;
