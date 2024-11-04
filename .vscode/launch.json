@@ -9,8 +9,8 @@
     "name": "CUDA C++: Launch",
     "type": "cuda-gdb",
     "request": "launch",
-    // "miDebuggerPath": "/usr/local/cuda/bin/cuda-gdb",
-    "miDebuggerPath": "/usr/bin/cuda-gdb",
+    "miDebuggerPath": "/usr/local/cuda/bin/cuda-gdb",
+    // "miDebuggerPath": "/usr/bin/cuda-gdb",
     "program": "${workspaceFolder}/build/test_device",
     "preLaunchTask": "build", // see tasks.json
   },

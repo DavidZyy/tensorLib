@@ -106,7 +106,7 @@ void CUDA<dtype>::full(size_t num_elements, dtype fill_value) {
 }
 
 template <typename dtype>
-dtype CUDA<dtype>:: getDataLinear(size_t linear_index) const {
+dtype CUDA<dtype>::getDataLinear(size_t linear_index) const {
     dtype result;
     CUDA_CHECK(cudaMemcpy(&result, this->data_ + linear_index, sizeof(dtype), cudaMemcpyDeviceToHost));
     return result;
@@ -217,21 +217,28 @@ void CUDA<dtype>::setItemScalar(
     CUDA_CHECK(cudaGetLastError());
 }
 
-template <typename dtype>
-__global__ void unaryKernel(dtype* result, const dtype* src, size_t num_elements, dtype (*func)(dtype)) {
+ 
+/**
+ * pass function pointer like below have bug,
+ * __global__ void unaryKernel(dtype* result, const dtype* src, size_t num_elements, dtype (*op)(dtype)),
+ * seems should use cudaMemcpyFromSymbol first, so I use template instead.
+ */
+template <typename dtype, dtype (*op)(dtype)>
+__global__ void unaryKernel(dtype* result, const dtype* src, size_t num_elements) {
     size_t i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < num_elements) {
-        result[i] = func(src[i]);
+        result[i] = op(src[i]);
     }
 }
 
 // General template for CUDA unary operations
-template <typename dtype>
-void applyUnaryOperation(dtype* result, dtype* src, size_t num_elements, dtype (*func)(dtype)) {
+template <typename dtype, dtype (*op)(dtype)>
+void applyUnaryOperation(dtype* result, dtype* src, size_t num_elements) {
     int blockSize = 256;  // Number of threads per block (adjust based on optimization needs)
     int gridSize = (num_elements + blockSize - 1) / blockSize;  // Number of blocks
-
-    unaryKernel<<<gridSize, blockSize>>>(result, src, num_elements, func);
+    
+    // Copy the function pointer to the device symbol
+    unaryKernel<dtype, op><<<gridSize, blockSize>>>(result, src, num_elements);
 
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
@@ -244,7 +251,7 @@ __device__ dtype negateFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::neg(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result, this->data_, num_elements, negateFunc<dtype>);
+    applyUnaryOperation<dtype, negateFunc<dtype>>(result, this->data_, num_elements);
 }
 
 template <typename dtype>
@@ -259,7 +266,7 @@ __device__ dtype sinFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::sin(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result, this->data_, num_elements, sinFunc<dtype>);
+    applyUnaryOperation<dtype, sinFunc<dtype>>(result, this->data_, num_elements);
 }
 
 template <typename dtype>
@@ -273,7 +280,7 @@ __device__ dtype cosFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::cos(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result, this->data_, num_elements, cosFunc<dtype>);
+    applyUnaryOperation<dtype, cosFunc<dtype>>(result, this->data_, num_elements);
 }
 
 template <typename dtype>
@@ -287,7 +294,7 @@ __device__ dtype expFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::exp(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result, this->data_, num_elements, expFunc<dtype>);
+    applyUnaryOperation<dtype, expFunc<dtype>>(result, this->data_, num_elements);
 }
 
 template <typename dtype>
@@ -301,7 +308,7 @@ __device__ dtype logFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::log(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result, this->data_, num_elements, logFunc<dtype>);
+    applyUnaryOperation<dtype, logFunc<dtype>>(result, this->data_, num_elements);
 }
 
 template <typename dtype>
@@ -311,7 +318,7 @@ __device__ dtype absFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::abs(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result, this->data_, num_elements, absFunc<dtype>);
+    applyUnaryOperation<dtype, absFunc<dtype>>(result, this->data_, num_elements);
 }
 
 template <typename dtype>
@@ -325,7 +332,7 @@ __device__ dtype tanhFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::tanh(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result, this->data_, num_elements, tanhFunc<dtype>);
+    applyUnaryOperation<dtype, tanhFunc<dtype>>(result, this->data_, num_elements);
 }
 
 template <typename dtype>
@@ -339,7 +346,7 @@ __device__ dtype siluFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::silu(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result, this->data_, num_elements, siluFunc<dtype>);
+    applyUnaryOperation<dtype, siluFunc<dtype>>(result, this->data_, num_elements);
 }
 
 template <typename dtype>
@@ -357,7 +364,7 @@ __device__ dtype sqrtFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::sqrt(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result, this->data_, num_elements, sqrtFunc<dtype>);
+    applyUnaryOperation<dtype, sqrtFunc<dtype>>(result, this->data_, num_elements);
 }
 
 template <typename dtype>
@@ -375,5 +382,5 @@ __device__ dtype rsqrtFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::rsqrt(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result, this->data_, num_elements, rsqrtFunc<dtype>);
+    applyUnaryOperation<dtype, rsqrtFunc<dtype>>(result, this->data_, num_elements);
 }
