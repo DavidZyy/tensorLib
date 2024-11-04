@@ -111,98 +111,50 @@ void CPU<dtype>::setItemScalar(
     }
 }
 
-template <typename dtype>
-void CPU<dtype>::neg(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result,
-        num_elements,
-        [](dtype x) -> dtype{ return -x; }
-    );
+////////////////////////////////////////////////////// unary operations ///////////////////////////////////////////////////////////////////////////////
+template <typename dtype> inline dtype negFunc(dtype x) { return -x; }
+template <typename dtype> inline dtype sinFunc(dtype x) { return std::sin(x); }
+template <typename dtype> inline dtype cosFunc(dtype x) { return std::cos(x); }
+template <typename dtype> inline dtype expFunc(dtype x) { return std::exp(x); }
+template <typename dtype> inline dtype logFunc(dtype x) { return std::log(x); }
+template <typename dtype> inline dtype absFunc(dtype x) { return std::abs(x); }
+template <typename dtype> inline dtype tanhFunc(dtype x) { return std::tanh(x); }
+template <typename dtype> inline dtype siluFunc(dtype x) {
+    dtype sigmoid_x = 1 / (1 + std::exp(-x));
+    return x * sigmoid_x;
+}
+template <typename dtype> inline dtype sqrtFunc(dtype x) {
+    if (x > 0) {
+        return std::sqrt(x);
+    } else {
+        throw std::domain_error("Cannot take sqrt of non-positive values.");
+    }
+}
+template <typename dtype> inline dtype rsqrtFunc(dtype x) {
+    if (x > 0) {
+        return 1 / std::sqrt(x);
+    } else {
+        throw std::domain_error("Cannot take sqrt of non-positive values.");
+    }
 }
 
 template <typename dtype>
-void CPU<dtype>::sin(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result,
-        num_elements,
-        [](dtype x) -> dtype{ return std::sin(x); }
-    );
+template <dtype (*op)(dtype)>
+void CPU<dtype>::applyUnaryOperation(dtype* result, size_t num_elements) const {
+    #pragma omp parallel for
+    for (size_t i = 0; i < num_elements; ++i) {
+        result[i] = op(this->data_[i]);  // Apply function to each element
+    }
 }
 
-template <typename dtype>
-void CPU<dtype>::cos(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result,
-        num_elements,
-        [](dtype x) -> dtype{ return std::cos(x); }
-    );
-}
-
-template <typename dtype>
-void CPU<dtype>::exp(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result,
-        num_elements,
-        [](dtype x) -> dtype{ return std::exp(x); }
-    );
-}
-
-template <typename dtype>
-void CPU<dtype>::log(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result,
-        num_elements,
-        [](dtype x) -> dtype{ return std::log(x); }
-    );
-}
-
-template <typename dtype>
-void CPU<dtype>::abs(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result,
-        num_elements,
-        [](dtype x) -> dtype{ return std::abs(x); }
-    );
-}
-
-template <typename dtype>
-void CPU<dtype>::tanh(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result,
-        num_elements,
-        [](dtype x) -> dtype{ return std::tanh(x); }
-    );
-}
-
-template <typename dtype>
-void CPU<dtype>::silu(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result,
-        num_elements,
-        [](dtype x) -> dtype {
-            dtype sigmoid_x = 1 / (1 + std::exp(-x));
-            return x * sigmoid_x;
-        }
-    );
-}
-
-template <typename dtype>
-void CPU<dtype>::sqrt(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result,
-        num_elements,
-        [](dtype x) -> dtype {
-            if (x > 0) {
-                return std::sqrt(x);
-            } else {
-                throw std::domain_error("Cannot take sqrt of non-positive values.");
-            }
-        }
-    );
-}
-
-template <typename dtype>
-void CPU<dtype>::rsqrt(dtype* result, size_t num_elements) {
-    applyUnaryOperation(result,
-        num_elements,
-        [](dtype x) -> dtype {
-            if (x > 0) {
-                return 1 / std::sqrt(x); // Rsqrt calculation
-            } else {
-                throw std::domain_error("Cannot take rsqrt of non-positive values.");
-            }
-        }
-    );
-}
+template <typename dtype> void CPU<dtype>::neg(dtype* result, size_t num_elements) { applyUnaryOperation<negFunc<dtype>>(result, num_elements); }
+template <typename dtype> void CPU<dtype>::sin(dtype* result, size_t num_elements) { applyUnaryOperation<sinFunc<dtype>>(result, num_elements); }
+template <typename dtype> void CPU<dtype>::cos(dtype* result, size_t num_elements) { applyUnaryOperation<cosFunc<dtype>>(result, num_elements); }
+template <typename dtype> void CPU<dtype>::exp(dtype* result, size_t num_elements) { applyUnaryOperation<expFunc<dtype>>(result, num_elements); }
+template <typename dtype> void CPU<dtype>::log(dtype* result, size_t num_elements) { applyUnaryOperation<logFunc<dtype>>(result, num_elements); }
+template <typename dtype> void CPU<dtype>::abs(dtype* result, size_t num_elements) { applyUnaryOperation<absFunc<dtype>>(result, num_elements); }
+template <typename dtype> void CPU<dtype>::tanh(dtype* result, size_t num_elements) { applyUnaryOperation<tanhFunc<dtype>>(result, num_elements); }
+template <typename dtype> void CPU<dtype>::silu(dtype* result, size_t num_elements) { applyUnaryOperation<siluFunc<dtype>>(result, num_elements); }
+template <typename dtype> void CPU<dtype>::sqrt(dtype* result, size_t num_elements) { applyUnaryOperation<sqrtFunc<dtype>>(result, num_elements); }
+template <typename dtype> void CPU<dtype>::rsqrt(dtype* result, size_t num_elements) { applyUnaryOperation<rsqrtFunc<dtype>>(result, num_elements); }
 

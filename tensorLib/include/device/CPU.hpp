@@ -64,12 +64,8 @@ public:
 // private:
     dtype *data_;
 
-    inline void applyUnaryOperation(dtype *result, size_t num_elements, dtype (*func)(dtype)) {
-        #pragma omp parallel for
-        for (size_t i = 0; i < num_elements; ++i) {
-            result[i] = func(this->data_[i]);  // Apply function to each element
-        }
-    }
+    template <dtype (*op)(dtype)>
+    void applyUnaryOperation(dtype* result, size_t num_elements) const;
 };
 
 inline size_t convertIdx(size_t linear_index, const std::vector<int>& shape, const std::vector<int>& stride, size_t offset) {

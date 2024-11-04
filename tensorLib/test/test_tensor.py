@@ -196,11 +196,12 @@ unary_ops = [
 ]
 
 # Use smaller shape sizes for simplicity
-unary_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=10)
+unary_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=50)
 
 @pytest.mark.parametrize("shape", unary_shapes)
 @pytest.mark.parametrize("op_name, np_op", unary_ops)
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
+# @pytest.mark.parametrize("device", ["cpu"])
 def test_unary_methods(shape, op_name, np_op, device):
     # Generate random data for the tensor
     A = np.random.randn(*shape).astype(np.float32)
