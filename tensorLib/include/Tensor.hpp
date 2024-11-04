@@ -211,7 +211,8 @@ private:
     //     return result;
     // }
 
-    Tensor<dtype> applyUnaryOperation(void (Device<dtype>::*func)(dtype*, size_t)) const;
+    template <void (Device<dtype>::*func)(dtype*, size_t)>
+    Tensor<dtype> applyUnaryOperation() const;
 
     /**
      * seems this shape msethod can handle non-contiguous Tensor, both this and below can be used in matmul(contiguous?),

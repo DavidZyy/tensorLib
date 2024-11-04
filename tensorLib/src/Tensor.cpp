@@ -581,25 +581,25 @@ Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) con
 }
 
 ////////////////////////////////////////////////////// unary operations ///////////////////////////////////////////////////////////////////////////////
-
 template <typename dtype>
-Tensor<dtype> Tensor<dtype>::applyUnaryOperation(void (Device<dtype>::*func)(dtype*, size_t)) const {
+template <void (Device<dtype>::*func)(dtype*, size_t)>
+Tensor<dtype> Tensor<dtype>::applyUnaryOperation() const {
     Tensor<dtype> result(this->shape_, this->device_type);
     (this->device.get()->*func)(result.device->getDataPtr(), result.num_elements);
     return result;
 }
 
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::operator-() const { return applyUnaryOperation<&Device<dtype>::neg>(); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::sin() const { return applyUnaryOperation<&Device<dtype>::sin>(); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::cos() const { return applyUnaryOperation<&Device<dtype>::cos>(); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::exp() const { return applyUnaryOperation<&Device<dtype>::exp>(); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::log() const { return applyUnaryOperation<&Device<dtype>::log>(); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::abs() const { return applyUnaryOperation<&Device<dtype>::abs>(); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::tanh() const { return applyUnaryOperation<&Device<dtype>::tanh>(); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::silu() const { return applyUnaryOperation<&Device<dtype>::silu>(); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::sqrt() const { return applyUnaryOperation<&Device<dtype>::sqrt>(); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::rsqrt() const { return applyUnaryOperation<&Device<dtype>::rsqrt>(); }
 
-template <typename dtype> inline Tensor<dtype> Tensor<dtype>::operator-() const { return applyUnaryOperation(&Device<dtype>::neg); }
-template <typename dtype> inline Tensor<dtype> Tensor<dtype>::sin() const { return applyUnaryOperation(&Device<dtype>::sin); }
-template <typename dtype> inline Tensor<dtype> Tensor<dtype>::cos() const { return applyUnaryOperation(&Device<dtype>::cos); }
-template <typename dtype> inline Tensor<dtype> Tensor<dtype>::exp() const { return applyUnaryOperation(&Device<dtype>::exp); }
-template <typename dtype> inline Tensor<dtype> Tensor<dtype>::log() const { return applyUnaryOperation(&Device<dtype>::log); }
-template <typename dtype> inline Tensor<dtype> Tensor<dtype>::abs() const { return applyUnaryOperation(&Device<dtype>::abs); }
-template <typename dtype> inline Tensor<dtype> Tensor<dtype>::tanh() const { return applyUnaryOperation(&Device<dtype>::tanh); }
-template <typename dtype> inline Tensor<dtype> Tensor<dtype>::silu() const { return applyUnaryOperation(&Device<dtype>::silu); }
-template <typename dtype> inline Tensor<dtype> Tensor<dtype>::sqrt() const { return applyUnaryOperation(&Device<dtype>::sqrt); }
-template <typename dtype> inline Tensor<dtype> Tensor<dtype>::rsqrt() const { return applyUnaryOperation(&Device<dtype>::rsqrt); }
 
 
 template<typename dtype>
