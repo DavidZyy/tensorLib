@@ -471,7 +471,8 @@ Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) cons
  * @tparam dtype 
  */
 template <typename dtype>
-void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype>& value) {
+// void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype>& value) {
+void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype> value) {
 // void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype> value) {
     if (value.device_type != this->device_type) {
         throw std::invalid_argument("The device type of value must be equal to the device type of the tensor.");
@@ -828,7 +829,8 @@ Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other) co
     b = b.contiguous();
 
     Tensor<dtype> result(this->shape(), this->device_type);
-    (this->device.get()->*func)(result.device->getDataPtr(), other.device->getDataPtr(), result.num_elements);
+    // (this->device.get()->*func)(result.device->getDataPtr(), other.device->getDataPtr(), result.num_elements); // error!!
+    (a.device.get()->*func)(result.device->getDataPtr(), b.device->getDataPtr(), result.num_elements);
     return result;
 }
 

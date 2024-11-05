@@ -349,3 +349,6 @@ def test_permute(device):
     assert np_result.dtype == tensor_result_np.dtype
     assert np_result.size == tensor_result_np.size
     np.testing.assert_allclose(np_result, tensor_result_np, atol=1e-5, rtol=1e-5)
+
+def test_softmax():
+    pass

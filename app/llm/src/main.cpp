@@ -32,75 +32,6 @@ typedef struct {
     int seq_len; // max sequence length
 } Config;
 
-// void memory_map_weights(Llama2<float>& generator, float* ptr, int shared_weight) {
-//     ModelArgs p = generator.model.params;
-// 
-//     int head_size = p.dim / p.n_heads;
-//     size_t n_layers = p.n_layers;
-//     generator.model.tok_embeddings.weight.data_ = std::shared_ptr<float[]>(ptr);
-//     ptr += p.vocab_size * p.dim;
-//     for (size_t l = 0; l < n_layers; l++) {
-//         auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-//         layer->attention_norm.weight.data_ = std::shared_ptr<float[]>(ptr);
-//         // std::cout << "attention_norm " << l << std::endl;
-//         // std::cout << layer->attention_norm.weight << std::endl;
-//         ptr += p.dim;
-//     }
-//     for (size_t l = 0; l < n_layers; l++) {
-//         auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-//         layer->attention.wq.weight.data_ = std::shared_ptr<float[]>(ptr);
-//         // std::cout << "attention.wq " << l << std::endl;
-//         // if (l == 0) {
-//         //     auto a = layer->attention.wq.weight.slice(0, 1, 0);
-//         //     std::cout << a << std::endl;
-//         // }
-//         ptr += p.dim * (p.n_heads * head_size);
-//     }
-//     for (size_t l = 0; l < n_layers; l++) {
-//         auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-//         layer->attention.wk.weight.data_ = std::shared_ptr<float[]>(ptr);
-//         ptr += p.dim * (p.n_kv_heads * head_size);
-//     }
-//     for (size_t l = 0; l < n_layers; l++) {
-//         auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-//         layer->attention.wv.weight.data_ = std::shared_ptr<float[]>(ptr);
-//         ptr += p.dim * (p.n_kv_heads * head_size);
-//     }
-//     for (size_t l = 0; l < n_layers; l++) {
-//         auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-//         layer->attention.wo.weight.data_ = std::shared_ptr<float[]>(ptr);
-//         ptr += p.dim * (p.n_heads * head_size);
-//     }
-//     for (size_t l = 0; l < n_layers; l++) {
-//         auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-//         layer->ffn_norm.weight.data_ = std::shared_ptr<float[]>(ptr);
-//         ptr += p.dim;
-//     }
-//     for (size_t l = 0; l < n_layers; l++) {
-//         auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-//         layer->feed_forward.w1.weight.data_ = std::shared_ptr<float[]>(ptr);
-//         ptr += p.hidden_dim * p.dim;
-//     }
-//     for (size_t l = 0; l < n_layers; l++) {
-//         auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-//         layer->feed_forward.w2.weight.data_ = std::shared_ptr<float[]>(ptr);
-//         ptr += p.dim * p.hidden_dim;
-//     }
-//     for (size_t l = 0; l < n_layers; l++) {
-//         auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-//         layer->feed_forward.w3.weight.data_ = std::shared_ptr<float[]>(ptr);
-//         ptr += p.hidden_dim * p.dim;
-//     }
-//     generator.model.norm.weight.data_ = std::shared_ptr<float[]>(ptr);
-//     ptr += p.dim;
-//     // ptr += p.seq_len * head_size / 2; // skip what used to be freq_cis_real (for RoPE)
-//     // ptr += p.seq_len * head_size / 2; // skip what used to be freq_cis_imag (for RoPE)
-//     ptr += 256 * head_size / 2; // skip what used to be freq_cis_real (for RoPE)
-//     ptr += 256 * head_size / 2; // skip what used to be freq_cis_imag (for RoPE)
-//     generator.model.output.weight.data_ = shared_weight ? generator.model.tok_embeddings.weight.data_ : std::shared_ptr<float[]>(ptr);
-//     // generator.model.norm
-// }
-
 void read_weights(char* checkpoint, Llama2<float>& generator,  int shared_weight) {
     std::string device_type = generator.model.device_type;
 
@@ -317,6 +248,7 @@ Llama2<float> read_checkpoint(char * checkpoint) {
     args.max_batch_size = 1;
 
     auto generator = Llama2<float>(tokenizer_path, args, "cpu");
+    // auto generator = Llama2<float>(tokenizer_path, args, "cuda");
 
 //     *fd = open(checkpoint.c_str(), O_RDONLY);
 //     if (*fd == -1) { fprintf(stderr, "open failed!\n"); exit(EXIT_FAILURE); }

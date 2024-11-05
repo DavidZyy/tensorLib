@@ -10,6 +10,8 @@
 #include <vector>
 #include <ostream>
 #include <atomic>
+#include "CPU.hpp"
+#include "CUDA.hpp"
 #include "Device.hpp"
 
 static std::atomic<size_t> memoryUsage(0);
@@ -114,8 +116,8 @@ public:
 
     // get or set a sub-tensor of this tensor. The implementation here refers to the homework project of CMU10_414.
     Tensor<dtype> getItem(std::vector<std::vector<int>>& slices) const;
-    // void setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype> value);
-    void setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype>& value);
+    void setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype> value);
+    // void setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype>& value);
     void setItem(std::vector<std::vector<int>>& slices, dtype value);
 
     Tensor<dtype> broadcast_to(const std::vector<int>& new_shape) const;
@@ -246,60 +248,28 @@ private:
 template <typename dtype>  // This is the Tensor's dtype template
 template <typename OtherType>  // This is the type we are converting from
 Tensor<dtype>::Tensor(const Tensor<OtherType>& other) {
-    Tensor<dtype> tmp(other.shape(), other.device_type);
-    // Convert the data from 'OtherType' to 'dtype'
     this->num_elements = other.num_elements;  // Copy the number of elements
     this->offset_ = other.offset_;
     this->stride_ = other.stride_;
     this->ndim = other.ndim;
     this->shape_ = other.shape();  // Copy the shape
-    // data_ = std::make_shared<dtype[]>(num_elements);  // Allocate memory for new data
-    // data_ = std::shared_ptr<dtype[]>(new dtype[this->num_elements], Deleter<dtype>(num_elements));
-    // memoryUsage += num_elements * sizeof(dtype);
-    // std::cout << "Allocate: " << sizeof(dtype) * num_elements << ", now: " << memoryUsage << std::endl;
-    // this->data_ = tmp.data_;
+    this->device_type = other.device_type;
+    
+    if (device_type == "cpu") {
+        this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(num_elements));
+    } else if (device_type == "cuda") {
+        this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(num_elements));
+    } else {
+        throw std::invalid_argument("Invalid device name");
+    }
 
-    // Element-wise conversion from OtherType to dtype
-    // for (int i = 0; i < num_elements; ++i) {
-    //     data_[i] = static_cast<dtype>(other.data_[i]);
-    // }
+    Tensor<OtherType> other_contiguous = other.contiguous();
 
-    // assert (is_contiguous(other));
-    // may have error when other is not contiguous
-    for (int i = 0; i < other.num_elements; ++i) {
-        dtype a = static_cast<dtype>(other.device->getDataLinear(i));
-        tmp.device->setDataLinear(i, a);
+    for (int i = 0; i < other_contiguous.num_elements; ++i) {
+        dtype a = static_cast<dtype>(other_contiguous.device->getDataLinear(i));
+        this->device->setDataLinear(i, a);
     }
 }
-
-// template <typename dtype>
-// static inline dtype add(dtype a, dtype b) {
-//     return a + b;
-// }
-// 
-// template <typename dtype>
-// static inline dtype subtract(dtype a, dtype b) {
-//     return a - b;
-// }
-// 
-// template <typename dtype>
-// static inline dtype multiply(dtype a, dtype b) {
-//     return a * b;
-// }
-// 
-// template <typename dtype>
-// static inline dtype divide(dtype a, dtype b) {
-//     if (b == 0) {
-//         // or return inf / -inf ?
-//         throw std::invalid_argument("Division by zero.");
-//     }
-//     return a / b;
-// }
-// 
-// template <typename dtype>
-// static inline dtype power(dtype a, dtype b) {
-//     return std::pow(a, b);
-// }
 
 // Overload operator<< to print Tensor
 template <typename dtype>

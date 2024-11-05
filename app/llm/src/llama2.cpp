@@ -49,6 +49,8 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
         std::cout << this->tokenizer.decode(-1, next_token.getData({})) << std::flush; // use flush to output immediately, not cache in buffer
 
         slices = {{}, {cur_pos, cur_pos+1}};
+
+        // NOTE: token is float, next_token is int, have implicit type conversion(call conversion ) !!!
         tokens.setItem(slices, next_token);
         prev_pos = cur_pos;
     }
