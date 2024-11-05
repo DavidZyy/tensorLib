@@ -388,7 +388,6 @@ template <typename dtype> static inline __device__ dtype subFunc(dtype x, dtype 
 template <typename dtype> static inline __device__ dtype mulFunc(dtype x, dtype y) { return x * y; }
 template <typename dtype> static inline __device__ dtype divFunc(dtype a, dtype b) {
     if (b == 0) {
-        // or return inf / -inf ?
         return nan("");
     }
     return a / b;
@@ -441,3 +440,71 @@ template <typename dtype> void CUDA<dtype>::sub(dtype* result, dtype value, size
 template <typename dtype> void CUDA<dtype>::mul(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<mulFunc<dtype>>(result, value, num_elements);}
 template <typename dtype> void CUDA<dtype>::div(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<divFunc<dtype>>(result, value, num_elements);}
 template <typename dtype> void CUDA<dtype>::pow(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<powFunc<dtype>>(result, value, num_elements);}
+
+////////////////////////////////////////////////////// reduce operations ///////////////////////////////////////////////////////////////////////////////
+/**
+ * maybe could use parallel reduction algorithm to parallelize reduce_size, this will faster. ( O(n)-> O(log(n)) )
+ *
+ * @brief Reduce operation kernel
+ */
+template <typename dtype, dtype (*op)(dtype, dtype)>
+__global__ void reduceKernel(dtype* result, const dtype* data, size_t reduce_size, size_t num_elements) {
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_elements / reduce_size) {
+        dtype temp = data[i * reduce_size];
+        for (int j = 1; j < reduce_size; j++) {
+            temp = op(temp, data[i * reduce_size + j]);
+        }
+        result[i] = temp;
+    }
+}
+
+template <typename dtype>
+template <dtype (*op)(dtype, dtype)>
+void CUDA<dtype>::reduceOperation(dtype* result, size_t reduce_size, size_t num_elements) const {
+    int blockSize = 256;  // Number of threads per block (adjust based on optimization needs)
+    int gridSize = (num_elements / reduce_size + blockSize - 1) / blockSize;  // Number of blocks
+
+    reduceKernel<dtype, op><<<gridSize, blockSize>>>(result, this->data_, reduce_size, num_elements);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+template <typename dtype, bool (*comp)(dtype, dtype)>
+__global__ void reduceArgKernel(int* result, const dtype* data, size_t reduce_size, size_t num_elements) {
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_elements / reduce_size) {
+        dtype best_value = data[i * reduce_size];
+        int best_idx = 0;
+        for (int j = 1; j < reduce_size; j++) {
+            if (comp(data[i * reduce_size + j], best_value)) {
+                best_value = data[i * reduce_size + j];
+                best_idx = j;
+            }
+        }
+        result[i] = best_idx;
+    }
+}
+
+template <typename dtype>
+template <bool (*comp)(dtype, dtype)>
+void CUDA<dtype>::reduceOperationArg(int* result, size_t reduce_size, size_t num_elements) const {
+    int blockSize = 256;  // Number of threads per block (adjust based on optimization needs)
+    int gridSize = (num_elements / reduce_size + blockSize - 1) / blockSize;  // Number of blocks
+
+    reduceArgKernel<dtype, comp><<<gridSize, blockSize>>>(result, this->data_, reduce_size, num_elements);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+template <typename dtype> static inline __device__ dtype maxFunc(dtype a, dtype b) { return max(a, b); }
+template <typename dtype> static inline __device__ dtype minFunc(dtype a, dtype b) { return min(a, b); }
+template <typename dtype> static inline __device__ dtype sumFunc(dtype a, dtype b) { return a + b; }
+template <typename dtype> static inline __device__ bool argmaxFunc(dtype a, dtype b) { return a > b; }
+template <typename dtype> static inline __device__ bool argminFunc(dtype a, dtype b) { return a < b; }
+
+template <typename dtype> void CUDA<dtype>::max(dtype* result, size_t reduce_size, size_t num_elements) const { reduceOperation<maxFunc<dtype>>(result, reduce_size, num_elements); }
+template <typename dtype> void CUDA<dtype>::min(dtype* result, size_t reduce_size, size_t num_elements) const { reduceOperation<minFunc<dtype>>(result, reduce_size, num_elements); }
+template <typename dtype> void CUDA<dtype>::sum(dtype* result, size_t reduce_size, size_t num_elements) const { reduceOperation<sumFunc<dtype>>(result, reduce_size, num_elements); }
+template <typename dtype> void CUDA<dtype>::argmax(int* result, size_t reduce_size, size_t num_elements) const { reduceOperationArg<argmaxFunc<dtype>>(result, reduce_size, num_elements); }
+template <typename dtype> void CUDA<dtype>::argmin(int* result, size_t reduce_size, size_t num_elements) const { reduceOperationArg<argminFunc<dtype>>(result, reduce_size, num_elements); }

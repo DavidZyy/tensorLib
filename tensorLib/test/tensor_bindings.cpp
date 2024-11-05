@@ -103,7 +103,7 @@ std::vector<std::vector<int>> convert_slices(const py::tuple& py_slices, const s
 PYBIND11_MODULE(tensor_bindings, m) {
 
     // bind Tensor class(only bind float, will it cause error??)
-    py::class_<Tensor<float>>(m, "Tensor_fp32")
+    py::class_<Tensor<float>>(m, "Tensor_float32")
         .def(py::init<const std::vector<int>&>())
         .def("shape", &Tensor<float>::shape)
         // .def("data", &Tensor<float>::data)
@@ -251,4 +251,154 @@ PYBIND11_MODULE(tensor_bindings, m) {
         // return Tensor<float>(std::move(shape), std::move(strides), 0, data_ptr, device_type);
         return Tensor<float>(std::move(shape), std::move(strides), 0, device, device_type);
     });
+
+    py::class_<Tensor<int>>(m, "Tensor_int32")
+        .def(py::init<const std::vector<int>&>())
+        .def("shape", &Tensor<int>::shape)
+        // .def("data", &Tensor<int>::data)
+
+        .def("matmul", &Tensor<int>::matmul)
+
+        // reduce functions
+        .def("sum", &Tensor<int>::sum)
+        .def("mean", &Tensor<int>::mean)
+        .def("max", &Tensor<int>::max)
+        .def("min", &Tensor<int>::min)
+        .def("argmax", &Tensor<int>::argmax)
+        .def("argmin", &Tensor<int>::argmin)
+
+        // unary operations
+        .def(-py::self)
+        .def("sin", &Tensor<int>::sin)
+        .def("cos", &Tensor<int>::cos)
+        .def("exp", &Tensor<int>::exp)
+        .def("log", &Tensor<int>::log)
+        .def("abs", &Tensor<int>::abs)
+        .def("tanh", &Tensor<int>::tanh)
+        .def("silu", &Tensor<int>::silu)
+        .def("sqrt", &Tensor<int>::sqrt)
+        .def("rsqrt", &Tensor<int>::rsqrt)
+
+        // binary operations see https://pybind11.readthedocs.io/en/stable/advanced/classes.html#operator-overloading
+        .def(py::self + int())
+        .def(py::self - int())
+        .def(py::self * int())
+        .def(py::self / int())
+        .def("pow", &Tensor<int>::pow)
+        .def(py::self + py::self)
+        .def(py::self - py::self)
+        .def(py::self * py::self)
+        .def(py::self / py::self)
+
+        .def("broadcast_to", &Tensor<int>::broadcast_to)
+        .def("permute", &Tensor<int>::permute)
+        .def("transpose", &Tensor<int>::transpose)
+
+        // set, get item
+        .def("__getitem__", [](const Tensor<int>& self, const py::list& py_slices) {
+            // Convert Python list of slices to std::vector<std::vector<int>>
+            auto c_slices = convert_slices(py_slices, self.shape());
+            return self.getItem(c_slices);
+        })
+        .def("__getitem__", [](const Tensor<int>& self, const py::tuple& py_slices) {
+            // Convert Python tuple of slices to std::vector<std::vector<int>>
+            auto c_slices = convert_slices(py_slices, self.shape());
+            return self.getItem(c_slices);
+        })
+        .def("__setitem__", [](Tensor<int>& self, const py::tuple& indices, Tensor<int>& value) {
+            auto c_slices = convert_slices(indices, self.shape());
+            self.setItem(c_slices, value);
+        })
+        .def("__setitem__", [](Tensor<int>& self, const py::tuple& indices, int value) {
+            auto c_slices = convert_slices(indices, self.shape());
+            self.setItem(c_slices, value);
+        })
+        // .def("__setitem__", [](Tensor<int>& self, const std::vector<int>& indices, int value) {
+        // })
+
+        // accept slice in python, convert to vetor<vector<int>> pass to cpp method.
+        .def("getItem", [](const Tensor<int>& self, const py::list& py_slices) {
+            // Convert Python list of slices to std::vector<std::vector<int>>
+            auto c_slices = convert_slices(py_slices, self.shape());
+            return self.getItem(c_slices);
+        })
+        .def("getItem", [](const Tensor<int>& self, const py::tuple& py_slices) {
+            // Convert Python tuple of slices to std::vector<std::vector<int>>
+            auto c_slices = convert_slices(py_slices, self.shape());
+            return self.getItem(c_slices);
+        })
+        // .def("setItem", &Tensor<int>::setItem, py::arg("slices"), py::arg("value"))
+
+        .def("softmax", &Tensor<int>::softmax)
+        .def("transpose", &Tensor<int>::transpose)
+
+        // represent functions
+        .def("__repr__", [](const Tensor<int>& t) { // used for debugging
+            std::ostringstream oss;
+            oss << "Tensor(shape=(";
+            for (size_t i = 0; i < t.shape().size(); ++i) {
+                oss << t.shape()[i];
+                if (i < t.shape().size() - 1) {
+                    oss << ", ";
+                }
+            }
+            oss << "), data=" << t << ")";
+            return oss.str();
+        })
+        .def("__str__", [](const Tensor<int>& t) { // used for printing
+            std::ostringstream oss;
+            oss << t;
+            return oss.str();
+        });
+        
+    // convert a Tensor to numpy array
+    m.def("convert_to_numpy", [](const Tensor<int>& t) {
+        std::vector<int> numpy_strides = t.stride_;
+        std::transform(numpy_strides.begin(), numpy_strides.end(), numpy_strides.begin(),
+               [](int& c) { return c * sizeof(int); });
+        // int *data_ptr = new int[t.num_elements]; // error, not enough
+        int *data_ptr = new int[t.device->size - t.offset_];
+        if (t.device_type == "cpu") {
+            // std::memcpy(data_ptr, t.device->getDataPtr() + t.offset_, t.num_elements * sizeof(int)); // error !!
+            std::memcpy(data_ptr, t.device->getDataPtr() + t.offset_, (t.device->size - t.offset_) * sizeof(int)); // should copy all data after offset_, or may cause error due to stride ...
+        } else if (t.device_type == "cuda") {
+            CUDA_CHECK(cudaMemcpy(data_ptr, (int *)(t.device->getDataPtr()) + t.offset_, (t.device->size - t.offset_) * sizeof(int), cudaMemcpyDeviceToHost));
+        } else {
+            throw std::runtime_error("Unsupported device type: " + t.device_type);
+        }
+
+        return py::array_t<int>(t.shape_, numpy_strides, data_ptr);
+    });
+
+    // convert a numpy array to Tensor
+    m.def("convert_to_tensor", [](py::array_t<int> a, const std::string& device_type) {
+        // Get shape and strides from the numpy array and convert them to std::vector<int>
+        std::vector<int> shape(a.ndim());
+        std::vector<int> strides(a.ndim());
+
+        for (size_t i = 0; i < a.ndim(); ++i) {
+            shape[i] = static_cast<int>(a.shape(i));
+            strides[i] = static_cast<int>(a.strides(i) / sizeof(int)); // Convert byte strides to element strides
+        }
+
+        int *data_ptr = nullptr;
+        std::shared_ptr<Device<int>> device;
+
+        if (device_type == "cpu") {
+            data_ptr = new int[a.size()];
+            std::memcpy(data_ptr, a.data(), a.size() * sizeof(int));
+            device = std::shared_ptr<CPU<int>>(new CPU<int>(a.size(), data_ptr));
+        } else if (device_type == "cuda") {
+            CUDA_CHECK(cudaMalloc(&data_ptr, a.size() * sizeof(int)));
+            CUDA_CHECK(cudaMemcpy(data_ptr, a.data(), a.size() * sizeof(int), cudaMemcpyHostToDevice));
+            device = std::shared_ptr<CUDA<int>>(new CUDA<int>(a.size(), data_ptr));
+        } else {
+            throw std::invalid_argument("Invalid device type. Supported types are 'cpu' and 'cuda'.");
+        }
+
+        // Construct and return the Tensor object
+        // return Tensor<int>(std::move(shape), std::move(strides), 0, data_ptr, device_type);
+        return Tensor<int>(std::move(shape), std::move(strides), 0, device, device_type);
+    });
+
 }

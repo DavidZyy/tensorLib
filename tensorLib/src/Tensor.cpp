@@ -164,22 +164,22 @@ Tensor<dtype>::~Tensor() {
 
 }
 
-// Accessor implementation (non-const version)
-template <typename dtype>
-dtype& Tensor<dtype>::operator()(const std::vector<int>& indices) {
-    // Calculate linear index from multi-dimensional indices
-    size_t linear_index = calculateLinearIndex(indices);
-    
-    return data_[linear_index];
-}
-
-template <typename dtype>
-const dtype& Tensor<dtype>::operator()(const std::vector<int>& indices) const {
-    // Calculate linear index from multi-dimensional indices
-    size_t linear_index = calculateLinearIndex(indices);
-    
-    return data_[linear_index];
-}
+// // Accessor implementation (non-const version)
+// template <typename dtype>
+// dtype& Tensor<dtype>::operator()(const std::vector<int>& indices) {
+//     // Calculate linear index from multi-dimensional indices
+//     size_t linear_index = calculateLinearIndex(indices);
+//     
+//     return data_[linear_index];
+// }
+// 
+// template <typename dtype>
+// const dtype& Tensor<dtype>::operator()(const std::vector<int>& indices) const {
+//     // Calculate linear index from multi-dimensional indices
+//     size_t linear_index = calculateLinearIndex(indices);
+//     
+//     return data_[linear_index];
+// }
 
 template <typename dtype>
 void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int> indices) const {
@@ -628,6 +628,7 @@ Tensor<dtype> Tensor<dtype>::transpose(int dim0, int dim1) const {
     return result;
 }
 
+////////////////////////////////////////////////////// reduce operations ///////////////////////////////////////////////////////////////////////////////
 template <typename dtype>
 int Tensor<dtype>::handle_axis(int axis) const {
     int dims = static_cast<int>(this->shape().size()); // size is unsigned, so use int
@@ -675,7 +676,8 @@ std::vector<int> Tensor<dtype>::get_reduce_shape(int axis, bool keepdims) const 
 }
 
 template<typename dtype>
-Tensor<dtype> Tensor<dtype>::reduce(int axis, bool keepdims, dtype(*op)(dtype, dtype)) const {
+template <void (Device<dtype>::*func)(dtype*, size_t, size_t) const>
+Tensor<dtype> Tensor<dtype>::reduceOperation(int axis, bool keepdims) const {
     // Handle the axis properly, permute to move the axis to reduce to the last dimension
     axis = handle_axis(axis);
     auto view = get_reduce_view(axis);
@@ -685,36 +687,16 @@ Tensor<dtype> Tensor<dtype>::reduce(int axis, bool keepdims, dtype(*op)(dtype, d
 
     int reduce_size = this->shape()[axis];
     
-    // Apply the operation for each reduced chunk
-    # pragma omp parallel for
-    for (int i = 0; i < view.num_elements; i += reduce_size) {
-        dtype temp = view.data_[i];  // Initialize the temp value
-        for (int j = 1; j < reduce_size; j++) {
-            temp = op(temp, view.data_[i + j]);  // Apply the operation
-        }
-        result.data_[i / reduce_size] = temp;  // Store the result
-    }
+    // should pass in the non-reduced num_elements, pass result.num_elements will get error.
+    (view.device.get()->*func)(result.device->getDataPtr(), reduce_size, this->num_elements);
 
     return result;
 }
 
-template<typename dtype>
-Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const {
-    return reduce(axis, keepdims, [](dtype a, dtype b) { return std::max(a, b); });
-}
-
-template<typename dtype>
-Tensor<dtype> Tensor<dtype>::min(int axis, bool keepdims) const {
-    return reduce(axis, keepdims, [](dtype a, dtype b) { return std::min(a, b); });
-}
-
-template<typename dtype>
-Tensor<dtype> Tensor<dtype>::sum(int axis, bool keepdims) const {
-    return reduce(axis, keepdims, add<dtype>);
-}
-
-template<typename dtype>
-Tensor<dtype> Tensor<dtype>::mean(int axis, bool keepdims) const {
+template<typename dtype> Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const { return reduceOperation<&Device<dtype>::max>(axis, keepdims); }
+template<typename dtype> Tensor<dtype> Tensor<dtype>::min(int axis, bool keepdims) const { return reduceOperation<&Device<dtype>::min>(axis, keepdims); }
+template<typename dtype> Tensor<dtype> Tensor<dtype>::sum(int axis, bool keepdims) const { return reduceOperation<&Device<dtype>::sum>(axis, keepdims); }
+template<typename dtype> Tensor<dtype> Tensor<dtype>::mean(int axis, bool keepdims) const {
     int reduce_size = this->shape()[handle_axis(axis)];
 
     auto result1 = this->sum(axis, keepdims);
@@ -724,7 +706,8 @@ Tensor<dtype> Tensor<dtype>::mean(int axis, bool keepdims) const {
 }
 
 template<typename dtype>
-Tensor<int> Tensor<dtype>::reduce_arg(int axis, bool keepdims, bool(*comp)(dtype, dtype)) const {
+template <void (Device<dtype>::*func)(int*, size_t, size_t) const>
+Tensor<int> Tensor<dtype>::reduceOperationArg(int axis, bool keepdims) const {
     // Handle the axis properly, permute to move the axis to reduce to the last dimension
     axis = handle_axis(axis);
     auto view = get_reduce_view(axis);
@@ -734,35 +717,15 @@ Tensor<int> Tensor<dtype>::reduce_arg(int axis, bool keepdims, bool(*comp)(dtype
 
     int reduce_size = this->shape()[axis];
     
-    // Iterate over the tensor in chunks (based on the reduce size)
-    # pragma omp parallel for
-    for (int i = 0; i < view.num_elements; i += reduce_size) {
-        auto best_index = 0;
-        auto best_value = view.data_[i];  // Initialize with the first element
-        
-        // Find the index with the maximum value (or other comparison)
-        for (int j = 1; j < reduce_size; j++) {
-            if (comp(view.data_[i + j], best_value)) {
-                best_value = view.data_[i + j];
-                best_index = j;
-            }
-        }
-        result.data_[i / reduce_size] = best_index;  // Store the index of the best value
-    }
+    (view.device.get()->*func)(result.device->getDataPtr(), reduce_size, this->num_elements);
 
     return result;
 }
 
-template<typename dtype>
-Tensor<int> Tensor<dtype>::argmax(int axis, bool keepdims) const {
-    return reduce_arg(axis, keepdims, [](dtype a, dtype b) { return a > b; });
-}
+template<typename dtype> Tensor<int> Tensor<dtype>::argmax(int axis, bool keepdims) const { return reduceOperationArg<&Device<dtype>::argmax>(axis, keepdims); }
+template<typename dtype> Tensor<int> Tensor<dtype>::argmin(int axis, bool keepdims) const { return reduceOperationArg<&Device<dtype>::argmin>(axis, keepdims); }
 
-template<typename dtype>
-Tensor<int> Tensor<dtype>::argmin(int axis, bool keepdims) const {
-    return reduce_arg(axis, keepdims, [](dtype a, dtype b) { return a < b; });
-}
-
+////////////////////////////////////////////////////// softmax operations ///////////////////////////////////////////////////////////////////////////////
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::softmax(int dim) const {
     auto max_val = this->max(dim, true);
@@ -780,6 +743,7 @@ Tensor<dtype> Tensor<dtype>::softmax(int dim) const {
     return exp_val / sum_val;
 }
 
+////////////////////////////////////////////////////// binary operations ///////////////////////////////////////////////////////////////////////////////
 /**
  * used for implicit broadcasting 
  * implicitly broadcasting before operation, for example:
@@ -872,9 +836,8 @@ template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(const Tensor<dt
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const { return applyBinaryOperation<&Device<dtype>::mul>(other); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(const Tensor<dtype>& other) const { return applyBinaryOperation<&Device<dtype>::div>(other); }
 
-
 /**
- * if this is a broadcasted tensor, need to use contiguous() firtst, or the num_elements is not the actual elem size of the tensor data_.
+ * if this is a broadcasted tensor, need to use contiguous() firtst, or the num_elements is not the actual elem size of the tensor' device data_.
  * @tparam dtype 
  */
 template <typename dtype>

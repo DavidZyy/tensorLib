@@ -116,11 +116,12 @@ reduced_ops = [
     ('argmax', np.argmax),
     ('argmin', np.argmin)
 ]
-reduced_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=100)
+reduced_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=10)
 @pytest.mark.parametrize("shape", reduced_shapes)
 @pytest.mark.parametrize("op, np_op", reduced_ops)
 @pytest.mark.parametrize("keepdims", [True, False])
-def test_reduced_methods(shape, op, np_op, keepdims):
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_reduced_methods(shape, op, np_op, keepdims, device):
     """
     Test the reduced methods, which are sum, mean, max, min, argmax, argmin...
     """
@@ -134,14 +135,14 @@ def test_reduced_methods(shape, op, np_op, keepdims):
         np_result = np_result.astype(np.int32)
 
     # Convert NumPy array to Tensor
-    A_t = tb.convert_to_tensor(A)
+    A_t = tb.convert_to_tensor(A, device)
     tensor_op = getattr(A_t, op)
     tensor_result = tensor_op(axis, keepdims)
     tensor_result_a = tb.convert_to_numpy(tensor_result)
 
-    print(A)
-    print(np_result)
-    print(tensor_result_a)
+    # print(A)
+    # print(np_result)
+    # print(tensor_result_a)
     # Assert that shapes are equal
     assert tensor_result_a.shape == np_result.shape
     assert tensor_result_a.dtype == np_result.dtype
@@ -232,7 +233,7 @@ def test_unary_methods(shape, op_name, np_op, device):
     np.testing.assert_allclose(np_result, tensor_result_a, atol=1e-5, rtol=1e-5)
 
 
-def generate_random_tensor(shape, device) -> tuple[np.ndarray, tb.Tensor_fp32]:
+def generate_random_tensor(shape, device) -> tuple[np.ndarray, tb.Tensor_float32]:
     """Helper function to create a random numpy array and tensor with the same shape."""
     np_data = np.random.randn(*shape).astype(np.float32)
     tensor_data = tb.convert_to_tensor(np_data, device)

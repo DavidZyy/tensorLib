@@ -9,6 +9,7 @@ public:
     Device(size_t num_elements) : size(num_elements) {}
     virtual ~Device() = default;
 
+    // batched matmul
     virtual void matmul(const dtype* lhs, const dtype* rhs, dtype* result, 
         const std::vector<int>& lhs_stride, 
         const std::vector<int>& rhs_stride, 
@@ -42,7 +43,7 @@ public:
         size_t num_elements) = 0;
 
     // unary operations
-    virtual void neg(dtype* result, size_t num_elements) = 0;
+    virtual void neg(dtype* result, size_t num_elements) = 0; // maybe should make these methods const like below
     virtual void sin(dtype* result, size_t num_elements) = 0;
     virtual void cos(dtype* result, size_t num_elements) = 0;
     virtual void exp(dtype* result, size_t num_elements) = 0;
@@ -63,6 +64,13 @@ public:
     virtual void mul(dtype* result, dtype scalar, size_t num_elements) const = 0;
     virtual void div(dtype* result, dtype scalar, size_t num_elements) const = 0;
     virtual void pow(dtype* result, dtype scalar, size_t num_elements) const = 0;
+
+    // reduction methods
+    virtual void max(dtype* result, size_t reduce_size, size_t num_elements)    const = 0;
+    virtual void min(dtype* result, size_t reduce_size, size_t num_elements)    const = 0;
+    virtual void sum(dtype* result, size_t reduce_size, size_t num_elements)    const = 0;
+    virtual void argmax(int* result, size_t reduce_size, size_t num_elements) const = 0;
+    virtual void argmin(int* result, size_t reduce_size, size_t num_elements) const = 0;
 
 // private:
     size_t size; // number of elements, the total bytes of data_ is: size * sizeof(dtype)

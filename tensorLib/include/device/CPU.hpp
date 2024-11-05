@@ -18,6 +18,7 @@ public:
 
     ~CPU() override { delete[] data_; }
 
+    // batched matmul
     void matmul(const dtype* lhs, const dtype* rhs, dtype* result, 
         const std::vector<int>& lhs_stride, 
         const std::vector<int>& rhs_stride, 
@@ -74,15 +75,28 @@ public:
     void div(dtype* result, dtype scalar, size_t num_elements) const override;
     void pow(dtype* result, dtype scalar, size_t num_elements) const override;
 
+    // reduction methods
+    void max(dtype* result, size_t reduce_size, size_t num_elements)    const override;
+    void min(dtype* result, size_t reduce_size, size_t num_elements)    const override;
+    void sum(dtype* result, size_t reduce_size, size_t num_elements)    const override;
+    void argmax(int* result, size_t reduce_size, size_t num_elements) const override;
+    void argmin(int* result, size_t reduce_size, size_t num_elements) const override;
+
 // private:
     dtype *data_;
 
     template <dtype (*op)(dtype)>
     void applyUnaryOperation(dtype* result, size_t num_elements) const;
+
     template <dtype (*op)(dtype, dtype)>
     void applyBinaryOperation(dtype* result, const dtype* other, size_t num_elements) const;
     template <dtype (*op)(dtype, dtype)>
     void applyBinaryScalarOperation(dtype* result, dtype value, size_t num_elements) const;
+
+    template <dtype (*op)(dtype, dtype)>
+    void reduceOperation(dtype* result, size_t reduce_size, size_t num_elements) const;
+    template <bool (*comp)(dtype, dtype)>
+    void reduceOperationArg(int* result, size_t reduce_size, size_t num_elements) const;
 };
 
 inline size_t convertIdx(size_t linear_index, const std::vector<int>& shape, const std::vector<int>& stride, size_t offset) {

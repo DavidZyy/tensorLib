@@ -188,28 +188,7 @@ private:
     Tensor<dtype> get_reduce_view(int axis) const;
     std::vector<int> get_reduce_shape(int axis, bool keepdims) const;
 
-    // helper function for ewise or scalar methods
-    // Tensor<dtype> applyBinaryOperation(const Tensor<dtype>& other, dtype(*op)(dtype, dtype)) const;
-    // Tensor<dtype> applyBinaryScalarOperation(dtype scalar, dtype(*op)(dtype, dtype)) const;
-
     std::vector<int> get_broadcast_shape(std::vector<int>& shape_a, std::vector<int>& shape_b) const; // without const, will cause error.
-
-    // helper function for reduce methods
-    Tensor<dtype> reduce(int axis, bool keepdims, dtype(*op)(dtype, dtype)) const;
-    Tensor<int> reduce_arg(int axis, bool keepdims, bool(*comp)(dtype, dtype)) const;
-
-    // General template for inline unary operations
-    // inline Tensor<dtype> applyUnaryOperation(dtype (*func)(dtype)) const {
-    //     Tensor<dtype> result(this->shape_, this->device_type);
-    //     
-    //     // Inline parallel loop for performance (OpenMP enabled)
-    //     #pragma omp parallel for
-    //     for (size_t i = 0; i < this->num_elements; ++i) {
-    //         result.data_[i] = func(this->data_[i]);  // Apply function to each element
-    //     }
-    //     
-    //     return result;
-    // }
 
     template <void (Device<dtype>::*func)(dtype*, size_t)>
     Tensor<dtype> applyUnaryOperation() const;
@@ -217,6 +196,10 @@ private:
     Tensor<dtype> applyBinaryOperation(const Tensor<dtype>& other) const;
     template <void (Device<dtype>::*func)(dtype*, dtype, size_t) const >
     Tensor<dtype> applyBinaryScalarOperation(dtype scalar) const;
+    template <void (Device<dtype>::*func)(dtype*, size_t, size_t) const>
+    Tensor<dtype> reduceOperation(int axis, bool keepdims) const;
+    template <void (Device<dtype>::*func)(int*, size_t, size_t) const>
+    Tensor<int> reduceOperationArg(int axis, bool keepdims) const;
 
     /**
      * seems this shape msethod can handle non-contiguous Tensor, both this and below can be used in matmul(contiguous?),
@@ -280,34 +263,34 @@ Tensor<dtype>::Tensor(const Tensor<OtherType>& other) {
     }
 }
 
-template <typename dtype>
-static inline dtype add(dtype a, dtype b) {
-    return a + b;
-}
-
-template <typename dtype>
-static inline dtype subtract(dtype a, dtype b) {
-    return a - b;
-}
-
-template <typename dtype>
-static inline dtype multiply(dtype a, dtype b) {
-    return a * b;
-}
-
-template <typename dtype>
-static inline dtype divide(dtype a, dtype b) {
-    if (b == 0) {
-        // or return inf / -inf ?
-        throw std::invalid_argument("Division by zero.");
-    }
-    return a / b;
-}
-
-template <typename dtype>
-static inline dtype power(dtype a, dtype b) {
-    return std::pow(a, b);
-}
+// template <typename dtype>
+// static inline dtype add(dtype a, dtype b) {
+//     return a + b;
+// }
+// 
+// template <typename dtype>
+// static inline dtype subtract(dtype a, dtype b) {
+//     return a - b;
+// }
+// 
+// template <typename dtype>
+// static inline dtype multiply(dtype a, dtype b) {
+//     return a * b;
+// }
+// 
+// template <typename dtype>
+// static inline dtype divide(dtype a, dtype b) {
+//     if (b == 0) {
+//         // or return inf / -inf ?
+//         throw std::invalid_argument("Division by zero.");
+//     }
+//     return a / b;
+// }
+// 
+// template <typename dtype>
+// static inline dtype power(dtype a, dtype b) {
+//     return std::pow(a, b);
+// }
 
 // Overload operator<< to print Tensor
 template <typename dtype>
@@ -326,24 +309,24 @@ std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
     return os;
 }
 
-/**
- * same as operator<<, used for debug, since operator<< can not be called in vscode DEBUG CONSOLE.
- * @tparam dtype 
- */
-template <typename dtype>
-std::ostream& outputTensor(std::ostream& os, const Tensor<dtype>& tensor) {
-    const auto& shape = tensor.shape();
-    const auto& data = tensor.data();
-
-    if (shape.size() == 0) {
-        // os << "[]";
-        os << tensor.data_[0];
-    } else {
-        tensor.printTensor(os, 0, {});
-    }
-
-    return os;
-}
+// /**
+//  * same as operator<<, used for debug, since operator<< can not be called in vscode DEBUG CONSOLE.
+//  * @tparam dtype 
+//  */
+// template <typename dtype>
+// std::ostream& outputTensor(std::ostream& os, const Tensor<dtype>& tensor) {
+//     const auto& shape = tensor.shape();
+//     const auto& data = tensor.data();
+// 
+//     if (shape.size() == 0) {
+//         // os << "[]";
+//         os << tensor.data_[0];
+//     } else {
+//         tensor.printTensor(os, 0, {});
+//     }
+// 
+//     return os;
+// }
 
 template <typename T>
 Tensor<T> maximum(Tensor<T> a, Tensor<T> b) {

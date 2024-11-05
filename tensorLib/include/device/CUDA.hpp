@@ -15,6 +15,7 @@ public:
     CUDA(size_t size);
     ~CUDA() override;
 
+    // batched matmul
     void matmul(const dtype* lhs, const dtype* rhs, dtype* result, 
         const std::vector<int>& lhs_stride, 
         const std::vector<int>& rhs_stride, 
@@ -48,6 +49,7 @@ public:
         size_t offset,
         size_t num_elements) override;
 
+    // unary operations
     void neg(dtype* result, size_t num_elements) override;
     void sin(dtype* result, size_t num_elements) override;
     void cos(dtype* result, size_t num_elements)   override;
@@ -70,6 +72,13 @@ public:
     void div(dtype* result, dtype scalar, size_t num_elements) const override;
     void pow(dtype* result, dtype scalar, size_t num_elements) const override;
 
+    // reduction methods
+    void max(dtype* result, size_t reduce_size, size_t num_elements)    const override;
+    void min(dtype* result, size_t reduce_size, size_t num_elements)    const override;
+    void sum(dtype* result, size_t reduce_size, size_t num_elements)    const override;
+    void argmax(int* result, size_t reduce_size, size_t num_elements) const override;
+    void argmin(int* result, size_t reduce_size, size_t num_elements) const override;
+
 // private:
     dtype *data_;
 
@@ -77,6 +86,10 @@ public:
     void applyBinaryOperation(dtype* result, const dtype* other, size_t num_elements) const;
     template <dtype (*op)(dtype, dtype)>
     void applyBinaryScalarOperation(dtype* result,  dtype value, size_t num_elements) const;
+    template <dtype (*op)(dtype, dtype)>
+    void reduceOperation(dtype* result, size_t reduce_size, size_t num_elements) const;
+    template <bool (*comp)(dtype, dtype)>
+    void reduceOperationArg(int* result, size_t reduce_size, size_t num_elements) const;
 };
 
 #define CUDA_CHECK(call)                                                    \

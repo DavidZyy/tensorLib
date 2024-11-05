@@ -199,3 +199,48 @@ template <typename dtype> void CPU<dtype>::sub(dtype* result, dtype value, size_
 template <typename dtype> void CPU<dtype>::mul(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<mulFunc<dtype>>(result, value, num_elements);}
 template <typename dtype> void CPU<dtype>::div(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<divFunc<dtype>>(result, value, num_elements);}
 template <typename dtype> void CPU<dtype>::pow(dtype* result, dtype value, size_t num_elements) const {applyBinaryScalarOperation<powFunc<dtype>>(result, value, num_elements);}
+
+////////////////////////////////////////////////////// reduce operations ///////////////////////////////////////////////////////////////////////////////
+template <typename dtype>
+template <dtype (*op)(dtype, dtype)>
+void CPU<dtype>::reduceOperation(dtype* result, size_t reduce_size, size_t num_elements) const {
+
+    # pragma omp parallel for
+    for (int i = 0; i < num_elements; i += reduce_size) {
+        dtype temp = this->data_[i];
+        for (int j = 1; j < reduce_size; j++) {
+            temp = op(temp, this->data_[i + j]);
+        }
+        result[i / reduce_size] = temp;
+    }
+}
+
+template <typename dtype>
+template <bool (*comp)(dtype, dtype)>
+void CPU<dtype>::reduceOperationArg(int* result, size_t reduce_size, size_t num_elements) const {
+
+    # pragma omp parallel for
+    for (int i = 0; i < num_elements; i += reduce_size) {
+        dtype best_value = this->data_[i];
+        int best_idx = 0;
+        for (int j = 1; j < reduce_size; j++) {
+            if (comp(this->data_[i + j], best_value)) {
+                best_value = this->data_[i + j];
+                best_idx = j;
+            }
+        }
+        result[i / reduce_size] = best_idx;
+    }
+}
+
+template <typename dtype> static inline dtype maxFunc(dtype a, dtype b) { return std::max(a, b); }
+template <typename dtype> static inline dtype minFunc(dtype a, dtype b) { return std::min(a, b); }
+template <typename dtype> static inline dtype sumFunc(dtype a, dtype b) { return a + b; }
+template <typename dtype> static inline bool argmaxFunc(dtype a, dtype b) { return a > b; }
+template <typename dtype> static inline bool argminFunc(dtype a, dtype b) { return a < b; }
+
+template <typename dtype> void CPU<dtype>::max(dtype* result, size_t reduce_size, size_t num_elements)    const { reduceOperation<maxFunc<dtype>>(result, reduce_size, num_elements); }
+template <typename dtype> void CPU<dtype>::min(dtype* result, size_t reduce_size, size_t num_elements)    const { reduceOperation<minFunc<dtype>>(result, reduce_size, num_elements); }
+template <typename dtype> void CPU<dtype>::sum(dtype* result, size_t reduce_size, size_t num_elements)    const { reduceOperation<sumFunc<dtype>>(result, reduce_size, num_elements); }
+template <typename dtype> void CPU<dtype>::argmax(int* result, size_t reduce_size, size_t num_elements) const { reduceOperationArg<argmaxFunc<dtype>>(result, reduce_size, num_elements); }
+template <typename dtype> void CPU<dtype>::argmin(int* result, size_t reduce_size, size_t num_elements) const { reduceOperationArg<argminFunc<dtype>>(result, reduce_size, num_elements); }
