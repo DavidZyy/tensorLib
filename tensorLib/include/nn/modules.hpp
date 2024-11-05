@@ -244,7 +244,7 @@ template <typename dtype>
 Tensor<dtype> Embedding<dtype>::forward(const Tensor<dtype> &input) const {
   auto new_shape = input.shape();
   new_shape.push_back(embedding_dim);
-  auto result = Tensor<dtype>(new_shape);
+  auto result = Tensor<dtype>(new_shape, input.device_type);
 
   std::vector<int> cur_idx(input.shape().size(), 0);
 

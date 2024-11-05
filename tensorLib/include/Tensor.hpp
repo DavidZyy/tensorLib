@@ -393,7 +393,7 @@ Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs, int sta
     int n_heads = input.shape()[2];
     int head_dim = input.shape()[3];
 
-    Tensor<dtype> result(input.shape());
+    Tensor<dtype> result(input.shape(), input.device_type);
 
     // #pragma omp parallel for collapse(4)
     for (int i = 0; i < B; ++i) {
