@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Device.hpp"
 #include "Tensor.hpp"
 #include "iostream"
 #include <cassert>
@@ -12,12 +13,16 @@ namespace nn {
 template <typename dtype> class Module {
 public:
   Module() = default;
+  Module(std::string device_type) : device_type(device_type) {}
   virtual ~Module() = default;
   // virtual Tensor<dtype> forward(const Tensor<dtype>& intput) const = 0; //
   // pure virtual func
   virtual Tensor<dtype> forward(const Tensor<dtype> &intput)
       const; // not pure, for overloading forward(that have different numbers or
              // types of parameters)
+
+// private:
+  std::string device_type;
 };
 
 // not pure virtual, should have defination
@@ -30,8 +35,8 @@ Tensor<dtype> Module<dtype>::forward(const Tensor<dtype> &input) const {
 template <typename dtype> class Linear : public Module<dtype> {
 public:
   Linear() = default; // used in member initializer list.
-  Linear(int in_features, int out_features);
-  Linear(int in_features, int out_features, Tensor<dtype> &&weight);
+  Linear(int in_features, int out_features, std::string device_type = "cpu");
+  Linear(int in_features, int out_features, Tensor<dtype> &&weight, std::string device_type = "cpu");
   ~Linear() = default;
   Tensor<dtype> forward(const Tensor<dtype> &input)
       const override; // add const will resolve the bug, but why??(because this
@@ -45,9 +50,9 @@ public:
 };
 
 template <typename dtype>
-Linear<dtype>::Linear(int in_features, int out_features)
-    : in_features(in_features), out_features(out_features),
-      weight(Tensor<dtype>(std::vector<int>{out_features, in_features})){
+Linear<dtype>::Linear(int in_features, int out_features, std::string device_type)
+    : Module<dtype>(device_type), in_features(in_features), out_features(out_features),
+      weight(Tensor<dtype>(std::vector<int>{out_features, in_features}, device_type)){
       // weight(randn<dtype>({out_features, in_features})) { // randn use a lot of time when parameter initialization
 } // maybe should add kaiming uniform first !!
 
@@ -58,9 +63,10 @@ Linear<dtype>::Linear(int in_features, int out_features)
 // }
 
 template <typename dtype>
-Linear<dtype>::Linear(int in_features, int out_features, Tensor<dtype> &&weight)
+Linear<dtype>::Linear(int in_features, int out_features, Tensor<dtype> &&weight, std::string device_type)
     : in_features(in_features), out_features(out_features),
       weight(std::move(weight)) {
+  assert(weight.device_type() == device_type)
   // Optionally perform some sanity checks on the weight tensor shape
   assert(weight.shape().size() == 2 && weight.shape()[0] == out_features &&
          weight.shape()[1] == in_features);
@@ -111,7 +117,7 @@ class Conv2d : public nn::Module<dtype> {
 public:
   Conv2d() = default;
   Conv2d(int in_channels, int out_channels, int kernel_size, int stride,
-         int padding, Tensor<dtype> &&weight);
+         int padding, Tensor<dtype> &&weight, std::string device_type = "cpu");
   ~Conv2d() = default;
 
   Tensor<dtype> forward(const Tensor<dtype> &input);
@@ -129,11 +135,12 @@ protected:
 
 template <typename dtype>
 Conv2d<dtype>::Conv2d(int in_channels, int out_channels, int kernel_size,
-                      int stride, int padding, Tensor<dtype> &&weight)
-    : in_channels(in_channels), out_channels(out_channels),
+                      int stride, int padding, Tensor<dtype> &&weight, std::string device_type)
+    : Module<dtype>(device_type), in_channels(in_channels), out_channels(out_channels),
       kernel_size(kernel_size), stride(stride), padding(padding),
       weight(std::move(weight)) {
 
+    assert(weight.device_type == device_type);
   // get error when construct a conv layer.
   // weight = Tensor<dtype>({in_channels, kernel_size, kernel_size,
   // out_channels}); Tensor<dtype> a({in_channels, kernel_size, kernel_size,
@@ -209,7 +216,7 @@ Tensor<dtype> Conv2d<dtype>::forward(const Tensor<dtype> &input) {
 template <typename dtype> class Embedding : public Module<dtype> {
 public:
   Embedding() = default;
-  Embedding(int num_embeddings, int embedding_dim);
+  Embedding(int num_embeddings, int embedding_dim, std::string device_type);
   ~Embedding() = default;
 
   Tensor<dtype> forward(const Tensor<dtype> &input) const override;
@@ -222,9 +229,9 @@ public:
 };
 
 template <typename dtype>
-Embedding<dtype>::Embedding(int num_embeddings, int embedding_dim)
-    : num_embeddings(num_embeddings), embedding_dim(embedding_dim),
-      weight(Tensor<dtype>({num_embeddings, embedding_dim})) {}
+Embedding<dtype>::Embedding(int num_embeddings, int embedding_dim, std::string device_type)
+    : nn::Module<dtype>(device_type), num_embeddings(num_embeddings), embedding_dim(embedding_dim),
+      weight(Tensor<dtype>({num_embeddings, embedding_dim}, device_type)) {}
       // weight(randn<dtype>({num_embeddings, embedding_dim})) {}
 // num_embeddings(num_embeddings), embedding_dim(embedding_dim),
 // weight(Tensor<dtype>({num_embeddings, embedding_dim})) {}
@@ -273,6 +280,7 @@ template <typename dtype> class ModuleList : public Module<dtype> {
 public:
   // Default constructor
   ModuleList() = default;
+  ModuleList(std::string device_type);
 
   // Append a new module to the list
   void append(std::shared_ptr<Module<dtype>> module) {
@@ -306,5 +314,8 @@ private:
   // Vector to hold the list of shared pointers to modules
   std::vector<std::shared_ptr<Module<dtype>>> modules_;
 };
+
+template <typename dtype>
+ModuleList<dtype>::ModuleList(std::string device_type) : Module<dtype>(device_type) {}
 
 } // namespace nn

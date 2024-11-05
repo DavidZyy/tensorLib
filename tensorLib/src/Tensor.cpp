@@ -31,7 +31,7 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::string& device_t
             num_elements *= dim;
         }
 
-        this->data_ = std::shared_ptr<dtype[]>(new dtype[num_elements], Deleter<dtype>(num_elements));
+        // this->data_ = std::shared_ptr<dtype[]>(new dtype[num_elements], Deleter<dtype>(num_elements));
 
         memoryUsage += num_elements * sizeof(dtype);
         // std::cout << "Allocate: " << sizeof(dtype) * num_elements << ", now: " << memoryUsage << std::endl;
@@ -57,7 +57,7 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::string& device_t
 
 template <typename dtype>
 Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data, const std::string& device_type)
-    : ndim(shape.size()), shape_(shape), data_(data), offset_(0), device_type(device_type) {
+    : ndim(shape.size()), shape_(shape), offset_(0), device_type(device_type) {
         // Calculate the total number of elements in the tensor
         num_elements = 1;
         for (int dim : shape) {
@@ -91,7 +91,7 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype
  */
 template <typename dtype>
 Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device_type):
-ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), data_(data), device_type(device_type) {
+ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), device_type(device_type) {
     this-> num_elements = 1;
     for (int dim : shape) {
         this->num_elements *= dim;
@@ -472,6 +472,7 @@ Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) cons
  */
 template <typename dtype>
 void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype>& value) {
+// void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype> value) {
     if (value.device_type != this->device_type) {
         throw std::invalid_argument("The device type of value must be equal to the device type of the tensor.");
     }

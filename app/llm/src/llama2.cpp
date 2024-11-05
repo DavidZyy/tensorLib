@@ -14,13 +14,16 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
     // int total_len = 256;
     // int total_len = 128;
     // int total_len = 32;
-    Tensor<dtype> tokens({1, total_len}); // (bsz, max_seq_len)
+    Tensor<dtype> tokens({1, total_len}, this->device_type); // (bsz, max_seq_len)
     int prompt_len = prompt_tokens.size();
 
     // copy prompt_tokens to tokens
     for (int i = 0; i < prompt_len; i++) {
-        tokens.data()[i] = prompt_tokens[i];
-        std::cout << this->tokenizer.decode(-1, tokens.data()[i]) << std::flush;
+        // tokens.data()[i] = prompt_tokens[i];
+        tokens.device->setDataLinear(i, prompt_tokens[i]);
+        // std::cout << this->tokenizer.decode(-1, tokens.data()[i]) << std::flush;
+        // std::cout << this->tokenizer.decode(-1, tokens.data()[i]) << std::flush;
+        std::cout << this->tokenizer.decode(-1, tokens.device->getDataLinear(i)) << std::flush;
     }
 
     // Start timing
@@ -38,10 +41,12 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
 
         auto next_token = logits.argmax(-1); // (bsz, )
         tokens_generated++;
-        if (next_token.data_[0] == 1) break;
+        // if (next_token.data_[0] == 1) break;
+        if (next_token.getData({}) == 1) break;
 
         // std::cout << next_token.data_[0] << " " << std::flush;
-        std::cout << this->tokenizer.decode(-1, next_token.data_[0]) << std::flush; // use flush to output immediately, not cache in buffer
+        // std::cout << this->tokenizer.decode(-1, next_token.data_[0]) << std::flush; // use flush to output immediately, not cache in buffer
+        std::cout << this->tokenizer.decode(-1, next_token.getData({})) << std::flush; // use flush to output immediately, not cache in buffer
 
         slices = {{}, {cur_pos, cur_pos+1}};
         tokens.setItem(slices, next_token);

@@ -113,18 +113,23 @@ dtype CUDA<dtype>::getDataLinear(size_t linear_index) const {
 }
 
 template <typename dtype>
+void CUDA<dtype>::setDataLinear(size_t linear_index, dtype value) {
+    CUDA_CHECK(cudaMemcpy(this->data_ + linear_index, &value, sizeof(dtype), cudaMemcpyHostToDevice));
+}
+
+template <typename dtype>
 __global__ void contiguous_kernel(
     dtype* result,
     const dtype* data,
     CudaVec shape,
     CudaVec stride,
     size_t offset,
-    size_t num_elements) 
+    size_t num_elements)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < num_elements) {
         size_t linear_index_new = convertIdx(i, shape, stride, offset);
-        
+ 
         result[i] = data[linear_index_new];
     }
 }

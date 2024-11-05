@@ -67,6 +67,11 @@ dtype CPU<dtype>::getDataLinear(size_t linear_index) const{
 }
 
 template <typename dtype>
+void CPU<dtype>::setDataLinear(size_t linear_index, dtype value) {
+    this->data_[linear_index] = value;
+}
+
+template <typename dtype>
 void CPU<dtype>::contiguous(
     dtype* result, 
     const std::vector<int>& shape,

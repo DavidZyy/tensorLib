@@ -6,18 +6,18 @@
 #include <vector>
 
 template <typename dtype>
-Attention<dtype>::Attention(ModelArgs args) {
+Attention<dtype>::Attention(ModelArgs args, std::string device_type) : nn::Module<dtype>(device_type) {
     // this->n_kv_heads = (n_kv_heads == -1) ? n_heads : n_kv_heads;
     this->n_heads = args.n_heads;
     this->head_dim = args.dim / n_heads;
 
-    this->wq = nn::Linear<dtype>(args.dim, args.dim);
-    this->wk = nn::Linear<dtype>(args.dim, args.dim);
-    this->wv = nn::Linear<dtype>(args.dim, args.dim);
-    this->wo = nn::Linear<dtype>(args.dim, args.dim);
+    this->wq = nn::Linear<dtype>(args.dim, args.dim, device_type);
+    this->wk = nn::Linear<dtype>(args.dim, args.dim, device_type);
+    this->wv = nn::Linear<dtype>(args.dim, args.dim, device_type);
+    this->wo = nn::Linear<dtype>(args.dim, args.dim, device_type);
 
-    this->cache_k = Tensor<dtype>({args.max_batch_size, args.max_seq_len, this->n_heads, this->head_dim});
-    this->cache_v = Tensor<dtype>({args.max_batch_size, args.max_seq_len, this->n_heads, this->head_dim});
+    this->cache_k = Tensor<dtype>({args.max_batch_size, args.max_seq_len, this->n_heads, this->head_dim}, device_type);
+    this->cache_v = Tensor<dtype>({args.max_batch_size, args.max_seq_len, this->n_heads, this->head_dim}, device_type);
 }
 
 template <typename dtype>
@@ -62,10 +62,10 @@ Tensor<dtype> Attention<dtype>::forward(const Tensor<dtype>& x, int start_pos, c
 }
 
 template <typename dtype>
-FeedForward<dtype>::FeedForward(int dim, int hidden_dim) : dim(dim), hidden_dim(hidden_dim) {
-    this->w1 = nn::Linear<dtype>(dim, hidden_dim);
-    this->w2 = nn::Linear<dtype>(hidden_dim, dim);
-    this->w3 = nn::Linear<dtype>(dim, hidden_dim);
+FeedForward<dtype>::FeedForward(int dim, int hidden_dim, std::string device_type) : nn::Module<dtype>(device_type), dim(dim), hidden_dim(hidden_dim) {
+    this->w1 = nn::Linear<dtype>(dim, hidden_dim, device_type);
+    this->w2 = nn::Linear<dtype>(hidden_dim, dim, device_type);
+    this->w3 = nn::Linear<dtype>(dim, hidden_dim, device_type);
 }
 
 template <typename dtype>
@@ -83,8 +83,8 @@ Tensor<dtype> FeedForward<dtype>::forward(const Tensor<dtype>& x) const {
 template class RMSNorm<float>;
 
 template <typename dtype>
-RMSNorm<dtype>::RMSNorm(int dim, float eps) : dim(dim), eps(eps) {
-    this->weight = Tensor<dtype>({dim});
+RMSNorm<dtype>::RMSNorm(int dim, float eps, std::string device_type) : nn::Module<dtype>(device_type), dim(dim), eps(eps) {
+    this->weight = Tensor<dtype>({dim}, device_type);
     // this->weight = randn<dtype>({dim});
 }
 
@@ -127,16 +127,16 @@ Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x) const {
 }
 
 template <typename dtype>
-TransformerBlock<dtype>::TransformerBlock(int layer_id, ModelArgs args) {
+TransformerBlock<dtype>::TransformerBlock(int layer_id, ModelArgs args, std::string device_type) : nn::Module<dtype>(device_type) {
     this->n_heads = args.n_heads;
     this->dim = args.dim;
     this->head_dim = args.dim / args.n_heads;
     this->layer_id = layer_id;
 
-    this->attention = Attention<dtype>(args);
-    this->feed_forward = FeedForward<dtype>(args.dim, args.hidden_dim);
-    this->attention_norm = RMSNorm<dtype>(args.dim, 1e-5);
-    this->ffn_norm = RMSNorm<dtype>(args.dim, 1e-5);
+    this->attention = Attention<dtype>(args, device_type);
+    this->feed_forward = FeedForward<dtype>(args.dim, args.hidden_dim, device_type);
+    this->attention_norm = RMSNorm<dtype>(args.dim, 1e-5, device_type);
+    this->ffn_norm = RMSNorm<dtype>(args.dim, 1e-5, device_type);
 }
 
 template <typename dtype>
@@ -155,20 +155,20 @@ template class Transformer<float>;
 
 // without default constructor, not initialize members in member initializer list cause error.
 template <typename dtype>
-Transformer<dtype>::Transformer(ModelArgs& args) {
+Transformer<dtype>::Transformer(ModelArgs& args, std::string device_type) : nn::Module<dtype>(device_type) {
     this->params = args;
     this->n_layers = args.n_layers;
     this->vocab_size = args.vocab_size;
     this->head_dim = args.dim / args.n_heads;
-    this->tok_embeddings = nn::Embedding<dtype>(args.vocab_size, args.dim);
+    this->tok_embeddings = nn::Embedding<dtype>(args.vocab_size, args.dim, device_type);
     // this->tok_embeddings = nn::Embedding<dtype>();
-    this->layers = nn::ModuleList<dtype>();
+    this->layers = nn::ModuleList<dtype>(device_type);
     for (int i = 0; i < args.n_layers; i++) {
         // this->layers.append(TransformerBlock<dtype>(i, args));
-        this->layers.append(std::make_shared<TransformerBlock<dtype>>(i, args));
+        this->layers.append(std::make_shared<TransformerBlock<dtype>>(i, args, device_type));
     }
-    this->norm = RMSNorm<dtype>(args.dim, 1e-5);
-    this->output = nn::Linear<dtype>(args.dim, args.vocab_size);
+    this->norm = RMSNorm<dtype>(args.dim, 1e-5, device_type);
+    this->output = nn::Linear<dtype>(args.dim, args.vocab_size, device_type);
 
     this->freqs = precompute_freqs();
 }
@@ -176,7 +176,7 @@ Transformer<dtype>::Transformer(ModelArgs& args) {
 template <typename dtype>
 Tensor<dtype> Transformer<dtype>::precompute_freqs() {
     auto shape = {this->params.max_seq_len, this->head_dim}; // (seq_len, head_dim)
-    Tensor<dtype> freqs(shape);
+    Tensor<dtype> freqs(shape, this->device_type);
     for (int i = 0; i < this->params.max_seq_len; i++) {
         for (int j = 0; j < this->head_dim; j++) {
             freqs.setData({i, j},  i * pow(10000, -2.0 * j / this->head_dim));
@@ -190,7 +190,7 @@ template <typename dtype>
 std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen) const {
     if (seqlen <= 1) return {};
 
-    Tensor<dtype> mask = Tensor<dtype>({seqlen, seqlen});
+    Tensor<dtype> mask = Tensor<dtype>({seqlen, seqlen}, this->device_type);
     for (int i = 0; i < seqlen; i++) {
         for (int j = 0; j < seqlen; j++) {
             if (i >= j) { // set diagonal to zero

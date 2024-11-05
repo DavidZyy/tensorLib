@@ -42,7 +42,7 @@ public:
     Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device_type = "cpu");
     // Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, dtype *data_ptr, const std::string& device_type = "cpu");
     Tensor(const std::vector<int>& shape, const std::shared_ptr<Device<dtype>>& device, const std::string& device_type = "cpu");
-    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<Device<dtype>>& device, const std::string& device_type);
+    Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<Device<dtype>>& device, const std::string& device_type = "cpu");
     template<typename OtherType> Tensor(const Tensor<OtherType>& other); // support static cast
 
     // Destructor
@@ -60,11 +60,12 @@ public:
     }
 
     // Method to get data (double is used as an example type)
-    const std::shared_ptr<dtype[]> data() const {
-        return data_;
-    }
+    // const std::shared_ptr<dtype[]> data() const {
+    //     return data_;
+    // }
 
-    inline const dtype& getData(const std::vector<int>& indices) const;
+    // inline const dtype& getData(const std::vector<int>& indices) const;
+    inline const dtype getData(const std::vector<int>& indices) const;
     inline void setData(const std::vector<int>& indices, const dtype& value);
 
     // Accessor and modifier for tensor elements (non-const version)
@@ -113,6 +114,7 @@ public:
 
     // get or set a sub-tensor of this tensor. The implementation here refers to the homework project of CMU10_414.
     Tensor<dtype> getItem(std::vector<std::vector<int>>& slices) const;
+    // void setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype> value);
     void setItem(std::vector<std::vector<int>>& slices, const Tensor<dtype>& value);
     void setItem(std::vector<std::vector<int>>& slices, dtype value);
 
@@ -157,8 +159,8 @@ public:
 
     /* data is managed by copy on write (COW) later */
     // std::vector<dtype> data_;
-    std::shared_ptr<dtype[]> data_;
-    int data_size; // may different from num_elements in broadcasted Tensor, used for memory safety
+    // std::shared_ptr<dtype[]> data_;
+    // int data_size; // may different from num_elements in broadcasted Tensor, used for memory safety
     int num_elements;
 
     // used for quantize
@@ -244,7 +246,7 @@ private:
 template <typename dtype>  // This is the Tensor's dtype template
 template <typename OtherType>  // This is the type we are converting from
 Tensor<dtype>::Tensor(const Tensor<OtherType>& other) {
-    Tensor<dtype> tmp(other.shape());
+    Tensor<dtype> tmp(other.shape(), other.device_type);
     // Convert the data from 'OtherType' to 'dtype'
     this->num_elements = other.num_elements;  // Copy the number of elements
     this->offset_ = other.offset_;
@@ -255,11 +257,18 @@ Tensor<dtype>::Tensor(const Tensor<OtherType>& other) {
     // data_ = std::shared_ptr<dtype[]>(new dtype[this->num_elements], Deleter<dtype>(num_elements));
     // memoryUsage += num_elements * sizeof(dtype);
     // std::cout << "Allocate: " << sizeof(dtype) * num_elements << ", now: " << memoryUsage << std::endl;
-    this->data_ = tmp.data_;
+    // this->data_ = tmp.data_;
 
     // Element-wise conversion from OtherType to dtype
-    for (int i = 0; i < num_elements; ++i) {
-        data_[i] = static_cast<dtype>(other.data_[i]);
+    // for (int i = 0; i < num_elements; ++i) {
+    //     data_[i] = static_cast<dtype>(other.data_[i]);
+    // }
+
+    // assert (is_contiguous(other));
+    // may have error when other is not contiguous
+    for (int i = 0; i < other.num_elements; ++i) {
+        dtype a = static_cast<dtype>(other.device->getDataLinear(i));
+        tmp.device->setDataLinear(i, a);
     }
 }
 
@@ -296,12 +305,13 @@ Tensor<dtype>::Tensor(const Tensor<OtherType>& other) {
 template <typename dtype>
 std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
     const auto& shape = tensor.shape();
-    const auto& data = tensor.data();
+    // const auto& data = tensor.data();
 
     // scalar
     if (shape.size() == 0) {
         // os << "[]";
-        os << tensor.data_[0];
+        // os << tensor.data_[0];
+        os << tensor.device->getDataLinear(0);
     } else {
         tensor.printTensor(os, 0, {});
     }
@@ -439,7 +449,6 @@ Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs, int sta
     // return input;
 }
 
-
 template <typename dtype>
 inline size_t Tensor<dtype>::calculateLinearIndex(const std::vector<int>& indices) const{
     // doulble check
@@ -465,17 +474,20 @@ inline size_t Tensor<dtype>::calculateLinearIndex(const std::vector<int>& indice
  * @tparam dtype 
  */
 template <typename dtype>
-inline const dtype& Tensor<dtype>::getData(const std::vector<int>& indices) const {
+// get segment fault return dtype&
+// inline const dtype& Tensor<dtype>::getData(const std::vector<int>& indices) const {
+inline const dtype Tensor<dtype>::getData(const std::vector<int>& indices) const {
     size_t linear_index = calculateLinearIndex(indices);
 
-    return data_[linear_index];
+    // return data_[linear_index];
+    return this->device->getDataLinear(linear_index);
 }
-
 
 // Implementation of setData method
 template <typename dtype>
 inline void Tensor<dtype>::setData(const std::vector<int>& indices, const dtype& value) {
     size_t linear_index = calculateLinearIndex(indices);
 
-    data_[linear_index] = value;
+    // data_[linear_index] = value;
+    this->device->setDataLinear(linear_index, value);
 }

@@ -2,6 +2,7 @@
 #include "Tensor.hpp"
 #include "nn/modules.hpp"
 #include <optional>
+#include <string>
 
 class ModelArgs {
 public:
@@ -20,7 +21,7 @@ template <typename dtype>
 class Attention : public nn::Module<dtype> {
 public:
     Attention() = default;
-    Attention(ModelArgs args);
+    Attention(ModelArgs args, std::string device_type = "cpu");
 
     Tensor<dtype> forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask); // not const, cache will be modified
 // private:
@@ -37,7 +38,7 @@ template <typename dtype>
 class FeedForward : public nn::Module<dtype> {
 public:
     FeedForward() = default;
-    FeedForward(int dim, int hidden_dim); // no need multiple_of here, use llama2.c way.
+    FeedForward(int dim, int hidden_dim, std::string device_type = "cpu"); // no need multiple_of here, use llama2.c way.
 
     Tensor<dtype> forward(const Tensor<dtype>& x) const override;
 // private:
@@ -49,7 +50,7 @@ template <typename dtype>
 class RMSNorm : public nn::Module<dtype> {
 public:
     RMSNorm() = default;
-    RMSNorm(int dim, float eps = 1e-5);
+    RMSNorm(int dim, float eps = 1e-5, std::string device_type = "cpu");
 
     Tensor<dtype> forward(const Tensor<dtype>& x) const override;
     Tensor<dtype> _norm(Tensor<dtype> x) const;
@@ -63,7 +64,7 @@ template <typename dtype>
 class TransformerBlock : public nn::Module<dtype> {
 public:
     TransformerBlock() = default;
-    TransformerBlock(int layer_id, ModelArgs args);
+    TransformerBlock(int layer_id, ModelArgs args, std::string device_type = "cpu");
 
     Tensor<dtype> forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask); //(not const, Attention.cache will be modified) cannot use override here, because the function signature(parameters) is different with the base module
 // private:
@@ -79,7 +80,7 @@ public:
 template <typename dtype>
 class Transformer : public nn::Module<dtype> {
 public:
-    Transformer(ModelArgs& args);
+    Transformer(ModelArgs& args, std::string device_type = "cpu");
 
     Tensor<dtype> forward(const Tensor<dtype>& tokens, int start_pos) const;
 // private:
