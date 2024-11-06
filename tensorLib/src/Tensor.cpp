@@ -55,56 +55,56 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::string& device_t
         }
 }
 
-template <typename dtype>
-Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data, const std::string& device_type)
-    : ndim(shape.size()), shape_(shape), offset_(0), device_type(device_type) {
-        // Calculate the total number of elements in the tensor
-        num_elements = 1;
-        for (int dim : shape) {
-            num_elements *= dim;
-        }
-
-        // Allocate memory for data, offset, and stride arrays
-        stride_ = std::vector<int>(ndim);
-
-        // Initialize offset and stride arrays
-        if (ndim > 0) {
-            stride_[ndim - 1] = 1;
-            for (int i = ndim - 2; i >= 0; --i) {
-                stride_[i] = stride_[i + 1] * shape_[i + 1];
-            }
-        }
-
-        
-        if (device_type == "cpu") {
-            this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(num_elements));
-        } else if (device_type == "cuda") {
-            this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(num_elements));
-        } else {
-            throw std::invalid_argument("Invalid device name");
-        }
-}
+// template <typename dtype>
+// Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data, const std::string& device_type)
+//     : ndim(shape.size()), shape_(shape), offset_(0), device_type(device_type) {
+//         // Calculate the total number of elements in the tensor
+//         num_elements = 1;
+//         for (int dim : shape) {
+//             num_elements *= dim;
+//         }
+// 
+//         // Allocate memory for data, offset, and stride arrays
+//         stride_ = std::vector<int>(ndim);
+// 
+//         // Initialize offset and stride arrays
+//         if (ndim > 0) {
+//             stride_[ndim - 1] = 1;
+//             for (int i = ndim - 2; i >= 0; --i) {
+//                 stride_[i] = stride_[i + 1] * shape_[i + 1];
+//             }
+//         }
+// 
+//         
+//         if (device_type == "cpu") {
+//             this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(num_elements));
+//         } else if (device_type == "cuda") {
+//             this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(num_elements));
+//         } else {
+//             throw std::invalid_argument("Invalid device name");
+//         }
+// }
 
 /**
  * use std::move semantic to construct a Tensor with given shape, stride, offset, maybe faster ? 
  * @tparam dtype 
  */
-template <typename dtype>
-Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device_type):
-ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), device_type(device_type) {
-    this-> num_elements = 1;
-    for (int dim : shape) {
-        this->num_elements *= dim;
-    }
-
-    if (device_type == "cpu") {
-        this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(num_elements));
-    } else if (device_type == "cuda") {
-        this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(num_elements));
-    } else {
-        throw std::invalid_argument("Invalid device name");
-    }
-}
+// template <typename dtype>
+// Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device_type):
+// ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), device_type(device_type) {
+//     this-> num_elements = 1;
+//     for (int dim : shape) {
+//         this->num_elements *= dim;
+//     }
+// 
+//     if (device_type == "cpu") {
+//         this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(num_elements));
+//     } else if (device_type == "cuda") {
+//         this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(num_elements));
+//     } else {
+//         throw std::invalid_argument("Invalid device name");
+//     }
+// }
 
 /**
  * use std::move semantic to construct a Tensor with given shape, stride, offset, maybe faster ?
@@ -298,23 +298,32 @@ Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
  * @tparam dtype 
  */
 template <typename dtype>
-Tensor<dtype> Tensor<dtype>::view(const std::vector<int>& shape) const {
-    if (shape == this->shape()) 
+Tensor<dtype> Tensor<dtype>::view(const std::vector<int>& new_shape) const {
+    if (new_shape == this->shape()) 
         return *this;
 
     if (!is_contiguous(*this))
         throw std::invalid_argument("This tensor is not contiguous.");
 
     int num = 1;
-    for (auto i=0; i<shape.size(); i++) {
-        num *= shape[i];
+    for (auto i=0; i < new_shape.size(); i++) {
+        num *= new_shape[i];
     }
     if (num != this->num_elements) {
         throw std::invalid_argument("The number of elements is not equal.");
     }
 
-    // Tensor<dtype> result(shape, this->data());
-    Tensor<dtype> result(shape, this->device, this->device_type);
+    int new_dim = new_shape.size(); 
+    std::vector<int> new_stride = std::vector<int>(new_dim);
+
+    // *this is contiguous, so we can calculate the new stride like this
+    if (new_dim > 0) {
+        new_stride[new_dim - 1] = 1;
+        for (int i = new_dim - 2; i >= 0; --i) {
+            new_stride[i] = new_stride[i + 1] * new_shape[i + 1];
+        }
+    }
+    Tensor<dtype> result(std::move(new_shape), std::move(new_stride), this->offset_, this->device, this->device_type);
 
     return result;
 }
@@ -493,7 +502,7 @@ void Tensor<dtype>::setItem(std::vector<std::vector<int>>& slices, const Tensor<
     }
     
     out.device->setItemEwise(
-        value.device->getDataPtr(),
+        value.device->getDataPtr() + value.offset_,
         out.shape_,
         out.stride_,
         out.offset_,

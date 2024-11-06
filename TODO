@@ -1,0 +1,3 @@
+<!-- 1. optimize embedding module. -->
+2. optimize apply_rotary_emb.
+3. support python vertion gpt2.

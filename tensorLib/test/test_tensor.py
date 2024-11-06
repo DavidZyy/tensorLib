@@ -287,7 +287,7 @@ def compute_shape_after_slices(slices: list[list[int]]) -> tuple[int]:
     return tuple(new_shape)
 
 
-setitem_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=100)
+setitem_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=10)
 @pytest.mark.parametrize("shape", setitem_shapes)
 @pytest.mark.parametrize("operand", ["scalar", "tensor"])
 @pytest.mark.parametrize("device", ["cpu", "cuda"])

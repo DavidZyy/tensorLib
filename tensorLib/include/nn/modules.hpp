@@ -239,37 +239,28 @@ Embedding<dtype>::Embedding(int num_embeddings, int embedding_dim, std::string d
 /**
  * using the following way, we can handle arbitrary dimension input.
  * @tparam dtype
+ * input have shape (B, T), weight have shape (num_embeddings, embedding_dim)
  */
 template <typename dtype>
 Tensor<dtype> Embedding<dtype>::forward(const Tensor<dtype> &input) const {
   auto new_shape = input.shape();
-  new_shape.push_back(embedding_dim);
-  auto result = Tensor<dtype>(new_shape, input.device_type);
+  new_shape.push_back(this->embedding_dim);
+  auto result = Tensor<dtype>(new_shape, input.device_type); // (B, T, embedding_dim)
 
-  std::vector<int> cur_idx(input.shape().size(), 0);
+  // std::vector<int> cur_idx(input.shape().size(), 0);
 
   // embedding every elements in input
+  # pragma omp parallel for
   for (int i = 0; i < input.num_elements; i++) {
+    auto cur_idx = input.getIndicesFromLinearIndex(i);
     int embedding_index = input.getData(cur_idx);
 
-    // assign
-    for (int j = 0; j < embedding_dim; j++) {
-      auto temp = cur_idx;
-      temp.push_back(j);
-      result.setData(temp, weight.getData({embedding_index, j}));
-    }
-
-    // carry
-    // maybe optimized
-    for (int j = cur_idx.size() - 1; j >= 0; j--) {
-      cur_idx[j] += 1;
-
-      if (cur_idx[j] < input.shape()[j]) {
-        break;
-      } else {
-        cur_idx[j] = 0;
-      }
-    }
+    auto a = weight.select(0, embedding_index); // (1, embedding_dim)
+    auto a_new_shape = a.shape();
+    a_new_shape.insert(a_new_shape.begin(), 1); // (1, 1, embedding_dim)
+    a = a.view(a_new_shape);
+    std::vector<std::vector<int>> slice = {{cur_idx[0], cur_idx[0]+1}, {cur_idx[1], cur_idx[1]+1}, {}};
+    result.setItem(slice, a);
   }
 
   return result;

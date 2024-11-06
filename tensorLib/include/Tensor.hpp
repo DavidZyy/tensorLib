@@ -176,6 +176,25 @@ public:
     std::vector<int> shape_;
     std::string device_type;
     std::shared_ptr<Device<dtype>> device;
+
+    /**
+     * seems this shape msethod can handle non-contiguous Tensor, both this and below can be used in matmul(contiguous?),
+     *  but below stride method seems can not used in setItem or contiguous method(no contiguous?).
+     */
+    inline std::vector<int> getIndicesFromLinearIndex(size_t linear_index) const {
+        // assert(this->shape_.size() == this->ndim);
+        // std::vector<int> indices(this->ndim);
+        std::vector<int> indices(this->shape_.size());
+        
+        // Iterate from the last dimension to the first(0 dim), because the data is stored contiguously form last dim(the last dim's stride is 1).
+        // for (int i = this->ndim - 1; i >= 0; --i) {
+        for (int i = this->shape_.size()-1; i >= 0; --i) {
+            indices[i] = linear_index % shape_[i];
+            linear_index /= shape_[i];
+        }
+    
+        return indices;
+    }
 private:
 
     // helper method for operator<<
@@ -204,25 +223,6 @@ private:
     Tensor<dtype> reduceOperation(int axis, bool keepdims) const;
     template <void (Device<dtype>::*func)(int*, size_t, size_t) const>
     Tensor<int> reduceOperationArg(int axis, bool keepdims) const;
-
-    /**
-     * seems this shape msethod can handle non-contiguous Tensor, both this and below can be used in matmul(contiguous?),
-     *  but below stride method seems can not used in setItem or contiguous method(no contiguous?).
-     */
-    inline std::vector<int> getIndicesFromLinearIndex(size_t linear_index) const {
-        // assert(this->shape_.size() == this->ndim);
-        // std::vector<int> indices(this->ndim);
-        std::vector<int> indices(this->shape_.size());
-        
-        // Iterate from the last dimension to the first(0 dim), because the data is stored contiguously form last dim(the last dim's stride is 1).
-        // for (int i = this->ndim - 1; i >= 0; --i) {
-        for (int i = this->shape_.size()-1; i >= 0; --i) {
-            indices[i] = linear_index % shape_[i];
-            linear_index /= shape_[i];
-        }
-    
-        return indices;
-    }
 
     /**
      * fuse getIndicesFromLinearIndex and calculateLinearIndex
@@ -382,6 +382,8 @@ bool Tensor<dtype>::is_contiguous(const Tensor<dtype>& t) const {
  * 
  * input's shape is [B, T, n_heads, head_dim]
  */
+
+ // TO BE OPTIMIZED !!!! 
 template <typename dtype>
 Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs, int start_pos) {
     if (input.shape().size() != 4 || freqs.shape().size() != 2) {
@@ -394,26 +396,30 @@ Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs, int sta
     int head_dim = input.shape()[3];
 
     Tensor<dtype> result(input.shape(), input.device_type);
+    
+    // if (input.device_type == "cpu") {
 
-    #pragma omp parallel for collapse(4)
-    for (int i = 0; i < B; ++i) {
-        for (int j = 0; j < T; ++j) {
-            for (int k = 0; k < n_heads; ++k) {
-                for (int l = 0; l < head_dim; l += 2) {
-                    // dtype theta = freqs.data_[j * freqs.shape()[0] + l / 2];
-                    dtype theta = start_pos * 1.0f / std::pow(10000.0f, (float)l / (float)head_dim);
-                    dtype cos_theta = std::cos(theta);
-                    dtype sin_theta = std::sin(theta);
+    // } else {
+        #pragma omp parallel for collapse(4)
+        for (int i = 0; i < B; ++i) {
+            for (int j = 0; j < T; ++j) {
+                for (int k = 0; k < n_heads; ++k) {
+                    for (int l = 0; l < head_dim; l += 2) {
+                        // dtype theta = freqs.data_[j * freqs.shape()[0] + l / 2];
+                        dtype theta = start_pos * 1.0f / std::pow(10000.0f, (float)l / (float)head_dim);
+                        dtype cos_theta = std::cos(theta);
+                        dtype sin_theta = std::sin(theta);
 
-                    auto v0 = input.getData({i, j, k, l});
-                    auto v1 = input.getData({i, j, k, l + 1});
+                        auto v0 = input.getData({i, j, k, l});
+                        auto v1 = input.getData({i, j, k, l + 1});
 
-                    result.setData({i, j, k, l}, v0 * cos_theta - v1 * sin_theta);
-                    result.setData({i, j, k, l + 1}, v0 * sin_theta + v1 * cos_theta);
+                        result.setData({i, j, k, l}, v0 * cos_theta - v1 * sin_theta);
+                        result.setData({i, j, k, l + 1}, v0 * sin_theta + v1 * cos_theta);
+                    }
                 }
             }
         }
-    }
+    // }
 
     return result;
     // return input;

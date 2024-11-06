@@ -232,9 +232,6 @@ Llama2<float> read_checkpoint(char * checkpoint) {
     if (fread(&config, sizeof(Config), 1, file) != 1) { exit(EXIT_FAILURE); }
     int shared_weight = config.vocab_size > 0 ? 1 : 0;
     config.vocab_size = std::abs(config.vocab_size);
-    // fseek(file, 0, SEEK_END);
-    // *file_size = ftell(file);
-    // size_t fs = ftell(file);
     fclose(file);
 
     ModelArgs args;
@@ -250,13 +247,6 @@ Llama2<float> read_checkpoint(char * checkpoint) {
     auto generator = Llama2<float>(tokenizer_path, args, "cpu");
     // auto generator = Llama2<float>(tokenizer_path, args, "cuda");
 
-//     *fd = open(checkpoint.c_str(), O_RDONLY);
-//     if (*fd == -1) { fprintf(stderr, "open failed!\n"); exit(EXIT_FAILURE); }
-//     *data = (float *)mmap(NULL, *file_size, PROT_READ, MAP_PRIVATE, *fd, 0);
-//     if (data == MAP_FAILED) { fprintf(stderr, "mmap failed!\n"); exit(EXIT_FAILURE); }
-// 
-//     float* weights_ptr = *data + sizeof(Config)/sizeof(float);
-    // memory_map_weights(generator, weights_ptr, shared_weight);
     read_weights(checkpoint, generator, shared_weight);
     return generator;
 }
@@ -274,17 +264,6 @@ int main(int argc, char *argv[]) {
     args.max_batch_size = 1; // set 1 first
     args.max_seq_len = 1024;
 
-    // auto generator = Llama2<float>(tokenizer_path, args);
-    // float **data = new float*;
-    // int* fd = new int;
-    // size_t* file_size = new size_t;
     auto generator = read_checkpoint(argv[1]);
     generator.text_completion(prompt);
-
-    // munmap data and close fd here!
-    // if (data != MAP_FAILED) { munmap(*data, *file_size); }
-    // if (*fd != -1) { close(*fd); }
-    // delete data;
-    // delete fd;
-    // delete file_size;
 }
