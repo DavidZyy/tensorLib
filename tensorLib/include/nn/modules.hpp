@@ -66,7 +66,7 @@ template <typename dtype>
 Linear<dtype>::Linear(int in_features, int out_features, Tensor<dtype> &&weight, std::string device_type)
     : in_features(in_features), out_features(out_features),
       weight(std::move(weight)) {
-  assert(weight.device_type() == device_type)
+  assert(weight.device_type() == device_type);
   // Optionally perform some sanity checks on the weight tensor shape
   assert(weight.shape().size() == 2 && weight.shape()[0] == out_features &&
          weight.shape()[1] == in_features);

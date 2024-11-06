@@ -236,12 +236,12 @@ __global__ void unaryKernel(dtype* result, const dtype* src, size_t num_elements
     }
 }
 
-// General template for CUDA unary operations
-template <typename dtype, dtype (*op)(dtype)>
-void applyUnaryOperation(dtype* result, dtype* src, size_t num_elements) {
+template <typename dtype>
+template <dtype (*op)(dtype)>
+void CUDA<dtype>::applyUnaryOperation(dtype* result, size_t num_elements) const {
     int blockSize = 256;  // Number of threads per block (adjust based on optimization needs)
     int gridSize = (num_elements + blockSize - 1) / blockSize;  // Number of blocks
-    unaryKernel<dtype, op><<<gridSize, blockSize>>>(result, src, num_elements);
+    unaryKernel<dtype, op><<<gridSize, blockSize>>>(result, this->data_, num_elements);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 }
@@ -253,7 +253,7 @@ __device__ dtype negateFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::neg(dtype* result, size_t num_elements) {
-    applyUnaryOperation<dtype, negateFunc<dtype>>(result, this->data_, num_elements);
+    applyUnaryOperation<negateFunc<dtype>>(result, num_elements);
 }
 
 template <typename dtype>
@@ -268,7 +268,7 @@ __device__ dtype sinFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::sin(dtype* result, size_t num_elements) {
-    applyUnaryOperation<dtype, sinFunc<dtype>>(result, this->data_, num_elements);
+    applyUnaryOperation<sinFunc<dtype>>(result, num_elements);
 }
 
 template <typename dtype>
@@ -282,7 +282,7 @@ __device__ dtype cosFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::cos(dtype* result, size_t num_elements) {
-    applyUnaryOperation<dtype, cosFunc<dtype>>(result, this->data_, num_elements);
+    applyUnaryOperation<cosFunc<dtype>>(result, num_elements);
 }
 
 template <typename dtype>
@@ -296,7 +296,7 @@ __device__ dtype expFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::exp(dtype* result, size_t num_elements) {
-    applyUnaryOperation<dtype, expFunc<dtype>>(result, this->data_, num_elements);
+    applyUnaryOperation<expFunc<dtype>>(result, num_elements);
 }
 
 template <typename dtype>
@@ -310,7 +310,7 @@ __device__ dtype logFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::log(dtype* result, size_t num_elements) {
-    applyUnaryOperation<dtype, logFunc<dtype>>(result, this->data_, num_elements);
+    applyUnaryOperation<logFunc<dtype>>(result, num_elements);
 }
 
 template <typename dtype>
@@ -320,7 +320,7 @@ __device__ dtype absFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::abs(dtype* result, size_t num_elements) {
-    applyUnaryOperation<dtype, absFunc<dtype>>(result, this->data_, num_elements);
+    applyUnaryOperation<absFunc<dtype>>(result, num_elements);
 }
 
 template <typename dtype>
@@ -334,7 +334,7 @@ __device__ dtype tanhFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::tanh(dtype* result, size_t num_elements) {
-    applyUnaryOperation<dtype, tanhFunc<dtype>>(result, this->data_, num_elements);
+    applyUnaryOperation<tanhFunc<dtype>>(result, num_elements);
 }
 
 template <typename dtype>
@@ -348,7 +348,7 @@ __device__ dtype siluFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::silu(dtype* result, size_t num_elements) {
-    applyUnaryOperation<dtype, siluFunc<dtype>>(result, this->data_, num_elements);
+    applyUnaryOperation<siluFunc<dtype>>(result, num_elements);
 }
 
 template <typename dtype>
@@ -366,7 +366,7 @@ __device__ dtype sqrtFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::sqrt(dtype* result, size_t num_elements) {
-    applyUnaryOperation<dtype, sqrtFunc<dtype>>(result, this->data_, num_elements);
+    applyUnaryOperation<sqrtFunc<dtype>>(result, num_elements);
 }
 
 template <typename dtype>
@@ -384,7 +384,7 @@ __device__ dtype rsqrtFunc(dtype x) {
 
 template <typename dtype>
 void CUDA<dtype>::rsqrt(dtype* result, size_t num_elements) {
-    applyUnaryOperation<dtype, rsqrtFunc<dtype>>(result, this->data_, num_elements);
+    applyUnaryOperation<rsqrtFunc<dtype>>(result, num_elements);
 }
 
 ////////////////////////////////////////////////////// binary operations ///////////////////////////////////////////////////////////////////////////////

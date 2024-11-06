@@ -83,10 +83,14 @@ public:
 // private:
     dtype *data_;
 
+    template <dtype (*op)(dtype)>
+    void applyUnaryOperation(dtype* result, size_t num_elements) const;
+
     template <dtype (*op)(dtype, dtype)>
     void applyBinaryOperation(dtype* result, const dtype* other, size_t num_elements) const;
     template <dtype (*op)(dtype, dtype)>
     void applyBinaryScalarOperation(dtype* result,  dtype value, size_t num_elements) const;
+
     template <dtype (*op)(dtype, dtype)>
     void reduceOperation(dtype* result, size_t reduce_size, size_t num_elements) const;
     template <bool (*comp)(dtype, dtype)>
