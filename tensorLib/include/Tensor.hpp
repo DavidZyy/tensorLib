@@ -105,7 +105,7 @@ public:
     template<typename T> friend Tensor<T> randn(const std::vector<int>& shape, T mean, T std);
 
     template<typename T>
-    friend Tensor<T> apply_rotary_emb(Tensor<T> input, Tensor<T> freqs, int start_pos);
+    friend Tensor<T> apply_rotary_emb(Tensor<T> &input, Tensor<T> &freqs, int start_pos);
 
     Tensor<dtype> transpose(int dim0, int dim1) const;
     Tensor<dtype> permute(const std::vector<int>& new_axes) const;
@@ -158,6 +158,8 @@ public:
     // int8_t quantize, but use int32_t store value now in case of overflow when perform mutmul.
     Tensor<int> quantize() const;
     Tensor<float> dequantize() const;
+
+    // Tensor<dtype> apply_rotary_emb(Tensor<dtype> &input, Tensor<dtype> &freqs, int start_pos);
 
     /* data is managed by copy on write (COW) later */
     // std::vector<dtype> data_;
@@ -382,11 +384,9 @@ bool Tensor<dtype>::is_contiguous(const Tensor<dtype>& t) const {
  * 
  * input's shape is [B, T, n_heads, head_dim]
  */
-
- // TO BE OPTIMIZED !!!! 
 template <typename dtype>
-Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs, int start_pos) {
-    if (input.shape().size() != 4 || freqs.shape().size() != 2) {
+Tensor<dtype> apply_rotary_emb(Tensor<dtype> &input, int start_pos) {
+    if (input.shape().size() != 4) {
         throw std::invalid_argument("Invalid shape.");
     }
 
@@ -394,35 +394,22 @@ Tensor<dtype> apply_rotary_emb(Tensor<dtype> input, Tensor<dtype> freqs, int sta
     int T = input.shape()[1];
     int n_heads = input.shape()[2];
     int head_dim = input.shape()[3];
+    
+    input = input.contiguous();
 
     Tensor<dtype> result(input.shape(), input.device_type);
-    
-    // if (input.device_type == "cpu") {
 
-    // } else {
-        #pragma omp parallel for collapse(4)
-        for (int i = 0; i < B; ++i) {
-            for (int j = 0; j < T; ++j) {
-                for (int k = 0; k < n_heads; ++k) {
-                    for (int l = 0; l < head_dim; l += 2) {
-                        // dtype theta = freqs.data_[j * freqs.shape()[0] + l / 2];
-                        dtype theta = start_pos * 1.0f / std::pow(10000.0f, (float)l / (float)head_dim);
-                        dtype cos_theta = std::cos(theta);
-                        dtype sin_theta = std::sin(theta);
-
-                        auto v0 = input.getData({i, j, k, l});
-                        auto v1 = input.getData({i, j, k, l + 1});
-
-                        result.setData({i, j, k, l}, v0 * cos_theta - v1 * sin_theta);
-                        result.setData({i, j, k, l + 1}, v0 * sin_theta + v1 * cos_theta);
-                    }
-                }
-            }
-        }
-    // }
+    int H = B*T*n_heads;
+    int W = head_dim;
+    input.device->apply_rotary_emb(
+        input.device->getDataPtr(),
+        result.device->getDataPtr(),
+        start_pos,
+        H,
+        W
+    );
 
     return result;
-    // return input;
 }
 
 template <typename dtype>

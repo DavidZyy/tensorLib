@@ -51,8 +51,8 @@ public:
         size_t num_elements) override;
 
     // unary operations
-    void neg(dtype* result, size_t num_elements) override;
-    void sin(dtype* result, size_t num_elements) override;
+    void neg(dtype* result, size_t num_elements)   override;
+    void sin(dtype* result, size_t num_elements)   override;
     void cos(dtype* result, size_t num_elements)   override;
     void exp(dtype* result, size_t num_elements)   override;
     void log(dtype* result, size_t num_elements)   override;
@@ -74,11 +74,19 @@ public:
     void pow(dtype* result, dtype scalar, size_t num_elements) const override;
 
     // reduction methods
-    void max(dtype* result, size_t reduce_size, size_t num_elements)    const override;
-    void min(dtype* result, size_t reduce_size, size_t num_elements)    const override;
-    void sum(dtype* result, size_t reduce_size, size_t num_elements)    const override;
+    void max(dtype* result, size_t reduce_size, size_t num_elements)  const override;
+    void min(dtype* result, size_t reduce_size, size_t num_elements)  const override;
+    void sum(dtype* result, size_t reduce_size, size_t num_elements)  const override;
     void argmax(int* result, size_t reduce_size, size_t num_elements) const override;
     void argmin(int* result, size_t reduce_size, size_t num_elements) const override;
+
+    // special methods
+    void apply_rotary_emb(
+        const dtype* input,
+        dtype* result,
+        int start_pos,
+        int H,
+        int W) const override;
 
 // private:
     dtype *data_;

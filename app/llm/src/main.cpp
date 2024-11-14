@@ -244,8 +244,8 @@ Llama2<float> read_checkpoint(char * checkpoint) {
     args.max_seq_len = config.seq_len;
     args.max_batch_size = 1;
 
-    auto generator = Llama2<float>(tokenizer_path, args, "cpu");
-    // auto generator = Llama2<float>(tokenizer_path, args, "cuda");
+    // auto generator = Llama2<float>(tokenizer_path, args, "cpu");
+    auto generator = Llama2<float>(tokenizer_path, args, "cuda");
 
     read_weights(checkpoint, generator, shared_weight);
     return generator;

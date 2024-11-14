@@ -84,12 +84,12 @@ public:
     void argmin(int* result, size_t reduce_size, size_t num_elements) const override;
 
     // special methods
-    // void apply_rotary_emb(
-    //     dtype* result,
-    //     const std::vector<int>& shape,
-    //     const std::vector<int>& stride,
-    //     size_t offset,
-    //     size_t pos) const override;
+    void apply_rotary_emb(
+        const dtype* input,
+        dtype* result,
+        int start_pos,
+        int H,
+        int W) const override;
 
 // private:
     dtype *data_;

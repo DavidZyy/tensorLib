@@ -33,8 +33,8 @@ Tensor<dtype> Attention<dtype>::forward(const Tensor<dtype>& x, int start_pos, c
     xk = xk.view({bsz, seqlen, n_heads, head_dim});
     xv = xv.view({bsz, seqlen, n_heads, head_dim});
 
-    xq = apply_rotary_emb(xq, freqs, start_pos);
-    xk = apply_rotary_emb(xk, freqs, start_pos);
+    xq = apply_rotary_emb(xq, start_pos);
+    xk = apply_rotary_emb(xk, start_pos);
 
     // put the computed k, v into kv_cache
     std::vector<std::vector<int>> slices  = {{0, bsz}, {start_pos, start_pos+seqlen}, {}, {}};
@@ -170,7 +170,7 @@ Transformer<dtype>::Transformer(ModelArgs& args, std::string device_type) : nn::
     this->norm = RMSNorm<dtype>(args.dim, 1e-5, device_type);
     this->output = nn::Linear<dtype>(args.dim, args.vocab_size, device_type);
 
-    this->freqs = precompute_freqs();
+    this->freqs = precompute_freqs(); // no use
 }
 
 template <typename dtype>

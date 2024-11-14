@@ -67,11 +67,19 @@ public:
     virtual void pow(dtype* result, dtype scalar, size_t num_elements) const = 0;
 
     // reduction methods
-    virtual void max(dtype* result, size_t reduce_size, size_t num_elements)    const = 0;
-    virtual void min(dtype* result, size_t reduce_size, size_t num_elements)    const = 0;
-    virtual void sum(dtype* result, size_t reduce_size, size_t num_elements)    const = 0;
+    virtual void max(dtype* result, size_t reduce_size, size_t num_elements)  const = 0;
+    virtual void min(dtype* result, size_t reduce_size, size_t num_elements)  const = 0;
+    virtual void sum(dtype* result, size_t reduce_size, size_t num_elements)  const = 0;
     virtual void argmax(int* result, size_t reduce_size, size_t num_elements) const = 0;
     virtual void argmin(int* result, size_t reduce_size, size_t num_elements) const = 0;
+
+    // special methods
+    virtual void apply_rotary_emb(
+        const dtype* input,
+        dtype* result,
+        int start_pos,
+        int H,
+        int W) const = 0;
 
 // private:
     size_t size; // number of elements, the total bytes of data_ is: size * sizeof(dtype)

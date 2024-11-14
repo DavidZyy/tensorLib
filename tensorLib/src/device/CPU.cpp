@@ -249,3 +249,31 @@ template <typename dtype> void CPU<dtype>::min(dtype* result, size_t reduce_size
 template <typename dtype> void CPU<dtype>::sum(dtype* result, size_t reduce_size, size_t num_elements)    const { reduceOperation<sumFunc<dtype>>(result, reduce_size, num_elements); }
 template <typename dtype> void CPU<dtype>::argmax(int* result, size_t reduce_size, size_t num_elements) const { reduceOperationArg<argmaxFunc<dtype>>(result, reduce_size, num_elements); }
 template <typename dtype> void CPU<dtype>::argmin(int* result, size_t reduce_size, size_t num_elements) const { reduceOperationArg<argminFunc<dtype>>(result, reduce_size, num_elements); }
+
+/**
+ * the tensor memory is contiguous,
+ * regard input's shape as (B*T*n_heads, head_dim)
+ */
+template <typename dtype>
+void CPU<dtype>::apply_rotary_emb(const dtype* input, dtype* result, int start_pos, int H, int W) const {
+    #pragma omp parallel for collapse(2)
+    for (int i = 0; i < H; i++) {
+        // int offset = start_pos + i * W;
+        for (int j = 0; j < W; j += 2) {
+            int offset = i * W;
+            // dtype theta = 10000.0f * (static_cast<dtype>(j) / static_cast<dtype>(W));
+            dtype theta = start_pos * 1.0f / std::pow(10000.0f, static_cast<dtype>(j) / static_cast<dtype>(W));
+            dtype cos_theta = std::cos(theta);
+            dtype sin_theta = std::sin(theta);
+
+            dtype v0 = input[offset + j];
+            dtype v1 = input[offset + j + 1];
+
+            dtype rotary_emb_real = v0 * cos_theta - v1 * sin_theta;
+            dtype rotary_emb_imag = v0 * sin_theta + v1 * cos_theta;
+
+            result[offset + j] = rotary_emb_real;
+            result[offset + j + 1] = rotary_emb_imag; 
+        }
+    }
+}
