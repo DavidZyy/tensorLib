@@ -104,7 +104,23 @@ void test_unary_op() {
     std::cout << "b: " << std::endl << b << std::endl;
 }
 
+void test_reduce_op() {
+    auto a = originTensor(std::vector<int>{2, 3}, "cpu");
+
+    std::cout << "a: " << std::endl << a << std::endl;
+
+    auto b = a.max(0, true);
+    std::cout << "b: " << std::endl << b << std::endl;
+
+    auto c = a.max(1, true);
+    std::cout << "c: " << std::endl << c << std::endl;
+
+    auto d = a.max({}, true);
+    std::cout << "d: " << std::endl << d << std::endl;
+}
+
 int main() {
     // test_contiguous();
-    test_unary_op();
+    // test_unary_op();
+    test_reduce_op();
 }

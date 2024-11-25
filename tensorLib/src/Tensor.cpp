@@ -1,4 +1,4 @@
-#include "../include/Tensor.hpp"
+#include "Tensor.hpp"
 #include <cassert>
 #include <cmath>
 #include <cstddef>
@@ -14,15 +14,11 @@
 #include "CUDA.hpp"
 
 // Explicit instantiation for int
-template class Tensor<int>;
-
-// Explicit instantiation for double
-// template class Tensor<double>;
-
 // Explicit instantiation for float
+// Explicit instantiation for int8_t
+template class Tensor<int>;
 template class Tensor<float>;
-
-// template class Tensor<uint8_t>;
+template class Tensor<int8_t>;
 
 template <typename dtype>
 Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::string& device_type) : ndim(shape.size()), shape_(shape), offset_(0), device_type(device_type) {
@@ -401,47 +397,6 @@ Tensor<dtype> Tensor<dtype>::contiguous() const {
     return result;
 }
 
-/**
- * quantize dtype(in most case is float) to int8_t, but store it in int now 
- * in case of overflow when perform matmul.
- * @tparam dtype 
- */
-// template <typename dtype>
-// Tensor<int> Tensor<dtype>::quantize() const {
-//     Tensor<int> result(this->shape());
-// 
-//     // int8 quantization -127 ~ 127
-//     dtype Q_MAX = 127.0f;
-// 
-//     // find the max absolute value in the tensor
-//     dtype wmax = 0.0;
-//     for (int i=0; i < this->num_elements; i++) {
-//         dtype val = fabs(this->data_[i]);
-//         if (val > wmax) {
-//             wmax = val;
-//         }
-//     }
-// 
-//     result.scale = wmax / Q_MAX;
-// 
-//     for (int i=0; i < this->num_elements; i++) {
-//         result.data_[i] = (int)(this->data_[i] / result.scale);
-//     }
-// 
-//     return result;
-// }
-// 
-// 
-// template <typename dtype>
-// Tensor<float> Tensor<dtype>::dequantize() const {
-//     Tensor<float> result(this->shape());
-// 
-//     for (int i=0; i < this->num_elements; i++) {
-//         result.data_[i] = this->data_[i] * this->scale;
-//     }
-// 
-//     return result;
-// }
 
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) const {
@@ -688,27 +643,42 @@ std::vector<int> Tensor<dtype>::get_reduce_shape(int axis, bool keepdims) const 
 
 template<typename dtype>
 template <void (Device<dtype>::*func)(dtype*, size_t, size_t) const>
-Tensor<dtype> Tensor<dtype>::reduceOperation(int axis, bool keepdims) const {
-    // Handle the axis properly, permute to move the axis to reduce to the last dimension
-    axis = handle_axis(axis);
-    auto view = get_reduce_view(axis);
-    auto new_shape = get_reduce_shape(axis, keepdims);
+Tensor<dtype> Tensor<dtype>::reduceOperation(std::optional<int> axis, bool keepdims) const {
+    Tensor<dtype> view;
+    std::vector<int> new_shape;
+    int reduce_size;
+
+    if (axis.has_value()) {
+        int axis_v = handle_axis(axis.value());
+        view = get_reduce_view(axis_v); // Handle the axis properly, permute to move the axis to reduce to the last dimension
+        new_shape = get_reduce_shape(axis_v, keepdims);
+        reduce_size = this->shape()[axis_v];
+    } else {
+        // reduce all
+        view = *this;
+        if (keepdims)
+            new_shape = std::vector<int>(this->shape().size(), 1);
+        reduce_size = this->num_elements;
+    }
 
     Tensor<dtype> result(new_shape, this->device_type);
 
-    int reduce_size = this->shape()[axis];
-    
     // should pass in the non-reduced num_elements, pass result.num_elements will get error.
     (view.device.get()->*func)(result.device->getDataPtr(), reduce_size, this->num_elements);
 
     return result;
 }
 
-template<typename dtype> Tensor<dtype> Tensor<dtype>::max(int axis, bool keepdims) const { return reduceOperation<&Device<dtype>::max>(axis, keepdims); }
-template<typename dtype> Tensor<dtype> Tensor<dtype>::min(int axis, bool keepdims) const { return reduceOperation<&Device<dtype>::min>(axis, keepdims); }
-template<typename dtype> Tensor<dtype> Tensor<dtype>::sum(int axis, bool keepdims) const { return reduceOperation<&Device<dtype>::sum>(axis, keepdims); }
-template<typename dtype> Tensor<dtype> Tensor<dtype>::mean(int axis, bool keepdims) const {
-    int reduce_size = this->shape()[handle_axis(axis)];
+template<typename dtype> Tensor<dtype> Tensor<dtype>::max (std::optional<int> axis, bool keepdims) const { return reduceOperation<&Device<dtype>::max>(axis, keepdims); }
+template<typename dtype> Tensor<dtype> Tensor<dtype>::min (std::optional<int> axis, bool keepdims) const { return reduceOperation<&Device<dtype>::min>(axis, keepdims); }
+template<typename dtype> Tensor<dtype> Tensor<dtype>::sum (std::optional<int> axis, bool keepdims) const { return reduceOperation<&Device<dtype>::sum>(axis, keepdims); }
+template<typename dtype> Tensor<dtype> Tensor<dtype>::mean(std::optional<int> axis, bool keepdims) const {
+    int reduce_size;
+    if (axis.has_value()) {
+        reduce_size = this->shape()[handle_axis(axis.value())];
+    } else {
+        reduce_size = this->num_elements;
+    }
 
     auto result1 = this->sum(axis, keepdims);
     auto result2 = result1 / static_cast<dtype>(reduce_size);
@@ -716,25 +686,41 @@ template<typename dtype> Tensor<dtype> Tensor<dtype>::mean(int axis, bool keepdi
     return result2;
 }
 
+/**
+ * almost the same as reduceOperation, unless the return type is int, not dtype
+ * @tparam dtype 
+ * @tparam const 
+ */
 template<typename dtype>
 template <void (Device<dtype>::*func)(int*, size_t, size_t) const>
-Tensor<int> Tensor<dtype>::reduceOperationArg(int axis, bool keepdims) const {
-    // Handle the axis properly, permute to move the axis to reduce to the last dimension
-    axis = handle_axis(axis);
-    auto view = get_reduce_view(axis);
-    auto new_shape = get_reduce_shape(axis, keepdims);
+Tensor<int> Tensor<dtype>::reduceOperationArg(std::optional<int> axis, bool keepdims) const {
+    Tensor<dtype> view;
+    std::vector<int> new_shape;
+    int reduce_size;
+
+    if (axis.has_value()) {
+        int axis_v = handle_axis(axis.value());
+        view = get_reduce_view(axis_v); // Handle the axis properly, permute to move the axis to reduce to the last dimension
+        new_shape = get_reduce_shape(axis_v, keepdims);
+        reduce_size = this->shape()[axis_v];
+    } else {
+        // reduce all
+        view = *this;
+        if (keepdims)
+            new_shape = std::vector<int>(this->shape().size(), 1);
+        reduce_size = this->num_elements;
+    }
 
     Tensor<int> result(new_shape, this->device_type);
 
-    int reduce_size = this->shape()[axis];
-    
+    // should pass in the non-reduced num_elements, pass result.num_elements will get error.
     (view.device.get()->*func)(result.device->getDataPtr(), reduce_size, this->num_elements);
 
     return result;
 }
 
-template<typename dtype> Tensor<int> Tensor<dtype>::argmax(int axis, bool keepdims) const { return reduceOperationArg<&Device<dtype>::argmax>(axis, keepdims); }
-template<typename dtype> Tensor<int> Tensor<dtype>::argmin(int axis, bool keepdims) const { return reduceOperationArg<&Device<dtype>::argmin>(axis, keepdims); }
+template<typename dtype> Tensor<int> Tensor<dtype>::argmax(std::optional<int> axis, bool keepdims) const { return reduceOperationArg<&Device<dtype>::argmax>(axis, keepdims); }
+template<typename dtype> Tensor<int> Tensor<dtype>::argmin(std::optional<int> axis, bool keepdims) const { return reduceOperationArg<&Device<dtype>::argmin>(axis, keepdims); }
 
 ////////////////////////////////////////////////////// softmax operations ///////////////////////////////////////////////////////////////////////////////
 template<typename dtype>

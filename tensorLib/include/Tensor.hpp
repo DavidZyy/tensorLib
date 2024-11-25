@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <random>
 #include <string>
 #include <vector>
@@ -146,18 +147,14 @@ public:
     Tensor<dtype> pow(dtype scalar) const;
 
     // reduce methods(reduce 1 dimension each function call), like sum, max
-    Tensor<dtype> max(int axis, bool keepdims = false) const;
-    Tensor<dtype> min(int axis, bool keepdims = false) const;
-    Tensor<dtype> sum(int axis, bool keepdims = false) const;
-    Tensor<dtype> mean(int axis, bool keepdims = false) const;
-    Tensor<int> argmax(int dim, bool keepdim = false) const;
-    Tensor<int> argmin(int dim, bool keepdim = false) const;
+    Tensor<dtype> max (std::optional<int> axis = {}, bool keepdims = false) const;
+    Tensor<dtype> min (std::optional<int> axis = {}, bool keepdims = false) const;
+    Tensor<dtype> sum (std::optional<int> axis = {}, bool keepdims = false) const;
+    Tensor<dtype> mean(std::optional<int> axis = {}, bool keepdims = false) const;
+    Tensor<int> argmax(std::optional<int> axis = {}, bool keepdim = false) const;
+    Tensor<int> argmin(std::optional<int> axis = {}, bool keepdim = false) const;
 
     Tensor<dtype> softmax(int dim) const;
-
-    // int8_t quantize, but use int32_t store value now in case of overflow when perform mutmul.
-    Tensor<int> quantize() const;
-    Tensor<float> dequantize() const;
 
     // Tensor<dtype> apply_rotary_emb(Tensor<dtype> &input, Tensor<dtype> &freqs, int start_pos);
 
@@ -222,9 +219,9 @@ private:
     template <void (Device<dtype>::*func)(dtype*, dtype, size_t) const >
     Tensor<dtype> applyBinaryScalarOperation(dtype scalar) const;
     template <void (Device<dtype>::*func)(dtype*, size_t, size_t) const>
-    Tensor<dtype> reduceOperation(int axis, bool keepdims) const;
+    Tensor<dtype> reduceOperation(std::optional<int> axis, bool keepdims) const;
     template <void (Device<dtype>::*func)(int*, size_t, size_t) const>
-    Tensor<int> reduceOperationArg(int axis, bool keepdims) const;
+    Tensor<int> reduceOperationArg(std::optional<int> axis, bool keepdims) const;
 
     /**
      * fuse getIndicesFromLinearIndex and calculateLinearIndex

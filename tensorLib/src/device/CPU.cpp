@@ -7,6 +7,7 @@
 
 template class CPU<float>;
 template class CPU<int>;
+template class CPU<int8_t>;
 
 /**
  * matmul operation on CPU
@@ -213,6 +214,8 @@ void CPU<dtype>::reduceOperation(dtype* result, size_t reduce_size, size_t num_e
     # pragma omp parallel for
     for (int i = 0; i < num_elements; i += reduce_size) {
         dtype temp = this->data_[i];
+
+        // use parallel reduction algorithm if reduce_size > threshold, such as reduce_size = num_elements (find the max/min value or do sum op on all tensor)
         for (int j = 1; j < reduce_size; j++) {
             temp = op(temp, this->data_[i + j]);
         }
@@ -237,6 +240,12 @@ void CPU<dtype>::reduceOperationArg(int* result, size_t reduce_size, size_t num_
         result[i / reduce_size] = best_idx;
     }
 }
+
+// new reduction algorithm
+// template <typename dtype>
+// template <bool (*comp)(dtype, dtype)>
+// void CPU<dtype>::reduceOperationArg(int* result, size_t reduce_size, size_t num_elements) const {
+// }
 
 template <typename dtype> static inline dtype maxFunc(dtype a, dtype b) { return std::max(a, b); }
 template <typename dtype> static inline dtype minFunc(dtype a, dtype b) { return std::min(a, b); }

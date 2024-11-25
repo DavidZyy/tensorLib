@@ -83,6 +83,11 @@ public:
     void argmax(int* result, size_t reduce_size, size_t num_elements) const override;
     void argmin(int* result, size_t reduce_size, size_t num_elements) const override;
 
+    // quantization methods
+    // void quantize0(dtype* result, size_t num_elements, dtype scale, int zero_point) const override; // use 0 as zero point
+    // void quantize1(dtype* result, size_t num_elements, dtype scale, int zero_point) const override; // calculate new zero point
+    // void dequantize(dtype* result, size_t num_elements, dtype scale, int zero_point) const override;
+
     // special methods
     void apply_rotary_emb(
         const dtype* input,

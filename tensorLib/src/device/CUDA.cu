@@ -9,6 +9,7 @@
 
 template class CUDA<float>;
 template class CUDA<int>;
+template class CUDA<int8_t>;
 
 template <typename dtype>
 CUDA<dtype>::CUDA(size_t size) : Device<dtype>(size) {
@@ -258,7 +259,7 @@ void CUDA<dtype>::neg(dtype* result, size_t num_elements) {
 
 template <typename dtype>
 __device__ dtype sinFunc(dtype x) {
-    if constexpr (std::is_same<dtype, int>::value) {
+    if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
         // If dtype is an integer type, cast x to float and calculate sine, or it will link to std::sin, which is not supported on CUDA
         return static_cast<dtype>(sin(static_cast<float>(x)));
     } else {
@@ -273,7 +274,7 @@ void CUDA<dtype>::sin(dtype* result, size_t num_elements) {
 
 template <typename dtype>
 __device__ dtype cosFunc(dtype x) {
-    if constexpr (std::is_same<dtype, int>::value) {
+    if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
         return static_cast<dtype>(cos(static_cast<float>(x)));
     } else {
         return cos(x);
@@ -287,7 +288,7 @@ void CUDA<dtype>::cos(dtype* result, size_t num_elements) {
 
 template <typename dtype>
 __device__ dtype expFunc(dtype x) {
-    if constexpr (std::is_same<dtype, int>::value) {
+    if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
         return static_cast<dtype>(exp(static_cast<float>(x)));
     } else {
         return exp(x);
@@ -301,7 +302,7 @@ void CUDA<dtype>::exp(dtype* result, size_t num_elements) {
 
 template <typename dtype>
 __device__ dtype logFunc(dtype x) {
-    if constexpr (std::is_same<dtype, int>::value) {
+    if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
         return static_cast<dtype>(log(static_cast<float>(x)));
     } else {
         return log(x);
@@ -325,7 +326,7 @@ void CUDA<dtype>::abs(dtype* result, size_t num_elements) {
 
 template <typename dtype>
 __device__ dtype tanhFunc(dtype x) {
-    if constexpr (std::is_same<dtype, int>::value) {
+    if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
         return static_cast<dtype>(tanh(static_cast<float>(x)));
     } else {
         return tanh(x);
@@ -339,7 +340,7 @@ void CUDA<dtype>::tanh(dtype* result, size_t num_elements) {
 
 template <typename dtype>
 __device__ dtype siluFunc(dtype x) {
-    if constexpr (std::is_same<dtype, int>::value) {
+    if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
         return static_cast<dtype>(static_cast<float>(x) * (1 / (1 + exp(-static_cast<float>(x)))));
     } else {
         return x * (1 / (1 + exp(-x)));
@@ -354,7 +355,7 @@ void CUDA<dtype>::silu(dtype* result, size_t num_elements) {
 template <typename dtype>
 __device__ dtype sqrtFunc(dtype x) {
     if (x >= 0) {
-        if constexpr (std::is_same<dtype, int>::value) {
+        if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
             return static_cast<dtype>(sqrt(static_cast<float>(x)));
         } else {
             return sqrt(x); // Rsqrt calculation
@@ -372,7 +373,7 @@ void CUDA<dtype>::sqrt(dtype* result, size_t num_elements) {
 template <typename dtype>
 __device__ dtype rsqrtFunc(dtype x) {
     if (x > 0) {
-        if constexpr (std::is_same<dtype, int>::value) {
+        if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
             return static_cast<dtype>(rsqrt(static_cast<float>(x)));
         } else {
             return rsqrt(x); // Rsqrt calculation
