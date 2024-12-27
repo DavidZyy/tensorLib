@@ -30,6 +30,7 @@ public:
 
     dtype* getDataPtr() override { return data_; }
     void full (size_t num_elements, dtype fill_value) override;
+    void randn (size_t num_elements) override;
     dtype getDataLinear(size_t liner_index) const override;
     void setDataLinear(size_t liner_index, dtype value) override;
     void contiguous(

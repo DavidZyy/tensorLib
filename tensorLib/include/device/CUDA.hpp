@@ -27,6 +27,7 @@ public:
  
     dtype* getDataPtr() override { return data_; }
     void full (size_t num_elements, dtype fill_value) override;
+    void randn (size_t num_elements) override;
     dtype getDataLinear(size_t liner_index) const override;
     void setDataLinear(size_t liner_index, dtype value) override;
     void contiguous(
@@ -87,6 +88,10 @@ public:
         int start_pos,
         int H,
         int W) const override;
+    
+
+    // fused cuda operations
+    void rms_norm(dtype *output, dtype *input, dtype *weight, float epsilon, int hidden_size, int num_tokens);
 
 // private:
     dtype *data_;

@@ -21,6 +21,7 @@ public:
 
     virtual dtype* getDataPtr() = 0;  // Pure virtual getter for data_
     virtual void full (size_t num_elements, dtype fill_value) = 0;
+    virtual void randn (size_t num_elements) = 0;
     // get data by linear index
     virtual dtype getDataLinear(size_t liner_index) const = 0;
     virtual void setDataLinear(size_t liner_index, dtype value) = 0;

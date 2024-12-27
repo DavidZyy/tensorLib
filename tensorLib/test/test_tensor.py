@@ -1,9 +1,13 @@
 import pytest
-import tensor_bindings as tb  # the module is a .so file compiled from C++
+# import tensor_bindings as tb  # the module is a .so file compiled from C++
+# from tensorLib.build import tensor_bindings as tb
 import numpy as np
 import random
 import operator
-import torch
+
+import sys
+sys.path.append('/raid/home/zhuyangyang/tensorLib/build')
+import tensor_bindings as tb
 
 def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10) -> list[tuple]:
     """
@@ -78,7 +82,7 @@ def test_convert(shape):
     else:
         A = A.astype(np.float32)
 
-    A_t = tb.convert_to_tensor(A)
+    A_t = tb.convert_to_tensor(A, "cpu")
     A_t_a = tb.convert_to_numpy(A_t)
     
     # print(A)

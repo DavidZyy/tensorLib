@@ -725,6 +725,9 @@ template<typename dtype> Tensor<int> Tensor<dtype>::argmin(std::optional<int> ax
 ////////////////////////////////////////////////////// softmax operations ///////////////////////////////////////////////////////////////////////////////
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::softmax(int dim) const {
+    // if device_type == "cuda", we can use fused softmax, which is faster. 
+    // or if device_type = "cpu", we can use the following code to calculate softmax.
+
     auto max_val = this->max(dim, true);
     max_val = max_val.broadcast_to(this->shape());
 

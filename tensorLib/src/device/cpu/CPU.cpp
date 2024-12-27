@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <stdexcept>
+#include <random>
 
 template class CPU<float>;
 template class CPU<int>;
@@ -59,6 +60,24 @@ void CPU<dtype>::full (size_t num_elements, dtype fill_value){
     #pragma omp parallel for
     for (size_t i = 0; i < num_elements; ++i) {
         this->data_[i] = fill_value;
+    }
+}
+
+// Function to create a tensor filled with random numbers from a normal distribution
+template <typename dtype>
+void CPU<dtype>::randn(size_t num_elements) {
+    if constexpr (std::is_integral<dtype>::value) {
+        throw std::invalid_argument("randn() is only supported for floating point types.");
+    }
+
+    // Set up random number generation for normal distribution
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::normal_distribution<float> distribution(0.0, 1.0); // mean = 0.0, stddev = 1.0
+
+    #pragma omp parallel for
+    for (size_t i = 0; i < num_elements; ++i) {
+        this->data_[i] = distribution(generator);
     }
 }
 

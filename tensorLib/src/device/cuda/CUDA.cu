@@ -6,6 +6,7 @@
 #include <library_types.h>
 #include <iostream>
 #include <vector>
+#include <curand_kernel.h>
 
 template class CUDA<float>;
 template class CUDA<int>;
@@ -104,6 +105,24 @@ void CUDA<dtype>::full(size_t num_elements, dtype fill_value) {
     fullKernel<<<blocks_per_grid, threads_per_block>>>(this->data_, num_elements, fill_value);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+template <typename dtype>
+__global__ void randnKernel(dtype* data, size_t num_elements) {
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx < num_elements) {
+        curandState state;
+        curand_init(0, idx, 0, &state);
+        data[idx] = curand_normal(&state);
+    }
+}
+
+template <typename dtype>
+void CUDA<dtype>::randn(size_t num_elements) {
+    int threads_per_block = 256;
+    int blocks_per_grid = (num_elements + threads_per_block - 1) / threads_per_block;
+    randnKernel<<<blocks_per_grid, threads_per_block>>>(this->data_, num_elements);
 }
 
 template <typename dtype>

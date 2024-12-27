@@ -11,56 +11,62 @@
     "request": "launch",
     "miDebuggerPath": "/usr/local/cuda/bin/cuda-gdb",
     // "miDebuggerPath": "/usr/bin/cuda-gdb",
-    "program": "${workspaceFolder}/build/test_device",
-    "preLaunchTask": "build", // see tasks.json
+    "program": "${workspaceFolder}/build/test_rms_norm",
+    // "preLaunchTask": "build", // see tasks.json
   },
 
-    {
-      "name": "(gdb) Launch",
-      "type": "cppdbg",
-      "request": "launch",
-      "MIMode": "gdb",
-      // "program": "${workspaceFolder}/build/${fileBasenameNoExtension}",
-      "program": "${workspaceFolder}/build/llama2",
-      // "program": "${workspaceFolder}/build/test_device",
-      "args": [
-        "../llama2_7b.bin",
-        // "../stories15M.bin",
-        // "../stories42M.bin",
-        // "../stories110M.bin",
-      ],
-      "stopAtEntry": false,
-      // "cwd": "${fileDirname}",
-      "cwd": "${workspaceFolder}/build",
-      "environment": [
+  {
+    "name": "(gdb) Launch",
+    "type": "cppdbg",
+    "request": "launch",
+    "MIMode": "gdb",
+    // "program": "${workspaceFolder}/build/${fileBasenameNoExtension}",
+    // "program": "${workspaceFolder}/build/llama2",
+    "program": "${workspaceFolder}/build/test_rms_norm",
+    "args": [
+      // "../llama2_7b.bin",
+      // "../stories15M.bin",
+      // "../stories42M.bin",
+      // "../stories110M.bin",
+    ],
+    "stopAtEntry": false,
+    // "cwd": "${fileDirname}",
+    "cwd": "${workspaceFolder}/build",
+    "environment": [
+      {
+        "name": "OMP_NUM_THREADS",
+        "value": "1"
+      }
+    ],
+    "externalConsole": false,
+    "internalConsoleOptions": "openOnSessionStart",
+    "setupCommands": [
         {
-          "name": "OMP_NUM_THREADS",
-          "value": "1"
-        }
-      ],
-      "externalConsole": false,
-      "internalConsoleOptions": "openOnSessionStart",
-      "setupCommands": [
-          {
-              "description": "Enable pretty-printing for gdb",
-              "text": "-enable-pretty-printing",
-              "ignoreFailures": true
-          },
-          {
-              "description": "Set Disassembly Flavor to Intel",
-              "text": "-gdb-set disassembly-flavor intel",
-              "ignoreFailures": true
-          },
-          {
-            // 16进制表示数据
-            "description": "ss",
-            // "text": " set output-radix 16",
-            "text": " set output-radix 10",
+          // https://github.com/microsoft/vscode-cpptools/issues/1414#issuecomment-1370441279
+            "description": "Test",
+            "text": "python import sys;sys.path.insert(0, '/usr/share/gcc/python');from libstdcxx.v6.printers import register_libstdcxx_printers;register_libstdcxx_printers(None)",
             "ignoreFailures": false
-          }
-      ],
-      "preLaunchTask": "build", // see tasks.json
-    },
+        },
+        {
+            "description": "Enable pretty-printing for gdb",
+            "text": "-enable-pretty-printing",
+            "ignoreFailures": true
+        },
+        {
+            "description": "Set Disassembly Flavor to Intel",
+            "text": "-gdb-set disassembly-flavor intel",
+            "ignoreFailures": true
+        },
+        {
+          // 16进制表示数据
+          "description": "ss",
+          // "text": " set output-radix 16",
+          "text": " set output-radix 10",
+          "ignoreFailures": false
+        }
+    ],
+    "preLaunchTask": "build", // see tasks.json
+  },
 
   ]
 }

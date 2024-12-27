@@ -46,7 +46,7 @@ Tensor<dtype> Attention<dtype>::forward(const Tensor<dtype>& x, int start_pos, c
     auto keys = this->cache_k.getItem(slices2);
     auto values = this->cache_v.getItem(slices2);
 
-    xq = xq.transpose(1, 2);
+    xq = xq.transpose(1, 2); // (bsz, n_heads, seqlen, head_dim)
     keys = keys.transpose(1, 2);
     values = values.transpose(1, 2); // (bsz, n_heads, cache_len+seqlen, head_dim)
     auto scores = xq.matmul(keys.transpose(2, 3)) / sqrt(head_dim); // (bsz, n_heads, seqlen, cache_len+seqlen)
@@ -80,51 +80,57 @@ Tensor<dtype> FeedForward<dtype>::forward(const Tensor<dtype>& x) const {
 }
 
 
-template class RMSNorm<float>;
-
-template <typename dtype>
-RMSNorm<dtype>::RMSNorm(int dim, float eps, std::string device_type) : nn::Module<dtype>(device_type), dim(dim), eps(eps) {
-    this->weight = Tensor<dtype>({dim}, device_type);
-    // this->weight = randn<dtype>({dim});
-}
-
-template <typename dtype>
-Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) const {
-    // std::cout << "x:" << std::endl << x << std::endl;
-    auto origin_shape = x.shape();
-    auto temp = x;
-    // std::cout << "x:" << std::endl << x << std::endl;
-    temp = temp.pow(2);
-    // std::cout << "x:" << std::endl << x << std::endl;
-    temp = temp.mean(-1, true);
-    // std::cout << "temp:" << std::endl << temp << std::endl;
-    temp = temp.broadcast_to(origin_shape);
-    // std::cout << "temp:" << std::endl << temp << std::endl;
-    temp = temp + this->eps;
-    temp = temp.rsqrt();
-    // std::cout << "x:" << std::endl << x << std::endl;
-    // std::cout << "temp:" << std::endl << temp << std::endl;
-    // return x * temp; 
-    auto result = x * temp;
-    // std::cout << result << std::endl;
-    return result;
-}
-
-template <typename dtype>
-Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x) const {
-    // std::cout << x << std::endl;
-    // std::cout << weight << std::endl;
-    // x : (bsz, seqlen, dim)
-    // weight : (dim)
-    auto result1 = this->_norm(x);
-    // std::cout << result1 << std::endl;
-    auto weight = this->weight.view({1, 1, this->dim});
-    weight = weight.broadcast_to(x.shape());
-    auto result2 = result1 * weight;
-
-    // std::cout << result2 << std::endl;
-    return result2;
-}
+// template class RMSNorm<float>;
+// 
+// template <typename dtype>
+// RMSNorm<dtype>::RMSNorm(int dim, float eps, std::string device_type) : nn::Module<dtype>(device_type), dim(dim), eps(eps) {
+//     // this->weight = Tensor<dtype>({dim}, device_type);
+//     this->weight = randn<dtype>({dim}, device_type);
+// }
+// 
+// template <typename dtype>
+// Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) const {
+//     // std::cout << "x:" << std::endl << x << std::endl;
+//     auto origin_shape = x.shape();
+//     auto temp = x;
+//     // std::cout << "x:" << std::endl << x << std::endl;
+//     temp = temp.pow(2);
+//     // std::cout << "x:" << std::endl << x << std::endl;
+//     temp = temp.mean(-1, true);
+//     // std::cout << "temp:" << std::endl << temp << std::endl;
+//     temp = temp.broadcast_to(origin_shape);
+//     // std::cout << "temp:" << std::endl << temp << std::endl;
+//     temp = temp + this->eps;
+//     temp = temp.rsqrt();
+//     // std::cout << "x:" << std::endl << x << std::endl;
+//     // std::cout << "temp:" << std::endl << temp << std::endl;
+//     // return x * temp; 
+//     auto result = x * temp;
+//     // std::cout << result << std::endl;
+//     return result;
+// }
+// 
+// template <typename dtype>
+// Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x) const {
+//     // std::cout << x << std::endl;
+//     // std::cout << weight << std::endl;
+//     // x : (bsz, seqlen, dim)
+//     // weight : (dim)
+//     auto result1 = this->_norm(x);
+//     // std::cout << result1 << std::endl;
+// 
+//     auto new_shape = std::vector<int>(x.ndim-1, 1);
+//     new_shape.push_back(this->dim);
+// 
+//     // auto weight = this->weight.view({1, 1, this->dim});
+//     auto weight = this->weight.view(new_shape);
+// 
+//     weight = weight.broadcast_to(x.shape());
+//     auto result2 = result1 * weight;
+// 
+//     // std::cout << result2 << std::endl;
+//     return result2;
+// }
 
 template <typename dtype>
 TransformerBlock<dtype>::TransformerBlock(int layer_id, ModelArgs args, std::string device_type) : nn::Module<dtype>(device_type) {

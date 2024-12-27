@@ -1,6 +1,7 @@
 #pragma once
 #include "Tensor.hpp"
 #include "nn/modules.hpp"
+#include "nn/rmsNorm.hpp"
 #include <optional>
 #include <string>
 
@@ -46,19 +47,19 @@ public:
     nn::Linear<dtype> w1, w2, w3;
 };
 
-template <typename dtype>
-class RMSNorm : public nn::Module<dtype> {
-public:
-    RMSNorm() = default;
-    RMSNorm(int dim, float eps = 1e-5, std::string device_type = "cpu");
-
-    Tensor<dtype> forward(const Tensor<dtype>& x) const override;
-    Tensor<dtype> _norm(Tensor<dtype> x) const;
-// private:
-    float eps;
-    int dim;
-    Tensor<dtype> weight;
-};
+// template <typename dtype>
+// class RMSNorm : public nn::Module<dtype> {
+// public:
+//     RMSNorm() = default;
+//     RMSNorm(int dim, float eps = 1e-5, std::string device_type = "cpu");
+// 
+//     Tensor<dtype> forward(const Tensor<dtype>& x) const override;
+//     Tensor<dtype> _norm(Tensor<dtype> x) const;
+// // private:
+//     float eps;
+//     int dim;
+//     Tensor<dtype> weight;
+// };
 
 template <typename dtype>
 class TransformerBlock : public nn::Module<dtype> {

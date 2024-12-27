@@ -19,3 +19,16 @@ cd build
 cmake ..
 make
 ```
+
+# Test
+## python test
+use vscode test tool.
+
+# Acknowledgement
+This project inspired by following projects:
+
+CMU10_414
+llama2.c
+llm.c
+llama.cpp
+simpleTensor

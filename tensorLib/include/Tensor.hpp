@@ -194,7 +194,7 @@ public:
     
         return indices;
     }
-private:
+// private:
 
     // helper method for operator<<
     void printTensor(std::ostream& os, size_t depth, std::vector<int> indices) const;
@@ -345,21 +345,14 @@ Tensor<dtype> full(const std::vector<int>& shape, dtype fill_value, const std::s
     return result;
 }
 
-// Function to create a tensor filled with random numbers from a normal distribution
+/**
+ * return a tensor filled with random numbers from a normal distribution, with mean 0 and variance 1.
+ * @tparam dtype 
+ */
 template <typename dtype>
-Tensor<dtype> randn(const std::vector<int>& shape, dtype mean = 0.0, dtype stddev = 0.18) {
-// Tensor<dtype> randn(const std::vector<int>& shape, dtype mean = 0.0, dtype stddev = 1.0) { // too big
-    Tensor<dtype> result = Tensor<dtype>(shape);
-
-    // Set up random number generation for normal distribution
-    std::random_device rd;
-    std::mt19937 generator(rd());
-    std::normal_distribution<dtype> distribution(mean, stddev);
-
-    // Fill the tensor with random values
-    for (int i = 0; i < result.num_elements; ++i) {
-        result.data_[i] = distribution(generator);
-    }
+Tensor<dtype> randn(const std::vector<int>& shape, const std::string& device = "cpu") {
+    Tensor<dtype> result = Tensor<dtype>(shape, device);
+    result.device->randn(result.num_elements); 
     return result;
 }
 

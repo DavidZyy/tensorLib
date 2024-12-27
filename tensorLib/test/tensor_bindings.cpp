@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cmath>
 #include <cstring>
 #include <memory>
 #include <new>
@@ -12,6 +13,7 @@
 #include "CUDA.hpp"
 #include "CPU.hpp"
 #include <sstream>
+#include "nn/rmsNorm.hpp"
 
 // Function to convert vector to string
 // std::string vector_to_string(const std::vector<int>& vec) {
@@ -102,7 +104,6 @@ std::vector<std::vector<int>> convert_slices(const py::tuple& py_slices, const s
 
 PYBIND11_MODULE(tensor_bindings, m) {
 
-    // bind Tensor class(only bind float, will it cause error??)
     py::class_<Tensor<float>>(m, "Tensor_float32")
         .def(py::init<const std::vector<int>&>())
         .def("shape", &Tensor<float>::shape)
@@ -252,6 +253,7 @@ PYBIND11_MODULE(tensor_bindings, m) {
         return Tensor<float>(std::move(shape), std::move(strides), 0, device, device_type);
     });
 
+
     py::class_<Tensor<int>>(m, "Tensor_int32")
         .def(py::init<const std::vector<int>&>())
         .def("shape", &Tensor<int>::shape)
@@ -400,5 +402,15 @@ PYBIND11_MODULE(tensor_bindings, m) {
         // return Tensor<int>(std::move(shape), std::move(strides), 0, data_ptr, device_type);
         return Tensor<int>(std::move(shape), std::move(strides), 0, device, device_type);
     });
+
+
+    //  bind modules 
+    py::class_<RMSNorm<float_t>>(m, "RMSNorm")
+        // .def(py::init<int, float_t, std::string>())
+        .def(py::init<int, float_t, std::string>(), py::arg("dim"), py::arg("eps") = 1e-5, py::arg("device") = "cpu")
+        .def("forward", &RMSNorm<float_t>::forward)
+        .def("forward_fused_cuda", &RMSNorm<float_t>::forward_fused_cuda)
+        // bind RMSNorm.weight(class member)
+        .def_readwrite("weight", &RMSNorm<float_t>::weight);
 
 }

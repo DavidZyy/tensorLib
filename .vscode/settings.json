@@ -52,5 +52,15 @@
     },
     "python.analysis.extraPaths": [
         "./build",
+        "/raid/home/zhuyangyang/tensorLib",
+        "${workspaceFolder}/build"
     ],
+    "python.testing.pytestArgs": [
+        "tensorLib"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH": "${workspaceFolder}/tensorLib:${workspaceFolder}/build"
+    }
 }
