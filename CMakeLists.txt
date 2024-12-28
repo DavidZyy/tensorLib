@@ -42,7 +42,6 @@ file(GLOB DEVICE_SOURCES "tensorLib/src/device/*.cpp" "tensorLib/src/device/cpu/
 set(ALL_SOURCES
     ${DEVICE_SOURCES}
     ${NN_SOURCES}
-    tensorLib/src/device/cuda/rms_norm.cu
     tensorLib/src/Tensor.cpp
 )
 
@@ -88,39 +87,39 @@ target_include_directories(test_rms_norm PUBLIC
     tensorLib/include/nn
 )
 ################################## llama2 ##########################################################
-# add_executable(llama2
-#     app/llm/src/main.cpp 
-#     app/llm/src/llama2.cpp 
-#     app/llm/src/Transformer.cpp 
-#     app/llm/src/Tokenizer.cpp 
-# )
-# 
-# target_include_directories(llama2 PUBLIC 
-#     app/llm/include
-# )
-# 
-# target_link_libraries(llama2 PRIVATE tensorLib)
+add_executable(llama2
+    app/llm/src/main.cpp 
+    app/llm/src/llama2.cpp 
+    app/llm/src/Transformer.cpp 
+    app/llm/src/Tokenizer.cpp 
+)
+
+target_include_directories(llama2 PUBLIC 
+    app/llm/include
+)
+
+target_link_libraries(llama2 PRIVATE tensorLib)
 
 ################################## tensor_bindings module ##########################################################
 # Set the PYBIND11_FINDPYTHON option to ON
-set(PYBIND11_FINDPYTHON ON)
-
-# pybind11
-find_package(pybind11 REQUIRED)
-include_directories(${pybind11_INCLUDE_DIRS})
-
-find_package(Python3 REQUIRED)
-include_directories(${Python3_INCLUDE_DIRS})
-
-# Add your source files
-add_library(tensor_bindings MODULE tensorLib/test/tensor_bindings.cpp)
-
-# Set the output name without the 'lib' prefix
-set_target_properties(tensor_bindings
-    PROPERTIES
-    PREFIX ""
-)
-
-# Link with pybind11
-target_link_libraries(tensor_bindings PRIVATE pybind11::module tensorLib)
-# pybind11_strip(tensor_bindings)
+# set(PYBIND11_FINDPYTHON ON)
+# 
+# # pybind11
+# find_package(pybind11 REQUIRED)
+# include_directories(${pybind11_INCLUDE_DIRS})
+# 
+# find_package(Python3 REQUIRED)
+# include_directories(${Python3_INCLUDE_DIRS})
+# 
+# # Add your source files
+# add_library(tensor_bindings MODULE tensorLib/test/tensor_bindings.cpp)
+# 
+# # Set the output name without the 'lib' prefix
+# set_target_properties(tensor_bindings
+#     PROPERTIES
+#     PREFIX ""
+# )
+# 
+# # Link with pybind11
+# target_link_libraries(tensor_bindings PRIVATE pybind11::module tensorLib)
+# # pybind11_strip(tensor_bindings)

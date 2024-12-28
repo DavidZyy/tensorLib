@@ -1,5 +1,7 @@
-#include "Tensor.hpp"
+#pragma once
 #include "nn/modules.hpp"
+
+namespace nn {
 
 template <typename dtype>
 class RMSNorm : public nn::Module<dtype> {
@@ -10,6 +12,7 @@ public:
     Tensor<dtype> _norm(Tensor<dtype> x) const;
 
     Tensor<dtype> forward(const Tensor<dtype>& x) const override;
+    Tensor<dtype> forward_plain(const Tensor<dtype>& x) const; // support cpu and cuda
     Tensor<dtype> forward_fused_cuda(const Tensor<dtype>& x) const; // only support cuda
 // private:
     float eps;
@@ -17,3 +20,4 @@ public:
     Tensor<dtype> weight;
 };
 
+} // namespace nn

@@ -1,6 +1,7 @@
 #include "Transformer.hpp"
 #include "Tensor.hpp"
 #include "nn/modules.hpp"
+#include "nn/embedding.hpp"
 #include <cmath>
 #include <optional>
 #include <vector>
@@ -79,59 +80,6 @@ Tensor<dtype> FeedForward<dtype>::forward(const Tensor<dtype>& x) const {
     return result;
 }
 
-
-// template class RMSNorm<float>;
-// 
-// template <typename dtype>
-// RMSNorm<dtype>::RMSNorm(int dim, float eps, std::string device_type) : nn::Module<dtype>(device_type), dim(dim), eps(eps) {
-//     // this->weight = Tensor<dtype>({dim}, device_type);
-//     this->weight = randn<dtype>({dim}, device_type);
-// }
-// 
-// template <typename dtype>
-// Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) const {
-//     // std::cout << "x:" << std::endl << x << std::endl;
-//     auto origin_shape = x.shape();
-//     auto temp = x;
-//     // std::cout << "x:" << std::endl << x << std::endl;
-//     temp = temp.pow(2);
-//     // std::cout << "x:" << std::endl << x << std::endl;
-//     temp = temp.mean(-1, true);
-//     // std::cout << "temp:" << std::endl << temp << std::endl;
-//     temp = temp.broadcast_to(origin_shape);
-//     // std::cout << "temp:" << std::endl << temp << std::endl;
-//     temp = temp + this->eps;
-//     temp = temp.rsqrt();
-//     // std::cout << "x:" << std::endl << x << std::endl;
-//     // std::cout << "temp:" << std::endl << temp << std::endl;
-//     // return x * temp; 
-//     auto result = x * temp;
-//     // std::cout << result << std::endl;
-//     return result;
-// }
-// 
-// template <typename dtype>
-// Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x) const {
-//     // std::cout << x << std::endl;
-//     // std::cout << weight << std::endl;
-//     // x : (bsz, seqlen, dim)
-//     // weight : (dim)
-//     auto result1 = this->_norm(x);
-//     // std::cout << result1 << std::endl;
-// 
-//     auto new_shape = std::vector<int>(x.ndim-1, 1);
-//     new_shape.push_back(this->dim);
-// 
-//     // auto weight = this->weight.view({1, 1, this->dim});
-//     auto weight = this->weight.view(new_shape);
-// 
-//     weight = weight.broadcast_to(x.shape());
-//     auto result2 = result1 * weight;
-// 
-//     // std::cout << result2 << std::endl;
-//     return result2;
-// }
-
 template <typename dtype>
 TransformerBlock<dtype>::TransformerBlock(int layer_id, ModelArgs args, std::string device_type) : nn::Module<dtype>(device_type) {
     this->n_heads = args.n_heads;
@@ -141,8 +89,8 @@ TransformerBlock<dtype>::TransformerBlock(int layer_id, ModelArgs args, std::str
 
     this->attention = Attention<dtype>(args, device_type);
     this->feed_forward = FeedForward<dtype>(args.dim, args.hidden_dim, device_type);
-    this->attention_norm = RMSNorm<dtype>(args.dim, 1e-5, device_type);
-    this->ffn_norm = RMSNorm<dtype>(args.dim, 1e-5, device_type);
+    this->attention_norm = nn::RMSNorm<dtype>(args.dim, 1e-5, device_type);
+    this->ffn_norm = nn::RMSNorm<dtype>(args.dim, 1e-5, device_type);
 }
 
 template <typename dtype>
@@ -173,7 +121,7 @@ Transformer<dtype>::Transformer(ModelArgs& args, std::string device_type) : nn::
         // this->layers.append(TransformerBlock<dtype>(i, args));
         this->layers.append(std::make_shared<TransformerBlock<dtype>>(i, args, device_type));
     }
-    this->norm = RMSNorm<dtype>(args.dim, 1e-5, device_type);
+    this->norm = nn::RMSNorm<dtype>(args.dim, 1e-5, device_type);
     this->output = nn::Linear<dtype>(args.dim, args.vocab_size, device_type);
 
     this->freqs = precompute_freqs(); // no use

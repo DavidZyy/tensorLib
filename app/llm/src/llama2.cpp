@@ -3,6 +3,7 @@
 #include "Tokenizer.hpp"
 #include <ostream>
 #include <vector>
+#include <chrono>
 
 // if do not write below, will get error undefined reference to Llama2's methods
 template class Llama2<float>;

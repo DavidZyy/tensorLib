@@ -1,6 +1,7 @@
-#include "Tensor.hpp"
-#include <cassert>
 #include "nn/rmsNorm.hpp"
+
+
+namespace nn {
 
 template class RMSNorm<float>;
 
@@ -34,6 +35,15 @@ Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) const {
 
 template <typename dtype>
 Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x) const {
+    if (this->device_type == "cuda") {
+        return this->forward_fused_cuda(x);
+    } else {
+        return this->forward_plain(x);
+    }
+}
+
+template <typename dtype>
+Tensor<dtype> RMSNorm<dtype>::forward_plain(const Tensor<dtype>& x) const {
     // std::cout << x << std::endl;
     // std::cout << weight << std::endl;
     // x : (bsz, seqlen, dim)
@@ -54,7 +64,10 @@ Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x) const {
     return result2;
 }
 
-
+/**
+ * have lager precision error compared with pytorch version than forward_plain
+ * @tparam dtype 
+ */
 template<typename dtype>
 Tensor<dtype> RMSNorm<dtype>::forward_fused_cuda(const Tensor<dtype>& x) const {
     assert(this->device_type == "cuda");
@@ -75,3 +88,4 @@ Tensor<dtype> RMSNorm<dtype>::forward_fused_cuda(const Tensor<dtype>& x) const {
     return result;
 }
 
+} // namespace nn

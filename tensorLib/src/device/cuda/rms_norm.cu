@@ -102,19 +102,19 @@ void CUDA<dtype>::rms_norm(dtype *output, dtype *input, dtype *weight, float eps
     // get the max block size and grid size
     int blockSizeLimit;
     cudaDeviceGetAttribute(&blockSizeLimit, cudaDevAttrMaxThreadsPerBlock, 0);
-    std::cout << "Block Size Limit: " << blockSizeLimit << std::endl;
+    // std::cout << "Block Size Limit: " << blockSizeLimit << std::endl;
     assert(blockSize <= blockSizeLimit);
 
     int gridSizeLimit;
     cudaDeviceGetAttribute(&gridSizeLimit, cudaDevAttrMaxGridDimX, 0);
-    std::cout << "Grid Size Limit: " << gridSizeLimit << std::endl;
+    // std::cout << "Grid Size Limit: " << gridSizeLimit << std::endl;
     assert(gridSize <= gridSizeLimit);
 
 
     int shared_mem_size = hidden_size * sizeof(dtype);
     int smem;
     cudaDeviceGetAttribute(&smem, cudaDevAttrMaxSharedMemoryPerBlock, 0);
-    std::cout << "Shared Memory Limit: " << smem << " bytes" << std::endl;
+    // std::cout << "Shared Memory Limit: " << smem << " bytes" << std::endl;
     assert(shared_mem_size + sizeof(dtype) <= smem); // 1 more dtype for rms
     
     rms_norm_kernel<<<gridSize, blockSize, shared_mem_size>>>(output, input, weight, epsilon, hidden_size);

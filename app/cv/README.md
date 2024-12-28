@@ -1,0 +1,1 @@
+inferece tasks about computer vsion.

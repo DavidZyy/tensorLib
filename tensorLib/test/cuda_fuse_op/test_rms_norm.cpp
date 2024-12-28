@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <vector>
 #include "iostream"
+#include <chrono>
 
 #include "Transformer.hpp"
 
@@ -17,7 +18,7 @@ int main() {
   // auto norm1 = RMSNorm<float> (dim, 1e-5, "cpu");
   // auto t = randn <float> ({tok, dim}, "cpu");
 
-  auto norm1 = RMSNorm<float> (dim, 1e-5, "cuda");
+  auto norm1 = nn::RMSNorm<float> (dim, 1e-5, "cuda");
   auto t = randn <float> ({tok, dim}, "cuda");
 
   // calcualte the forward pass time 
