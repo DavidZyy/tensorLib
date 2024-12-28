@@ -21,10 +21,10 @@
     "request": "launch",
     "MIMode": "gdb",
     // "program": "${workspaceFolder}/build/${fileBasenameNoExtension}",
-    // "program": "${workspaceFolder}/build/llama2",
-    "program": "${workspaceFolder}/build/test_rms_norm",
+    "program": "${workspaceFolder}/build/llama2",
+    // "program": "${workspaceFolder}/build/test_rms_norm",
     "args": [
-      // "../llama2_7b.bin",
+      "../llama2_7b.bin",
       // "../stories15M.bin",
       // "../stories42M.bin",
       // "../stories110M.bin",
@@ -36,6 +36,10 @@
       {
         "name": "OMP_NUM_THREADS",
         "value": "1"
+      },
+      {
+        "name": "CUDA_VISIBLE_DEVICES",
+        "value": "1" // Specify the GPU IDs you want to use, e.g., "0,1" for the first two GPUs
       }
     ],
     "externalConsole": false,

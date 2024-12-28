@@ -1,6 +1,5 @@
 #include "nn/rmsNorm.hpp"
 
-
 namespace nn {
 
 template class RMSNorm<float>;
@@ -35,11 +34,11 @@ Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) const {
 
 template <typename dtype>
 Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x) const {
-    if (this->device_type == "cuda") {
-        return this->forward_fused_cuda(x);
-    } else {
+    // if (this->device_type == "cuda") {
+    //     return this->forward_fused_cuda(x);
+    // } else {
         return this->forward_plain(x);
-    }
+    // }
 }
 
 template <typename dtype>

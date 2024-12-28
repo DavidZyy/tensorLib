@@ -1,3 +1,4 @@
+// the implementation is very inefficient, just for test purpose.
 #include "nn/conv.hpp"
 #include <chrono>
 

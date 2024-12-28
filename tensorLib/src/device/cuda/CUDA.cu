@@ -1,4 +1,4 @@
-#include "CUDA.hpp"
+#include "device/CUDA.hpp"
 #include <cstddef>
 #include <cstdio>
 #include <cuda_runtime.h>

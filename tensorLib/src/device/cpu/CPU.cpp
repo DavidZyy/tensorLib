@@ -1,5 +1,5 @@
-#include "Device.hpp"
-#include "CPU.hpp"
+#include "device/Device.hpp"
+#include "device/CPU.hpp"
 #include "omp.h"
 #include <cmath>
 #include <cstddef>

@@ -1,4 +1,4 @@
-#include "CUDA.hpp"
+#include "device/CUDA.hpp"
 // #include <__clang_cuda_runtime_wrapper.h>
 #include <cassert>
 #include <cstddef>

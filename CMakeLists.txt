@@ -36,12 +36,14 @@ find_package(CUDAToolkit REQUIRED)
     endif()
 
 file(GLOB NN_SOURCES "tensorLib/src/nn/*.cpp")
+file(GLOB OPS_SOURCES "tensorLib/src/ops/*.cpp")
 file(GLOB DEVICE_SOURCES "tensorLib/src/device/*.cpp" "tensorLib/src/device/cpu/*.cpp" "tensorLib/src/device/cuda/*.cu")
 
 # Add source files to create the library
 set(ALL_SOURCES
-    ${DEVICE_SOURCES}
     ${NN_SOURCES}
+    ${OPS_SOURCES}
+    ${DEVICE_SOURCES}
     tensorLib/src/Tensor.cpp
 )
 

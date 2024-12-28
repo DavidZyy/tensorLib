@@ -1,6 +1,4 @@
 -I./tensorLib/include
--I./tensorLib/include/nn
--I./tensorLib/include/device
 -I./app/llm/include
 -I/home/zhuyangyang/miniconda3/envs/llm/bin/python3
 -I/usr/local/cuda/include

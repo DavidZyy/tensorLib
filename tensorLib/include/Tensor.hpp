@@ -11,9 +11,9 @@
 #include <vector>
 #include <ostream>
 #include <atomic>
-#include "CPU.hpp"
-#include "CUDA.hpp"
-#include "Device.hpp"
+#include "device/CPU.hpp"
+#include "device/CUDA.hpp"
+#include "device/Device.hpp"
 
 static std::atomic<size_t> memoryUsage(0);
 

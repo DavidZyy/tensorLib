@@ -31,7 +31,7 @@ def test_rmsnorm():
     rms_norm_torch.weight = torch.nn.Parameter(weight_torch)
     rms_norm_tb.weight = weight_tb
 
-    # inference of three methods
+    # inference of methods
     with torch.no_grad():
         start_time = time.time()
         result0 = rms_norm_torch.forward(input_torch)
@@ -78,7 +78,7 @@ def test_relu():
     input_torch = torch.randn(num_tokens, dim, device=device)
     input_tb = tb.convert_to_tensor(input_torch.cpu().numpy(), device)
 
-    # inference of three methods
+    # inference of methods
     with torch.no_grad():
         start_time = time.time()
         result0 = relu_torch.forward(input_torch)
@@ -118,7 +118,7 @@ def test_conv2d():
     conv2d_torch.weight = torch.nn.Parameter(weight_torch)
     conv2d_tb.weight = weight_tb
 
-    # inference of three methods
+    # inference of methods
     with torch.no_grad():
         start_time = time.time()
         result0 = conv2d_torch.forward(input_torch)
@@ -155,7 +155,7 @@ def test_embedding():
     embedding_torch.weight = torch.nn.Parameter(weight_torch)
     embedding_tb.weight = weight_tb
 
-    # inference of three methods
+    # inference of methods
     with torch.no_grad():
         start_time = time.time()
         result0 = embedding_torch.forward(input_torch)
@@ -200,7 +200,7 @@ def test_moduleList():
     conv2d_torch.weight = torch.nn.Parameter(weight_torch)
     conv2d_tb.weight = weight_tb
 
-    # inference of three methods
+    # inference of methods
     with torch.no_grad():
         start_time = time.time()
         result0 = module_list_torch[0].forward(input_torch)
@@ -211,6 +211,43 @@ def test_moduleList():
     result1 = module_list_tb[0].forward(input_tb)
     end_time = time.time()
     print(f"Execution time for tensor_bindings ModuleList: {end_time - start_time} seconds")
+    result1_np = tb.convert_to_numpy(result1)
+
+    assert result0.cpu().numpy().shape == result1_np.shape
+    assert result0.cpu().numpy().dtype == result1_np.dtype
+    assert result0.cpu().numpy().size == result1_np.size
+    assert np.allclose(result0.cpu().numpy(), result1_np, rtol=1e-4, atol=1e-4)
+
+def test_linear():
+    in_features = 3
+    out_features = 5
+    device = "cuda"
+
+    # define the Linear layer
+    linear_torch = nn.Linear(in_features, out_features)
+    linear_tb = tb.Linear(in_features, out_features, device=device)
+
+    # define the input tensor
+    input_torch = torch.randn(1, in_features, device=device)
+    input_tb = tb.convert_to_tensor(input_torch.cpu().numpy(), device)
+
+    # set the weight of the Linear layer as the same
+    weight_torch = torch.randn(out_features, in_features, device=device)
+    weight_tb = tb.convert_to_tensor(weight_torch.detach().cpu().numpy(), device)
+    linear_torch.weight = torch.nn.Parameter(weight_torch)
+    linear_tb.weight = weight_tb
+
+    # inference of methods
+    with torch.no_grad():
+        start_time = time.time()
+        result0 = linear_torch.forward(input_torch)
+        end_time = time.time()
+        print(f"Execution time for PyTorch Linear: {end_time - start_time} seconds")
+
+    start_time = time.time()
+    result1 = linear_tb.forward(input_tb)
+    end_time = time.time()
+    print(f"Execution time for tensor_bindings Linear: {end_time - start_time} seconds")
     result1_np = tb.convert_to_numpy(result1)
 
     assert result0.cpu().numpy().shape == result1_np.shape
