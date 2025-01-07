@@ -4,8 +4,8 @@ project(MyProject LANGUAGES CXX CUDA)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-set(CMAKE_BUILD_TYPE Debug)
-# set(CMAKE_BUILD_TYPE Release)
+# set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
 # set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -pg")
 # set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
@@ -70,6 +70,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "-g -G")  # enable cuda-gdb
 endif()
 
+target_link_libraries(tensorLib PRIVATE ${CUDA_LIBRARIES} cublas)
 ################################## tests ##########################################################
 
 # Add tests
@@ -104,24 +105,24 @@ target_link_libraries(llama2 PRIVATE tensorLib)
 
 ################################## tensor_bindings module ##########################################################
 # Set the PYBIND11_FINDPYTHON option to ON
-# set(PYBIND11_FINDPYTHON ON)
-# 
-# # pybind11
-# find_package(pybind11 REQUIRED)
-# include_directories(${pybind11_INCLUDE_DIRS})
-# 
-# find_package(Python3 REQUIRED)
-# include_directories(${Python3_INCLUDE_DIRS})
-# 
-# # Add your source files
-# add_library(tensor_bindings MODULE tensorLib/test/tensor_bindings.cpp)
-# 
-# # Set the output name without the 'lib' prefix
-# set_target_properties(tensor_bindings
-#     PROPERTIES
-#     PREFIX ""
-# )
-# 
-# # Link with pybind11
-# target_link_libraries(tensor_bindings PRIVATE pybind11::module tensorLib)
-# # pybind11_strip(tensor_bindings)
+set(PYBIND11_FINDPYTHON ON)
+
+# pybind11
+find_package(pybind11 REQUIRED)
+include_directories(${pybind11_INCLUDE_DIRS})
+
+find_package(Python3 REQUIRED)
+include_directories(${Python3_INCLUDE_DIRS})
+
+# Add your source files
+add_library(tensor_bindings MODULE tensorLib/test/tensor_bindings.cpp)
+
+# Set the output name without the 'lib' prefix
+set_target_properties(tensor_bindings
+    PROPERTIES
+    PREFIX ""
+)
+
+# Link with pybind11
+target_link_libraries(tensor_bindings PRIVATE pybind11::module tensorLib)
+# pybind11_strip(tensor_bindings)

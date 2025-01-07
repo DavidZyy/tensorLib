@@ -18,6 +18,8 @@ public:
         const std::vector<int>& result_shape,
         size_t result_elements,
         size_t K) = 0;
+    
+    virtual void matmul2d(const dtype* A, const dtype* B, dtype* C, size_t M, size_t N, size_t K) = 0;
 
     virtual dtype* getDataPtr() = 0;  // Pure virtual getter for data_
     virtual void full (size_t num_elements, dtype fill_value) = 0;

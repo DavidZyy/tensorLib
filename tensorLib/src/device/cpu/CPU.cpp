@@ -56,6 +56,20 @@ void CPU<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
 }
 
 template <typename dtype>
+void CPU<dtype>::matmul2d(const dtype* A, const dtype* B, dtype* C, size_t M, size_t N, size_t K) {
+    #pragma omp parallel for collapse(2)
+    for (int i = 0; i < M; i++) {
+        for (int j = 0; j < N; j++) {
+            dtype sum = 0;
+            for (int k = 0; k < K; k++) {
+                sum += A[i * K + k] * B[k * N + j];
+            }
+            C[i * N + j] = sum;
+        }
+    }
+}
+
+template <typename dtype>
 void CPU<dtype>::full (size_t num_elements, dtype fill_value){
     #pragma omp parallel for
     for (size_t i = 0; i < num_elements; ++i) {
