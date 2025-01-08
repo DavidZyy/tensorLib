@@ -1,4 +1,4 @@
-// the file provides various version of single matrix multiplication(sgemm) using different techniques to optimize the performance.
+// the file provides various versions of single matrix multiplication (sgemm) using different techniques to optimize the performance.
 // using cuda core, not tensor core.
 #include "device/CUDA.hpp"
 #include <iostream>
@@ -79,10 +79,11 @@ void CUDA<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
 
 /**
  * 2D matrix multiplication
+ * naive implementation
  * @tparam dtype 
  */
 template <typename dtype>
-__global__ void matmul2dKernel(const dtype* lhs, const dtype* rhs, dtype* result, 
+__global__ void matmul2dKernelV0(const dtype* lhs, const dtype* rhs, dtype* result, 
                                size_t M, size_t N, size_t K) 
 {
     size_t i = blockIdx.x * blockDim.x + threadIdx.x;  // Row index
@@ -98,24 +99,12 @@ __global__ void matmul2dKernel(const dtype* lhs, const dtype* rhs, dtype* result
     }
 }
 
-// template<typename dtype>
-// void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
-//     dim3 threadsPerBlock(16, 16);  // Define block size (16x16 is a typical choice, can be adjusted)
-//     dim3 numBlocks((M + threadsPerBlock.x - 1) / threadsPerBlock.x,
-//                    (N + threadsPerBlock.y - 1) / threadsPerBlock.y);  // Number of blocks
-// 
-//     matmul2dKernel<<<numBlocks, threadsPerBlock>>>(lhs, rhs, result, M, N, K);
-//     CUDA_CHECK(cudaGetLastError());
-//     CUDA_CHECK(cudaDeviceSynchronize());
-// 
-// }
-
 /**
  * cublas implementation of 2D matrix multiplication
  * @tparam dtype 
  */
 template<typename dtype>
-void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
+void CUDA<dtype>::matmul2d_Cublas(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
     if constexpr (std::is_same<dtype, float>::value) {
         cublasHandle_t handle;
         CUBLAS_CHECK(cublasCreate(&handle));
@@ -124,4 +113,20 @@ void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, si
         CUBLAS_CHECK(cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, N, M, K, &alpha, rhs, N, lhs, K, &beta, result, N));
         CUBLAS_CHECK(cublasDestroy(handle));
     }
+}
+
+template<typename dtype>
+void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
+    // use custom kernel
+    // printf("M: %d, N: %d, K: %d\n", M, N, K);
+    dim3 threadsPerBlock(16, 16);  // Define block size (16x16 is a typical choice, can be adjusted)
+    dim3 numBlocks((M + threadsPerBlock.x - 1) / threadsPerBlock.x,
+                   (N + threadsPerBlock.y - 1) / threadsPerBlock.y);  // Number of blocks
+
+    matmul2dKernelV0<<<numBlocks, threadsPerBlock>>>(lhs, rhs, result, M, N, K);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    // use cublas
+    // matmul2d_Cublas(lhs, rhs, result, M, N, K);
 }

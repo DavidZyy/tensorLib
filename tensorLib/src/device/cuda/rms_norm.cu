@@ -40,6 +40,7 @@ __global__ void rms_norm_kernel(dtype *output, dtype *input, dtype *weight, floa
     __shared__ dtype rms;
 
     // fetch input and weight into shared memory
+    // maybe have bank conflict here!!! because 1 thread access continuous address in shared memory
     for (int i = tidx * HandleNum; i < (tidx + 1) * HandleNum; i++) {
         if (i < hidden_size) {
             // input_mem[i]  = input[bidx * hidden_size + i];

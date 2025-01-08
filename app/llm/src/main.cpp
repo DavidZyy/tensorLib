@@ -1,4 +1,4 @@
-#include "CUDA.hpp"
+#include "device/CUDA.hpp"
 #include "Transformer.hpp"
 #include "llama2.hpp"
 #include <cassert>

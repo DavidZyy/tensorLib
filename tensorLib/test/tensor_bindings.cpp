@@ -8,10 +8,10 @@
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include <pybind11/operators.h>
-#include "Device.hpp"
+#include "device/Device.hpp"
 #include "Tensor.hpp"
-#include "CUDA.hpp"
-#include "CPU.hpp"
+#include "device/CUDA.hpp"
+#include "device/CPU.hpp"
 #include <sstream>
 #include "nn/rmsNorm.hpp"
 

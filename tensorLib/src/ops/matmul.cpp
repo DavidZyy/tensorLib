@@ -10,7 +10,6 @@ template struct matmul<int8_t>;
 
 /**
  * should use ops::methods to replace Tensor.methods in the following codes.
- * split bached gemm to singel gemms...
  * @tparam dtype 
  */
 
@@ -93,6 +92,7 @@ Tensor<dtype> matmul<dtype>::call(const Tensor<dtype> &self, const Tensor<dtype>
 
 /**
  * call matmul2D
+ * split bached gemm to single gemms, but each gemm is too small, so it is not efficient, should convert batched gemm to one gemm.
  * @tparam dtype 
  */
 template <typename dtype>
@@ -167,6 +167,7 @@ Tensor<dtype> matmul<dtype>::call2(const Tensor<dtype> &self, const Tensor<dtype
         matrix_num *= A_broadcast_shape[i];
     }
 
+    // can do more optimize here, incread the idx of slices by 1...
     for (int i = 0; i < matrix_num; ++i) {
         std::vector<std::vector<int>> slices;
 

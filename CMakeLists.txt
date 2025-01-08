@@ -51,8 +51,8 @@ add_library(tensorLib STATIC ${ALL_SOURCES})
 
 target_include_directories(tensorLib PUBLIC 
     tensorLib/include
-    tensorLib/include/device
-    tensorLib/include/nn
+    # tensorLib/include/device
+    # tensorLib/include/nn
 )
 
 set_target_properties(tensorLib
@@ -86,9 +86,14 @@ target_link_libraries(test_rms_norm PRIVATE tensorLib)
 target_include_directories(test_rms_norm PUBLIC 
     app/llm/include
     tensorLib/include
-    tensorLib/include/device
-    tensorLib/include/nn
+    # tensorLib/include/device
+    # tensorLib/include/nn
 )
+
+add_executable(sgemm_benchmark
+    tensorLib/test/cuda_benchmark/sgemm_benchmark.cpp
+)
+target_link_libraries(sgemm_benchmark PRIVATE tensorLib)
 ################################## llama2 ##########################################################
 add_executable(llama2
     app/llm/src/main.cpp 
