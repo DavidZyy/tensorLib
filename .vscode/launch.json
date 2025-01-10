@@ -5,15 +5,15 @@
 "version": "0.2.0",
 "configurations": [
   // debug cuda kernel
-  {
-    "name": "CUDA C++: Launch",
-    "type": "cuda-gdb",
-    "request": "launch",
-    "miDebuggerPath": "/usr/local/cuda/bin/cuda-gdb",
-    // "miDebuggerPath": "/usr/bin/cuda-gdb",
-    "program": "${workspaceFolder}/build/test_rms_norm",
-    // "preLaunchTask": "build", // see tasks.json
-  },
+  // {
+  //   "name": "CUDA C++: Launch",
+  //   "type": "cuda-gdb",
+  //   "request": "launch",
+  //   "miDebuggerPath": "/usr/local/cuda/bin/cuda-gdb",
+  //   // "miDebuggerPath": "/usr/bin/cuda-gdb",
+  //   "program": "${workspaceFolder}/build/test_rms_norm",
+  //   // "preLaunchTask": "build", // see tasks.json
+  // },
 
   {
     "name": "(gdb) Launch",
@@ -21,10 +21,11 @@
     "request": "launch",
     "MIMode": "gdb",
     // "program": "${workspaceFolder}/build/${fileBasenameNoExtension}",
-    "program": "${workspaceFolder}/build/llama2",
+    // "program": "${workspaceFolder}/build/llama2",
     // "program": "${workspaceFolder}/build/test_rms_norm",
+    "program": "${workspaceFolder}/build/sgemm_benchmark",
     "args": [
-      "../llama2_7b.bin",
+      // "../llama2_7b.bin",
       // "../stories15M.bin",
       // "../stories42M.bin",
       // "../stories110M.bin",

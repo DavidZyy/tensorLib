@@ -76,7 +76,6 @@ void CUDA<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
     CUDA_CHECK(cudaGetLastError());
 }
 
-
 /**
  * 2D matrix multiplication
  * naive implementation
@@ -99,6 +98,28 @@ __global__ void matmul2dKernelV0(const dtype* lhs, const dtype* rhs, dtype* resu
     }
 }
 
+template<typename dtype>
+void matmul2dImplV0(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
+    dim3 threadsPerBlock(16, 16);  // Define block size (16x16 is a typical choice, can be adjusted)
+    dim3 numBlocks((M + threadsPerBlock.x - 1) / threadsPerBlock.x,
+                   (N + threadsPerBlock.y - 1) / threadsPerBlock.y);  // Number of blocks
+
+    matmul2dKernelV0<<<numBlocks, threadsPerBlock>>>(lhs, rhs, result, M, N, K);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+/**
+ * block matrix multiplication
+ * @tparam dtype 
+ */
+template <typename dtype>
+__global__ void matmulKernelV1(const dtype* lhs, const dtype* rhs, dtype* result, 
+                               size_t M, size_t N, size_t K) 
+{
+    // to be implemented
+}
+
 /**
  * cublas implementation of 2D matrix multiplication
  * @tparam dtype 
@@ -117,15 +138,9 @@ void CUDA<dtype>::matmul2d_Cublas(const dtype* lhs, const dtype* rhs, dtype* res
 
 template<typename dtype>
 void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
-    // use custom kernel
     // printf("M: %d, N: %d, K: %d\n", M, N, K);
-    dim3 threadsPerBlock(16, 16);  // Define block size (16x16 is a typical choice, can be adjusted)
-    dim3 numBlocks((M + threadsPerBlock.x - 1) / threadsPerBlock.x,
-                   (N + threadsPerBlock.y - 1) / threadsPerBlock.y);  // Number of blocks
-
-    matmul2dKernelV0<<<numBlocks, threadsPerBlock>>>(lhs, rhs, result, M, N, K);
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // v0
+    matmul2dImplV0(lhs, rhs, result, M, N, K);
 
     // use cublas
     // matmul2d_Cublas(lhs, rhs, result, M, N, K);

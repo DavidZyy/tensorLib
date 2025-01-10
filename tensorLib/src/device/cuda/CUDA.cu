@@ -19,7 +19,9 @@ CUDA<dtype>::CUDA(size_t size) : Device<dtype>(size) {
 
 template <typename dtype>
 CUDA<dtype>::~CUDA() {
-    CUDA_CHECK(cudaFree(this->data_));
+    // free a null prt get error: code: 4, reason: driver shutting down
+    if(this->data_ != nullptr)
+        CUDA_CHECK(cudaFree(this->data_));
 }
 
 template <typename dtype>

@@ -16,7 +16,10 @@ public:
         data_ = new dtype[size]; 
     }
 
-    ~CPU() override { delete[] data_; }
+    ~CPU() override { 
+        if (data_ != nullptr)
+            delete[] data_; 
+    }
 
     // batched matmul
     void matmul(const dtype* lhs, const dtype* rhs, dtype* result, 
