@@ -97,6 +97,16 @@ Tensor<dtype> matmul<dtype>::call(const Tensor<dtype> &self, const Tensor<dtype>
  */
 template <typename dtype>
 Tensor<dtype> matmul<dtype>::call2(const Tensor<dtype> &self, const Tensor<dtype> &other) {
+    // printf("self.shape:");
+    // for (int i = 0; i < self.ndim; i++) {
+    //     printf("%d ", self.shape_[i]);
+    // }
+    // printf("\n");
+    // printf("other.shape:");
+    // for (int i = 0; i < other.ndim; i++) {
+    //     printf("%d ", other.shape_[i]);
+    // }
+    // printf("\n\n");
     if (self.device_type != other.device_type) {
         throw std::invalid_argument("Tensors must be on the same device.");
     }

@@ -48,7 +48,7 @@ Tensor<dtype> Attention<dtype>::forward(const Tensor<dtype>& x, int start_pos, c
     auto values = this->cache_v.getItem(slices2);
 
     xq = xq.transpose(1, 2); // (bsz, n_heads, seqlen, head_dim)
-    keys = keys.transpose(1, 2);
+    keys = keys.transpose(1, 2); // (bsz, n_heads, cache_len+seqlen, head_dim)
     values = values.transpose(1, 2); // (bsz, n_heads, cache_len+seqlen, head_dim)
     auto scores = xq.matmul(keys.transpose(2, 3)) / sqrt(head_dim); // (bsz, n_heads, seqlen, cache_len+seqlen)
     // std::cout << "scores: " << scores << std::endl;
@@ -175,4 +175,3 @@ Tensor<dtype> Transformer<dtype>::forward(const Tensor<dtype>& tokens, int start
     auto result = this->output.forward(h);
     return result;
 }
-
