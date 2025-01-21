@@ -409,6 +409,7 @@ PYBIND11_MODULE(tensor_bindings, m) {
         // .def(py::init<int, float_t, std::string>())
         .def(py::init<int, float_t, std::string>(), py::arg("dim"), py::arg("eps") = 1e-5, py::arg("device") = "cpu")
         .def("forward", &nn::RMSNorm<float_t>::forward)
+        .def("forward_plain", &nn::RMSNorm<float_t>::forward_plain)
         .def("forward_fused_cuda", &nn::RMSNorm<float_t>::forward_fused_cuda)
         // bind RMSNorm.weight(class member)
         .def_readwrite("weight", &nn::RMSNorm<float_t>::weight);

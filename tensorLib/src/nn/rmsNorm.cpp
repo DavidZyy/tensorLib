@@ -33,15 +33,6 @@ Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) const {
 }
 
 template <typename dtype>
-Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x) const {
-    // if (this->device_type == "cuda") {
-    //     return this->forward_fused_cuda(x);
-    // } else {
-        return this->forward_plain(x);
-    // }
-}
-
-template <typename dtype>
 Tensor<dtype> RMSNorm<dtype>::forward_plain(const Tensor<dtype>& x) const {
     // std::cout << x << std::endl;
     // std::cout << weight << std::endl;
@@ -82,9 +73,22 @@ Tensor<dtype> RMSNorm<dtype>::forward_fused_cuda(const Tensor<dtype>& x) const {
 
     int n_tokens = x.num_elements / dim;
 
+    // cuda_device->rms_norm(result.device->getDataPtr() + result.offset_, x.device->getDataPtr() + x.offset_, weight.device->getDataPtr() + weight.offset_, eps, dim, n_tokens);
     cuda_device->rms_norm(result.device->getDataPtr(), x.device->getDataPtr(), weight.device->getDataPtr(), eps, dim, n_tokens);
 
     return result;
+}
+
+/*******************************************************************************************************************/
+
+template <typename dtype>
+Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x) const {
+    if (this->device_type == "cuda") {
+        return this->forward_fused_cuda(x);
+        // return this->forward_plain(x);
+    } else {
+        return this->forward_plain(x);
+    }
 }
 
 } // namespace nn

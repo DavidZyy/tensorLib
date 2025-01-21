@@ -1,5 +1,4 @@
 #include "device/CUDA.hpp"
-// #include <__clang_cuda_runtime_wrapper.h>
 #include <cassert>
 #include <cstddef>
 #include <cstdio>
@@ -8,6 +7,7 @@
 #include <library_types.h>
 #include <iostream>
 #include <vector>
+#include "util.hpp"
 
 template class CUDA<float>;
 // template class CUDA<int>;
@@ -18,10 +18,11 @@ template class CUDA<float>;
 // template<> void CUDA<float>::rms_norm(float* output, float* input, float* weight, float epsilon, int hidden_size, int num_tokens);
 // template<> void CUDA<int>::rms_norm(int* output, int* input, int* weight, float epsilon, int hidden_size, int num_tokens);
 
-#define HandleNum 4 // the number of elements that each thread handles
-
+/*********************************************************************************************************************/
+#define HandleNum 1 // the number of elements that each thread handles
+/** the precision error is too big ( > 1e-3) compared to pytorch version */
 template<typename dtype>
-__global__ void rms_norm_kernel(dtype *output, dtype *input, dtype *weight, float epsilon, int hidden_size) {
+__global__ void rms_norm_kernel_v0(dtype *output, dtype *input, dtype *weight, float epsilon, int hidden_size) {
     const int bidx = blockIdx.x;
     const int tidx = threadIdx.x;
 
@@ -64,10 +65,13 @@ __global__ void rms_norm_kernel(dtype *output, dtype *input, dtype *weight, floa
 
     // calculate rms
     if (tidx == 0) {
+        rms = 0.0; // forget to initialize rms cause the precision error!!!!!!!!!!!!!!!!!!!
         for (int i = 0; i < HandleNum; i++) {
             rms += input2_mem[i];
         }
-        rms = sqrt(rms / hidden_size + epsilon);
+        rms = sqrtf(rms / hidden_size + epsilon);
+        // rms = sqrt(rms / hidden_size + epsilon);
+        // dtype rms_r = rsqrtf()
     }
 
     __syncthreads();
@@ -92,7 +96,7 @@ __global__ void rms_norm_kernel(dtype *output, dtype *input, dtype *weight, floa
  * num_tokens: number of tokens, batch size * sequence length
  */
 template<typename dtype>
-void CUDA<dtype>::rms_norm(dtype *output, dtype *input, dtype *weight, float epsilon, int hidden_size, int num_tokens) {
+void rms_norm_v0(dtype *output, dtype *input, dtype *weight, float epsilon, int hidden_size, int num_tokens) {
     assert(hidden_size % HandleNum == 0);
     int gridSize = num_tokens;
     int blockSize = hidden_size / HandleNum;
@@ -118,8 +122,62 @@ void CUDA<dtype>::rms_norm(dtype *output, dtype *input, dtype *weight, float eps
     // std::cout << "Shared Memory Limit: " << smem << " bytes" << std::endl;
     assert(shared_mem_size + sizeof(dtype) <= smem); // 1 more dtype for rms
     
-    rms_norm_kernel<<<gridSize, blockSize, shared_mem_size>>>(output, input, weight, epsilon, hidden_size);
+    rms_norm_kernel_v0<<<gridSize, blockSize, shared_mem_size>>>(output, input, weight, epsilon, hidden_size);
 
     CUDA_CHECK(cudaGetLastError()); // if shared memory is not enough or grid / block size too large, it will return an error here.
     CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+/*********************************************************************************************************************/
+// reference: https://github.com/karpathy/llm.c
+#include <cooperative_groups.h>
+#include <cooperative_groups/reduce.h>
+namespace cg = cooperative_groups;
+
+// version 1 of rms norm kernel, one warp handles one token row
+template <typename dtype>
+__global__ void rms_norm_kernel_v1(dtype *output, dtype *input, dtype *weight, float epsilon, int hidden_size, int num_tokens) {
+    cg::thread_block block = cg::this_thread_block();
+    cg::thread_block_tile<32> warp = cg::tiled_partition<32>(block);
+    int idx = blockIdx.x * warp.meta_group_size() + warp.meta_group_rank(); // the warp index, the row(token) index
+    if (idx >= num_tokens) 
+        return;
+
+    // the row of input that this group of threads will process
+    const dtype *x = input + idx * hidden_size;
+
+    // mean
+    dtype sum = 0.0f; // aussume dtype is float
+    for (int i = warp.thread_rank(); i < hidden_size; i += warp.size()) {
+        sum += x[i] * x[i];
+    }
+
+    sum = cg::reduce(warp, sum, cg::plus<dtype>()); // sum of all elements in the row
+
+    // dtype mean = sum / hidden_size;
+
+    // sum = 0.0f;
+    dtype rms = sqrtf(sum / hidden_size + epsilon);
+
+    dtype *o = output + idx * hidden_size;
+    for (int i = warp.thread_rank(); i < hidden_size; i += warp.size()) {
+        o[i] = x[i] * weight[i] / rms;
+    }
+}
+
+template <typename dtype>
+void rms_norm_v1(dtype *output, dtype *input, dtype *weight, float epsilon, int hidden_size, int num_tokens) {
+    int blockSize = 256;
+    int gridSize = div_ceil(num_tokens * 32, blockSize);
+    rms_norm_kernel_v1<<<gridSize, blockSize>>>(output, input, weight, epsilon, hidden_size, num_tokens);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+/********************************************************* rms_norm ****************************************************/
+
+template<typename dtype>
+void CUDA<dtype>::rms_norm(dtype *output, dtype *input, dtype *weight, float epsilon, int hidden_size, int num_tokens) {
+    rms_norm_v0(output, input, weight, epsilon, hidden_size, num_tokens);
+    // rms_norm_v1(output, input, weight, epsilon, hidden_size, num_tokens);
 }

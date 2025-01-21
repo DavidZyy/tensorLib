@@ -137,6 +137,7 @@ void CUDA<dtype>::matmul2d_Cublas(const dtype* lhs, const dtype* rhs, dtype* res
 }
 
 template<typename dtype> void gemvV0(const dtype* A, const dtype* B, dtype* C, size_t M, size_t N, size_t K);
+template<typename dtype> void gemvV1(const dtype* A, const dtype* B, dtype* C, size_t M, size_t N, size_t K);
 
 template<typename dtype>
 void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
@@ -144,7 +145,8 @@ void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, si
 
     if (M == 1) {
         // use gemv kernel, see sgemv.cu
-        gemvV0(lhs, rhs, result, M, N, K);
+        // gemvV0(lhs, rhs, result, M, N, K);
+        gemvV1(lhs, rhs, result, M, N, K);
         // matmul2dImplV0(lhs, rhs, result, M, N, K);
     } else {
         // v0

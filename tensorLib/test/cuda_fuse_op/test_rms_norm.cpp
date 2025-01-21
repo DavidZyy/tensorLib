@@ -23,7 +23,7 @@ int main() {
 
   // calcualte the forward pass time 
   auto start = std::chrono::high_resolution_clock::now();
-  auto r1 = norm1.forward(t);
+  auto r1 = norm1.forward_plain(t);
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = end - start;
   std::cout << "Time taken for forward pass: " << elapsed.count() << " s\n";

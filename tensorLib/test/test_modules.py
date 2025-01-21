@@ -7,13 +7,17 @@ import torch.nn.functional as F
 import numpy as np
 
 import sys
-sys.path.append('/raid/home/zhuyangyang/tensorLib/build')
+# sys.path.append('/raid/home/zhuyangyang/tensorLib/build')
+# sys.path.append('../../build')
+sys.path.append('/home/zyy/project/tensorLib/build')
 import tensor_bindings as tb
 import time
 
 def test_rmsnorm():
-    dim = 4096
-    num_tokens = 1024
+    dim = 1024
+    num_tokens = 128
+    # dim = 128
+    # num_tokens = 4
     # device = "cpu"
     device = "cuda"
 
@@ -39,7 +43,7 @@ def test_rmsnorm():
         print(f"Execution time for PyTorch RMSNorm: {end_time - start_time} seconds")
 
     start_time = time.time()
-    result1 = rms_norm_tb.forward(input_tb)
+    result1 = rms_norm_tb.forward_plain(input_tb)
     end_time = time.time()
     print(f"Execution time for tensor_bindings RMSNorm: {end_time - start_time} seconds")
     result1_np = tb.convert_to_numpy(result1)
@@ -63,7 +67,7 @@ def test_rmsnorm():
         assert result0.cpu().numpy().dtype == result2_np.dtype
         assert result0.cpu().numpy().size == result2_np.size
         # assert np.allclose(result0.cpu().numpy(), result2_np, rtol=1e-4, atol=1e-4)
-        assert np.allclose(result0.cpu().numpy(), result2_np, rtol=0, atol=1e-2)
+        assert np.allclose(result0.cpu().numpy(), result2_np, rtol=0, atol=1e-4)
 
 def test_relu():
     dim = 4096
