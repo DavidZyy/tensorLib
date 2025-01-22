@@ -19,6 +19,8 @@ cd build
 cmake ..
 make
 ```
+# Debug
+Uncomment `set(CMAKE_BUILD_TYPE Debug)` in `CmakeLists.txt`.
 
 # Test
 ## python test

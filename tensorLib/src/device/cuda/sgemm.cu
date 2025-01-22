@@ -76,6 +76,7 @@ void CUDA<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
     CUDA_CHECK(cudaGetLastError());
 }
 
+/************************************************************************************************************************************************************/
 /**
  * 2D matrix multiplication
  * naive implementation
@@ -109,6 +110,7 @@ void matmul2dImplV0(const dtype* lhs, const dtype* rhs, dtype* result, size_t M,
     CUDA_CHECK(cudaDeviceSynchronize());
 }
 
+/************************************************************************************************************************************************************/
 /**
  * block matrix multiplication
  * @tparam dtype 
@@ -120,6 +122,7 @@ __global__ void matmulKernelV1(const dtype* lhs, const dtype* rhs, dtype* result
     // to be implemented
 }
 
+/************************************************************************************************************************************************************/
 /**
  * cublas implementation of 2D matrix multiplication
  * @tparam dtype 
@@ -135,10 +138,12 @@ void CUDA<dtype>::matmul2d_Cublas(const dtype* lhs, const dtype* rhs, dtype* res
         CUBLAS_CHECK(cublasDestroy(handle));
     }
 }
+/************************************************************************************************************************************************************/
 
 template<typename dtype> void gemvV0(const dtype* A, const dtype* B, dtype* C, size_t M, size_t N, size_t K);
 template<typename dtype> void gemvV1(const dtype* A, const dtype* B, dtype* C, size_t M, size_t N, size_t K);
 
+/************************************************************************************************************************************************************/
 template<typename dtype>
 void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
     // printf("M: %d, N: %d, K: %d\n", M, N, K);

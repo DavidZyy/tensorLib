@@ -35,12 +35,16 @@ Linear<dtype>::Linear(int in_features, int out_features, Tensor<dtype> &&weight,
  * weight: (out_features, in_features)
  * output: (N, out_features)
  * output = input.matmul(weight.T)
+ * 
+ * Logically, input is (N, in_features), weight is (in_features, out_features). But in pythical memory, weight is (out_features, in_features), 
+ * so the elements in the same column of weight is continuous, which benifit the memory access.
  */
 template <typename dtype>
 Tensor<dtype> Linear<dtype>::forward(const Tensor<dtype> &input) const {
   // auto start_time = std::chrono::high_resolution_clock::now();
 
   auto result = input.matmul(weight.transpose(0, 1));
+  // auto result = input.matmul(weight);
 
   // auto end_time = std::chrono::high_resolution_clock::now();
   // auto duration_seconds =

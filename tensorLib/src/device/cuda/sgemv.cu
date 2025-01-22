@@ -56,6 +56,7 @@ __global__ void gemvKernelV1(const dtype* A, const dtype* B, dtype* C, size_t M,
     // printf("k: %d\n", K);
     // extern __shared__ float A_smem[];
     __shared__ float A_smem[2048];
+    assert(K <= 2048);
 
     size_t A_smem_iters = div_ceil(K, THREADS_PER_BLOCK);
 
@@ -76,8 +77,9 @@ __global__ void gemvKernelV1(const dtype* A, const dtype* B, dtype* C, size_t M,
     float tmp = 0.0;
     # pragma unroll
     for (size_t i = 0; i < K; ++i) {
-        // tmp += A[i] * B[i + col * K]; // B is col major
-        tmp += A_smem[i] * B[i*N + col];  // B is row major
+        tmp += A[i] * B[i + col * K]; // B is col major
+        // tmp += A_smem[i] * B[i + col * K]; // B is col major
+        // tmp += A_smem[i] * B[i*N + col];  // B is row major
         // tmp += B[i*N + col];  // B is row major
     }
 
