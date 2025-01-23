@@ -6,7 +6,7 @@ import random
 import operator
 
 import sys
-sys.path.append('/raid/home/zhuyangyang/tensorLib/build')
+sys.path.append('/home/zyy/project/tensorLib/build')
 import tensor_bindings as tb
 
 def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10) -> list[tuple]:
