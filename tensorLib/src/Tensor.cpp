@@ -331,9 +331,9 @@ Tensor<dtype> Tensor<dtype>::contiguous() const {
 template <typename dtype>
 Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) const {
     // assert(this->shape().size() == this->ndim);
-    slices = process_slices(slices);
+    auto ps = process_slices(slices); // processed slices(ps)
 
-    if (slices.size() != this->ndim) {
+    if (ps.size() != this->ndim) {
         throw std::invalid_argument("The number of slices must be equal to the number of dimensions.");
     }
 
@@ -342,7 +342,7 @@ Tensor<dtype> Tensor<dtype>::getItem(std::vector<std::vector<int>>& slices) cons
     int new_offset = this->offset_;
     
     for (int i=0; i < this->ndim; i++) {
-        int start = slices[i][0], stop = slices[i][1], step = slices[i][2];
+        int start = ps[i][0], stop = ps[i][1], step = ps[i][2];
 
         new_shape.push_back((stop - start + (step - 1)) / step);
         new_stride.push_back(step * this->stride_[i]);

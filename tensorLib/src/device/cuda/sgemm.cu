@@ -80,6 +80,7 @@ void CUDA<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
 /**
  * 2D matrix multiplication
  * naive implementation
+ * lhs is row major, rhs is col major
  * @tparam dtype 
  */
 template <typename dtype>
@@ -93,7 +94,8 @@ __global__ void matmul2dKernelV0(const dtype* lhs, const dtype* rhs, dtype* resu
         dtype sum = 0;
         #pragma unroll
         for (size_t k = 0; k < K; ++k) {
-            sum += lhs[i * K + k] * rhs[k * N + j];
+            // sum += lhs[i * K + k] * rhs[k * N + j];
+            sum += lhs[i * K + k] * rhs[j * K + k];
         }
         result[i * N + j] = sum;
     }

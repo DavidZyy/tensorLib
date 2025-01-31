@@ -178,6 +178,6 @@ void rms_norm_v1(dtype *output, dtype *input, dtype *weight, float epsilon, int 
 
 template<typename dtype>
 void CUDA<dtype>::rms_norm(dtype *output, dtype *input, dtype *weight, float epsilon, int hidden_size, int num_tokens) {
-    rms_norm_v0(output, input, weight, epsilon, hidden_size, num_tokens);
-    // rms_norm_v1(output, input, weight, epsilon, hidden_size, num_tokens);
+    // rms_norm_v0(output, input, weight, epsilon, hidden_size, num_tokens);
+    rms_norm_v1(output, input, weight, epsilon, hidden_size, num_tokens);
 }

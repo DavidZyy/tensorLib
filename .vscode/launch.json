@@ -25,8 +25,8 @@
     // "program": "${workspaceFolder}/build/test_rms_norm",
     // "program": "${workspaceFolder}/build/sgemm_benchmark",
     "args": [
-      // "../llama2_7b.bin",
-      "../stories15M.bin",
+      "../llama2_7b.bin",
+      // "../stories15M.bin",
       // "../stories42M.bin",
       // "../stories110M.bin",
     ],
@@ -40,7 +40,7 @@
       },
       {
         "name": "CUDA_VISIBLE_DEVICES",
-        "value": "0" // Specify the GPU IDs you want to use, e.g., "0,1" for the first two GPUs
+        "value": "2" // Specify the GPU IDs you want to use, e.g., "0,1" for the first two GPUs
       }
     ],
     "externalConsole": false,
