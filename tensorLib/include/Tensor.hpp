@@ -105,8 +105,8 @@ public:
     template<typename T> friend Tensor<T> ones(const std::vector<int>& shape);
     template<typename T> friend Tensor<T> randn(const std::vector<int>& shape, T mean, T std);
 
-    template<typename T>
-    friend Tensor<T> apply_rotary_emb(Tensor<T> &input, Tensor<T> &freqs, int start_pos);
+    // template<typename T>
+    // friend Tensor<T> apply_rotary_emb(Tensor<T> &input, Tensor<T> &freqs, int start_pos);
 
     Tensor<dtype> transpose(int dim0, int dim1) const;
     Tensor<dtype> permute(const std::vector<int>& new_axes) const;
@@ -384,19 +384,31 @@ Tensor<dtype> apply_rotary_emb(Tensor<dtype> &input, int start_pos) {
     int T = input.shape()[1];
     int n_heads = input.shape()[2];
     int head_dim = input.shape()[3];
-    
+
     input = input.contiguous();
 
     Tensor<dtype> result(input.shape(), input.device_type);
 
-    int H = B*T*n_heads;
-    int W = head_dim;
+    // int H = B*T*n_heads;
+    // int W = head_dim;
+    // input.device->apply_rotary_emb(
+    //     input.device->getDataPtr(),
+    //     result.device->getDataPtr(),
+    //     start_pos,
+    //     H,
+    //     W
+    // );
+
     input.device->apply_rotary_emb(
         input.device->getDataPtr(),
         result.device->getDataPtr(),
         start_pos,
-        H,
-        W
+        // H,
+        // W
+        B,
+        T,
+        n_heads,
+        head_dim
     );
 
     return result;

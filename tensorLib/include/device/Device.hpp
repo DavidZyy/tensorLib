@@ -82,12 +82,21 @@ public:
     // virtual void dequantize(dtype* result, size_t num_elements, dtype scale, int zero_point) const = 0;
 
     // special methods
+    // virtual void apply_rotary_emb(
+    //     const dtype* input,
+    //     dtype* result,
+    //     int start_pos,
+    //     int H,
+    //     int W) const = 0;
+
     virtual void apply_rotary_emb(
         const dtype* input,
         dtype* result,
         int start_pos,
-        int H,
-        int W) const = 0;
+        int B,
+        int T,
+        int n_heads,
+        int head_dim) const = 0;
 
 // private:
     size_t size; // number of elements, the total bytes of data_ is: size * sizeof(dtype)

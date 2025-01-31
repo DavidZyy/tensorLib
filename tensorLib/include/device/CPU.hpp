@@ -95,12 +95,21 @@ public:
     // void dequantize(dtype* result, size_t num_elements, dtype scale, int zero_point) const override;
 
     // special methods
-    void apply_rotary_emb(
+    // void apply_rotary_emb(
+    //     const dtype* input,
+    //     dtype* result,
+    //     int start_pos,
+    //     int H,
+    //     int W) const override;
+
+    virtual void apply_rotary_emb(
         const dtype* input,
         dtype* result,
         int start_pos,
-        int H,
-        int W) const override;
+        int B,
+        int T,
+        int n_heads,
+        int head_dim) const override;
 
 // private:
     dtype *data_;

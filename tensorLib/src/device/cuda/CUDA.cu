@@ -402,35 +402,68 @@ template <typename dtype> void CUDA<dtype>::pow(dtype* result, dtype value, size
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// template <typename dtype>
+// __global__ void apply_rotary_emb_kernel(const dtype* input, dtype* result, int start_pos, int H, int W) {
+//     int i = blockIdx.x * blockDim.x + threadIdx.x;  // Row index
+//     int j = (blockIdx.y * blockDim.y + threadIdx.y) * 2;  // Column index (step by 2 for paired elements)
+// 
+//     if (i < H && j < W) {
+//         int offset = i * W;
+//         dtype theta = start_pos * 1.0f / pow(10000.0f, static_cast<dtype>(j) / static_cast<dtype>(W));
+//         dtype cos_theta = cosf(theta); // only accept float for now
+//         dtype sin_theta = sinf(theta);
+// 
+//         dtype v0 = input[offset + j];
+//         dtype v1 = input[offset + j + 1];
+// 
+//         dtype rotary_emb_real = v0 * cos_theta - v1 * sin_theta;
+//         dtype rotary_emb_imag = v0 * sin_theta + v1 * cos_theta;
+// 
+//         result[offset + j] = rotary_emb_real;
+//         result[offset + j + 1] = rotary_emb_imag;
+//     }
+// }
+// 
+// template <typename dtype>
+// void CUDA<dtype>::apply_rotary_emb(const dtype* input, dtype* result, int start_pos, int H, int W) const {
+//     dim3 threadsPerBlock(16, 16);  // Define block size (16x16 is a typical choice, can be adjusted)
+//     dim3 numBlocks((H + threadsPerBlock.x - 1) / threadsPerBlock.x,
+//                    (W / 2 + threadsPerBlock.y - 1) / threadsPerBlock.y);  // Divide by 2 for W because j increments by 2
+// 
+//     apply_rotary_emb_kernel<<<numBlocks, threadsPerBlock>>>(input, result, start_pos, H, W);
+//     CUDA_CHECK(cudaGetLastError());
+//     CUDA_CHECK(cudaDeviceSynchronize());
+// }
+
 template <typename dtype>
-__global__ void apply_rotary_emb_kernel(const dtype* input, dtype* result, int start_pos, int H, int W) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;  // Row index
-    int j = (blockIdx.y * blockDim.y + threadIdx.y) * 2;  // Column index (step by 2 for paired elements)
+__global__ void apply_rotary_emb_kernel(const dtype* input, dtype* result, int start_pos, int B, int T, int n_heads, int head_dim) {
+    int b = blockIdx.x;
+    int t = blockIdx.y;
+    int h = blockIdx.z;
+    int d = threadIdx.x * 2;
 
-    if (i < H && j < W) {
-        int offset = i * W;
-        dtype theta = start_pos * 1.0f / pow(10000.0f, static_cast<dtype>(j) / static_cast<dtype>(W));
-        dtype cos_theta = cosf(theta); // only accept float for now
-        dtype sin_theta = sinf(theta);
+    int offset = b * T * n_heads * head_dim + t * n_heads * head_dim + h * head_dim + d;
+    dtype theta = (start_pos + t) * 1.0f / pow(10000.0f, static_cast<dtype>(d) / static_cast<dtype>(head_dim));
+    dtype cos_theta = cosf(theta); // only accept float for now
+    dtype sin_theta = sinf(theta);
 
-        dtype v0 = input[offset + j];
-        dtype v1 = input[offset + j + 1];
+    dtype v0 = input[offset];
+    dtype v1 = input[offset + 1];
 
-        dtype rotary_emb_real = v0 * cos_theta - v1 * sin_theta;
-        dtype rotary_emb_imag = v0 * sin_theta + v1 * cos_theta;
+    dtype rotary_emb_real = v0 * cos_theta - v1 * sin_theta;
+    dtype rotary_emb_imag = v0 * sin_theta + v1 * cos_theta;
 
-        result[offset + j] = rotary_emb_real;
-        result[offset + j + 1] = rotary_emb_imag;
-    }
+    result[offset] = rotary_emb_real;
+    result[offset + 1] = rotary_emb_imag;
 }
 
 template <typename dtype>
-void CUDA<dtype>::apply_rotary_emb(const dtype* input, dtype* result, int start_pos, int H, int W) const {
-    dim3 threadsPerBlock(16, 16);  // Define block size (16x16 is a typical choice, can be adjusted)
-    dim3 numBlocks((H + threadsPerBlock.x - 1) / threadsPerBlock.x,
-                   (W / 2 + threadsPerBlock.y - 1) / threadsPerBlock.y);  // Divide by 2 for W because j increments by 2
+void CUDA<dtype>::apply_rotary_emb(const dtype* input, dtype* result, int start_pos, int B, int T, int n_heads, int head_dim) const {
+    dim3 grid(B, T, n_heads);
+    dim3 block(head_dim / 2);
 
-    apply_rotary_emb_kernel<<<numBlocks, threadsPerBlock>>>(input, result, start_pos, H, W);
+    apply_rotary_emb_kernel<<<grid, block>>>(input, result, start_pos, B, T, n_heads, head_dim);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 }
+

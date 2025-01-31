@@ -296,26 +296,52 @@ template <typename dtype> void CPU<dtype>::argmin(int* result, size_t reduce_siz
  * the tensor memory is contiguous,
  * regard input's shape as (B*T*n_heads, head_dim)
  */
+// template <typename dtype>
+// void CPU<dtype>::apply_rotary_emb(const dtype* input, dtype* result, int start_pos, int H, int W) const {
+//     #pragma omp parallel for collapse(2)
+//     for (int i = 0; i < H; i++) {
+//         // int offset = start_pos + i * W;
+//         for (int j = 0; j < W; j += 2) {
+//             int offset = i * W;
+//             // dtype theta = 10000.0f * (static_cast<dtype>(j) / static_cast<dtype>(W));
+//             dtype theta = start_pos * 1.0f / std::pow(10000.0f, static_cast<dtype>(j) / static_cast<dtype>(W));
+//             dtype cos_theta = std::cos(theta);
+//             dtype sin_theta = std::sin(theta);
+// 
+//             dtype v0 = input[offset + j];
+//             dtype v1 = input[offset + j + 1];
+// 
+//             dtype rotary_emb_real = v0 * cos_theta - v1 * sin_theta;
+//             dtype rotary_emb_imag = v0 * sin_theta + v1 * cos_theta;
+// 
+//             result[offset + j] = rotary_emb_real;
+//             result[offset + j + 1] = rotary_emb_imag; 
+//         }
+//     }
+// }
+
 template <typename dtype>
-void CPU<dtype>::apply_rotary_emb(const dtype* input, dtype* result, int start_pos, int H, int W) const {
-    #pragma omp parallel for collapse(2)
-    for (int i = 0; i < H; i++) {
-        // int offset = start_pos + i * W;
-        for (int j = 0; j < W; j += 2) {
-            int offset = i * W;
-            // dtype theta = 10000.0f * (static_cast<dtype>(j) / static_cast<dtype>(W));
-            dtype theta = start_pos * 1.0f / std::pow(10000.0f, static_cast<dtype>(j) / static_cast<dtype>(W));
-            dtype cos_theta = std::cos(theta);
-            dtype sin_theta = std::sin(theta);
+void CPU<dtype>::apply_rotary_emb(const dtype* input, dtype* result, int start_pos, int B, int T, int n_heads, int head_dim) const {
+    #pragma omp parallel for collapse(4)
+    for (int b = 0; b < B; b++) {
+        for (int t = 0; t < T; t++) {
+            for (int h = 0; h < n_heads; h++) {
+                for (int d = 0; d < head_dim; d += 2) {
+                    int offset = b * T * n_heads * head_dim + t * n_heads * head_dim + h * head_dim + d;
+                    dtype theta = (start_pos + t) * 1.0f / std::pow(10000.0f, static_cast<dtype>(d) / static_cast<dtype>(head_dim));
+                    dtype cos_theta = std::cos(theta);
+                    dtype sin_theta = std::sin(theta);
 
-            dtype v0 = input[offset + j];
-            dtype v1 = input[offset + j + 1];
+                    dtype v0 = input[offset];
+                    dtype v1 = input[offset + 1];
 
-            dtype rotary_emb_real = v0 * cos_theta - v1 * sin_theta;
-            dtype rotary_emb_imag = v0 * sin_theta + v1 * cos_theta;
+                    dtype rotary_emb_real = v0 * cos_theta - v1 * sin_theta;
+                    dtype rotary_emb_imag = v0 * sin_theta + v1 * cos_theta;
 
-            result[offset + j] = rotary_emb_real;
-            result[offset + j + 1] = rotary_emb_imag; 
+                    result[offset] = rotary_emb_real;
+                    result[offset + 1] = rotary_emb_imag;
+                }
+            }
         }
     }
 }

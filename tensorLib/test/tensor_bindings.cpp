@@ -202,6 +202,9 @@ PYBIND11_MODULE(tensor_bindings, m) {
             oss << t;
             return oss.str();
         });
+
+    // Bind the apply_rotary_emb function
+    m.def("apply_rotary_emb", &apply_rotary_emb<float>, py::arg("input"), py::arg("start_pos"));
         
     // convert a Tensor to numpy array
     m.def("convert_to_numpy", [](const Tensor<float>& t) {

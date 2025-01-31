@@ -85,13 +85,21 @@ public:
     void argmin(int* result, size_t reduce_size, size_t num_elements) const override;
 
     // special methods
-    void apply_rotary_emb(
+    // void apply_rotary_emb(
+    //     const dtype* input,
+    //     dtype* result,
+    //     int start_pos,
+    //     int H,
+    //     int W) const override;
+    
+    virtual void apply_rotary_emb(
         const dtype* input,
         dtype* result,
         int start_pos,
-        int H,
-        int W) const override;
-    
+        int B,
+        int T,
+        int n_heads,
+        int head_dim) const override;
 
     // fused cuda operations
     void rms_norm(dtype *output, dtype *input, dtype *weight, float epsilon, int hidden_size, int num_tokens);
