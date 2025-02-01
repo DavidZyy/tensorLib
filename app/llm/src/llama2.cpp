@@ -8,6 +8,7 @@
 // if do not write below, will get error undefined reference to Llama2's methods
 template class Llama2<float>;
 // template class Llama2<int>;
+int total_pos = 0;
 
 template <typename dtype>
 Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
@@ -34,7 +35,8 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
     int prev_pos = 0;
     for (int cur_pos = prompt_len; cur_pos < total_len; cur_pos++) {
         std::vector<std::vector<int>> slices  = {{}, {prev_pos, cur_pos}};
-        auto logits = model.forward(tokens.getItem(slices), prev_pos);  // logits.shape = (bsz, seq_len, vocab_size), seq_len = cur_pos - prev_pos
+        // auto logits = model.forward(tokens.getItem(slices), prev_pos);  // logits.shape = (bsz, seq_len, vocab_size), seq_len = cur_pos - prev_pos
+        auto logits = model.forward(tokens.getItem(slices), total_pos);  // logits.shape = (bsz, seq_len, vocab_size), seq_len = cur_pos - prev_pos
         slices = {{}, {logits.shape_[1]-1, logits.shape_[1]}, {}};
         logits = logits.getItem(slices); // (bsz, vocab_size), get the last of dim=1
 
@@ -58,6 +60,9 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
 
         // NOTE: token is float, next_token is int, have implicit type conversion(call conversion ) !!!
         tokens.setItem(slices, next_token);
+
+        total_pos += (cur_pos - prev_pos);
+
         prev_pos = cur_pos;
     }
 

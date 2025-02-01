@@ -85,5 +85,5 @@ public:
     Tensor<dtype> freqs;
 
     Tensor<dtype> precompute_freqs();
-    std::optional<Tensor<dtype>> get_mask(int seq_len) const;
+    std::optional<Tensor<dtype>> get_mask(int seq_len, int start_pos) const;
 };

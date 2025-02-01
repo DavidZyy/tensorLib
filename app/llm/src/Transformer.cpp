@@ -140,17 +140,32 @@ Tensor<dtype> Transformer<dtype>::precompute_freqs() {
     return freqs;
 }
 
+/**
+ * 
+a example of mask: 
+seq_len = 4
+cache_len = 5
+
+0 0 0 0 0  0 - - -
+0 0 0 0 0  0 0 - -
+0 0 0 0 0  0 0 0 -
+0 0 0 0 0  0 0 0 0
+
+start_pos == cache_len
+ * @tparam dtype 
+ */
 template <typename dtype>
-std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen) const {
+// std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen, int start_pos) const {
+std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen, int start_pos) const {
     if (seqlen <= 1) return {};
 
-    Tensor<dtype> mask = Tensor<dtype>({seqlen, seqlen}, this->device_type);
+    Tensor<dtype> mask = Tensor<dtype>({seqlen, seqlen + start_pos}, this->device_type);
     for (int i = 0; i < seqlen; i++) {
-        for (int j = 0; j < seqlen; j++) {
-            if (i >= j) { // set diagonal to zero
-                mask.setData({i, j}, 0);
-            } else {
+        for (int j = 0; j < seqlen + start_pos; j++) {
+            if (j > start_pos + i) { // set diagonal to zero
                 mask.setData({i, j}, -INFINITY);
+            } else {
+                mask.setData({i, j}, 0);
             }
         }
     }
@@ -164,7 +179,7 @@ Tensor<dtype> Transformer<dtype>::forward(const Tensor<dtype>& tokens, int start
     auto h = this->tok_embeddings.forward(tokens);
     // std::cout << h << std::endl;
     auto freqs = this->freqs.slice(start_pos, start_pos+seqlen, 0);
-    auto mask = this->get_mask(seqlen);
+    auto mask = this->get_mask(seqlen, start_pos);
     for (int i = 0; i < this->n_layers; i++) {
         auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(this->layers[i]);
         h = layer->forward(h, start_pos, freqs, mask);
