@@ -79,12 +79,12 @@ target_link_libraries(tensorLib PRIVATE ${CUDA_LIBRARIES} cublas)
 
 add_executable(test_rms_norm 
     tensorLib/test/cuda_fuse_op/test_rms_norm.cpp
-    # app/llm/src/Transformer.cpp 
+    # model/llama2_7b/src/Transformer.cpp 
     # tensorLib/src/nn/modules.cpp
 )
 target_link_libraries(test_rms_norm PRIVATE tensorLib)
 target_include_directories(test_rms_norm PUBLIC 
-    app/llm/include
+    model/llama2_7b/include
     tensorLib/include
     # tensorLib/include/device
     # tensorLib/include/nn
@@ -96,14 +96,14 @@ add_executable(sgemm_benchmark
 target_link_libraries(sgemm_benchmark PRIVATE tensorLib)
 ################################## llama2 ##########################################################
 add_executable(llama2
-    app/llm/src/main.cpp 
-    app/llm/src/llama2.cpp 
-    app/llm/src/Transformer.cpp 
-    app/llm/src/Tokenizer.cpp 
+    model/llama2_7b/src/main.cpp 
+    model/llama2_7b/src/llama2.cpp 
+    model/llama2_7b/src/Transformer.cpp 
+    model/llama2_7b/src/Tokenizer.cpp 
 )
 
 target_include_directories(llama2 PUBLIC 
-    app/llm/include
+    model/llama2_7b/include
 )
 
 target_link_libraries(llama2 PRIVATE tensorLib)
