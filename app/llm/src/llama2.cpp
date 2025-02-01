@@ -11,8 +11,8 @@ template class Llama2<float>;
 
 template <typename dtype>
 Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
-    int total_len = 1024;
-    // int total_len = 256;
+    // int total_len = 1024;
+    int total_len = 256;
     // int total_len = 128;
     // int total_len = 32;
     Tensor<dtype> tokens({1, total_len}, this->device_type); // (bsz, max_seq_len)
@@ -24,7 +24,7 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
         tokens.device->setDataLinear(i, prompt_tokens[i]);
         // std::cout << this->tokenizer.decode(-1, tokens.data()[i]) << std::flush;
         // std::cout << this->tokenizer.decode(-1, tokens.data()[i]) << std::flush;
-        std::cout << this->tokenizer.decode(-1, tokens.device->getDataLinear(i)) << std::flush;
+        // std::cout << this->tokenizer.decode(-1, tokens.device->getDataLinear(i)) << std::flush;
     }
 
     // Start timing
@@ -41,13 +41,18 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
         // std::cout << logits << std::endl;
 
         auto next_token = logits.argmax(-1); // (bsz, )
+        int next_token_int = next_token.getData({});
         tokens_generated++;
         // if (next_token.data_[0] == 1) break;
         if (next_token.getData({}) == 1) break;
+        if (next_token.getData({}) == 2) { // EOS token
+            std::cout << "\n" << std::flush;
+            break;
+        }
 
         // std::cout << next_token.data_[0] << " " << std::flush;
         // std::cout << this->tokenizer.decode(-1, next_token.data_[0]) << std::flush; // use flush to output immediately, not cache in buffer
-        std::cout << this->tokenizer.decode(-1, next_token.getData({})) << std::flush; // use flush to output immediately, not cache in buffer
+        std::cout << this->tokenizer.decode(-1, next_token_int) << std::flush; // use flush to output immediately, not cache in buffer
 
         slices = {{}, {cur_pos, cur_pos+1}};
 
@@ -79,4 +84,40 @@ void Llama2<dtype>::text_completion(const std::string& prompts) {
     //     int prev_token = i > 0 ? generation_tokens_vec[i-1] : -1;
     //     std::cout << this->tokenizer.decode(-1, generation_tokens_vec[i]) << " ";
     // }
+}
+
+void read_stdin(char* buffer, size_t bufsize) {
+    // read a line from stdin, up to but not including \n
+    if (fgets(buffer, bufsize, stdin) != NULL) {
+        size_t len = strlen(buffer);
+        if (len > 0 && buffer[len - 1] == '\n') {
+            buffer[len - 1] = '\0'; // strip newline
+        }
+    }
+}
+
+template <typename dtype>
+void Llama2<dtype>::chat() {
+    int pos = 0;
+    int steps = 256;
+
+    char user_prompt[512];
+    // char user_prompt[] = "用中文讲一个故事";
+    // char user_prompt[] = "tell me a story";
+    char rendered_prompt[1152];
+    char user_template[] = "[INST] %s [/INST]";
+    while (true) {
+        // user input prompt
+        std::cout<< "> ";
+        read_stdin(user_prompt, sizeof(user_prompt));
+        sprintf(rendered_prompt, user_template, user_prompt);
+    
+        // convert char* to std::string
+        std::string prompts(rendered_prompt);
+
+        // assistant response
+        std::vector<int> prompt_tokens = this->tokenizer.encode(prompts, true, false);
+        auto generation_tokens = generate(prompt_tokens);
+    }
+
 }

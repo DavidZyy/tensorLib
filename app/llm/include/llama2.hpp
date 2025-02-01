@@ -15,6 +15,7 @@ public:
         {}
     Tensor<dtype> generate(std::vector<int> prompt_tokens);
     void text_completion(const std::string& prompts);
+    void chat();
 // private:
     Transformer<dtype> model;
     Tokenizer tokenizer;

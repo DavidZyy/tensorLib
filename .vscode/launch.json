@@ -25,7 +25,8 @@
     // "program": "${workspaceFolder}/build/test_rms_norm",
     // "program": "${workspaceFolder}/build/sgemm_benchmark",
     "args": [
-      "../llama2_7b.bin",
+      // "../llama2_7b.bin",
+      "../llama2_7b_chat.bin",
       // "../stories15M.bin",
       // "../stories42M.bin",
       // "../stories110M.bin",

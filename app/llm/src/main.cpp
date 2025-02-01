@@ -265,5 +265,6 @@ int main(int argc, char *argv[]) {
     args.max_seq_len = 1024;
 
     auto generator = read_checkpoint(argv[1]);
-    generator.text_completion(prompt);
+    // generator.text_completion(prompt);
+    generator.chat();
 }
