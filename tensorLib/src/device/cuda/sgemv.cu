@@ -8,9 +8,10 @@
 #include <iostream>
 #include "util.hpp"
 
+template class CUDA<int8_t>;
+template class CUDA<half>;
 template class CUDA<float>;
 template class CUDA<int>;
-template class CUDA<int8_t>;
 
 /************************************************************************************************************************************************************/
 size_t initThreadSmem(size_t K) {
@@ -269,13 +270,13 @@ __global__ void gemv_kernel_v4(const dtype* A, const dtype* B, dtype* C, size_t 
     const size_t K_iters = div_ceil(K, THREADS_PER_GROUP);
     const size_t group_lane_id = threadIdx.x % THREADS_PER_GROUP;
 
-    float tmp = 0.0;
+    float tmp = 0.0f;
 #pragma unroll
     for (size_t i = 0; i < K_iters; ++i) {
         size_t A_idx = i * THREADS_PER_GROUP + group_lane_id;
         size_t B_idx = i * THREADS_PER_GROUP + group_lane_id + group_col * K;
         if (A_idx < K) {
-            tmp += A[A_idx] * B[B_idx];
+            tmp += static_cast<float>(A[A_idx]) * static_cast<float>(B[B_idx]);
         }
     }
 
@@ -286,7 +287,7 @@ __global__ void gemv_kernel_v4(const dtype* A, const dtype* B, dtype* C, size_t 
     }
 
     if (group_lane_id == 0) {
-        C[group_col] = tmp;
+        C[group_col] = static_cast<dtype>(tmp);
     }
 }
 
@@ -302,9 +303,10 @@ void gemv_v4(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
 }
 
 
+template void gemv_v4<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
+template void gemv_v4<half>(const half* A, const half* B, half* C, size_t N, size_t K);
 template void gemv_v4<float>(const float* A, const float* B, float* C, size_t N, size_t K);
 template void gemv_v4<int>(const int* A, const int* B, int* C, size_t N, size_t K);
-template void gemv_v4<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
 
 /************************************************************************************************************************************************************/
 /**

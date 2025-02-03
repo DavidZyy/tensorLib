@@ -2,6 +2,7 @@
 
 namespace nn {
 
+template class Linear<half>;
 template class Linear<float>; // if not add this, will get error: undefined reference to `nn::Linear<float>::Linear(int, int, std::string)'
 template class Linear<int>;
 

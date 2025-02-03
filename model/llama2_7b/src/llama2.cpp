@@ -7,6 +7,7 @@
 
 // if do not write below, will get error undefined reference to Llama2's methods
 template class Llama2<float>;
+template class Llama2<half>;
 // template class Llama2<int>;
 int total_pos = 0;
 
@@ -16,7 +17,7 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
     int total_len = 256;
     // int total_len = 128;
     // int total_len = 32;
-    Tensor<dtype> tokens({1, total_len}, this->device_type); // (bsz, max_seq_len)
+    Tensor<int> tokens({1, total_len}, this->device_type); // (bsz, max_seq_len)
     int prompt_len = prompt_tokens.size();
 
     // copy prompt_tokens to tokens

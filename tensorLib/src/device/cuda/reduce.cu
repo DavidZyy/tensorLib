@@ -1,21 +1,22 @@
 #include "device/CUDA.hpp"
 #include <iostream>
 
+template class CUDA<int8_t>;
+template class CUDA<half>;
 template class CUDA<float>;
 template class CUDA<int>;
-template class CUDA<int8_t>;
 
 
 template <typename dtype> 
-static inline __device__ dtype maxFunc(dtype a, dtype b) { 
-    return max(a, b); 
+static inline __device__ dtype maxFunc(dtype a, dtype b) {
+    return max(static_cast<float>(a), static_cast<float>(b)); 
 }
 template <typename dtype> 
-static inline __device__ dtype minFunc(dtype a, dtype b) { 
-    return min(a, b); 
+static inline __device__ dtype minFunc(dtype a, dtype b) {
+    return min(static_cast<float>(a), static_cast<float>(b)); 
 }
 template <typename dtype> 
-static inline __device__ dtype sumFunc(dtype a, dtype b) { 
+static inline __device__ dtype sumFunc(dtype a, dtype b) {
     return a + b; 
 }
 

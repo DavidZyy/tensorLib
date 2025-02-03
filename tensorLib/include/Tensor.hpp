@@ -265,7 +265,14 @@ Tensor<dtype>::Tensor(const Tensor<OtherType>& other) {
     Tensor<OtherType> other_contiguous = other.contiguous();
 
     for (int i = 0; i < other_contiguous.num_elements; ++i) {
-        dtype a = static_cast<dtype>(other_contiguous.device->getDataLinear(i));
+        // dtype a = static_cast<dtype>(other_contiguous.device->getDataLinear(i));
+        dtype a;
+        if constexpr (std::is_same_v<dtype, half>) {
+            // a = static_cast<half>(static_cast<float>(other_contiguous.device->getDataLinear(i)));
+            a = __float2half(static_cast<float>(other_contiguous.device->getDataLinear(i)));
+        } else {
+            a = static_cast<dtype>(other_contiguous.device->getDataLinear(i));
+        }
         this->device->setDataLinear(i, a);
     }
 }

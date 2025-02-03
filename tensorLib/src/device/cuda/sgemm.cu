@@ -3,9 +3,10 @@
 #include "device/CUDA.hpp"
 #include <iostream>
 
+template class CUDA<int8_t>;
+template class CUDA<half>;
 template class CUDA<float>;
 template class CUDA<int>;
-template class CUDA<int8_t>;
 
 /**
  * I think this implementation is not efficient, but it should be good enough for now.

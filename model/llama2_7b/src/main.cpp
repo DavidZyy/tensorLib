@@ -32,7 +32,8 @@ typedef struct {
     int seq_len; // max sequence length
 } Config;
 
-void read_weights(char* checkpoint, Llama2<float>& generator,  int shared_weight) {
+template <typename dtype>
+void read_weights(char* checkpoint, Llama2<dtype>& generator,  int shared_weight) {
     std::string device_type = generator.model.device_type;
 
     ModelArgs p = generator.model.params;
@@ -225,7 +226,8 @@ void read_weights(char* checkpoint, Llama2<float>& generator,  int shared_weight
 /**
  * read args and parameters from checkpoint file.
  */
-Llama2<float> read_checkpoint(char * checkpoint) {
+template<typename dtype>
+Llama2<dtype> read_checkpoint(char * checkpoint) {
     FILE *file = fopen(checkpoint, "rb");
     if (!file) { fprintf(stderr, "Couldn't open file %s\n", checkpoint); exit(EXIT_FAILURE); }
     Config config;
@@ -245,9 +247,9 @@ Llama2<float> read_checkpoint(char * checkpoint) {
     args.max_batch_size = 1;
 
     // auto generator = Llama2<float>(tokenizer_path, args, "cpu");
-    auto generator = Llama2<float>(tokenizer_path, args, "cuda");
+    auto generator = Llama2<dtype>(tokenizer_path, args, "cuda");
 
-    read_weights(checkpoint, generator, shared_weight);
+    read_weights<dtype>(checkpoint, generator, shared_weight);
     return generator;
 }
 
@@ -264,7 +266,8 @@ int main(int argc, char *argv[]) {
     args.max_batch_size = 1; // set 1 first
     args.max_seq_len = 1024;
 
-    auto generator = read_checkpoint(argv[1]);
-    // generator.text_completion(prompt);
-    generator.chat();
+    auto generator = read_checkpoint<float>(argv[1]);
+    // auto generator = read_checkpoint<half>(argv[1]);
+    generator.text_completion(prompt);
+    // generator.chat();
 }

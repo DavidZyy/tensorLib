@@ -5,10 +5,12 @@
 #include <cstddef>
 #include <stdexcept>
 #include <random>
+#include <cuda_fp16.h>
 
+template class CPU<int8_t>;
+template class CPU<half>;
 template class CPU<float>;
 template class CPU<int>;
-template class CPU<int8_t>;
 
 /**
  * matmul operation on CPU
@@ -43,14 +45,25 @@ void CPU<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
                 Boff += cur_dim_id * rhs_stride[i];
         }
 
-        dtype sum = 0;
+//         dtype sum = 0;
+//         int t1 = lhs_stride[ndim - 1], t2 = rhs_stride[ndim - 2];
+// 
+//         for (int k = 0; k < K; ++k) {
+//             sum += lhs[Aoff + k * t1] * rhs[Boff + k * t2];
+//         }
+// 
+//         result[idx] = sum;
+
+        // Use float for the summation
+        float sum = 0.0f;
         int t1 = lhs_stride[ndim - 1], t2 = rhs_stride[ndim - 2];
 
         for (int k = 0; k < K; ++k) {
-            sum += lhs[Aoff + k * t1] * rhs[Boff + k * t2];
+            sum += static_cast<float>(lhs[Aoff + k * t1]) * static_cast<float>(rhs[Boff + k * t2]);
         }
 
-        result[idx] = sum;
+        // Convert sum back to dtype (e.g., __half) if necessary
+        result[idx] = static_cast<dtype>(sum); // Cast sum (float) to dtype (__half)
     }
 
 }
@@ -60,11 +73,17 @@ void CPU<dtype>::matmul2d(const dtype* A, const dtype* B, dtype* C, size_t M, si
     #pragma omp parallel for collapse(2)
     for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++) {
-            dtype sum = 0;
+            // dtype sum = 0;
+            // for (int k = 0; k < K; k++) {
+            //     sum += A[i * K + k] * B[k * N + j];
+            // }
+            // C[i * N + j] = sum;
+
+            float sum = 0.0f;
             for (int k = 0; k < K; k++) {
-                sum += A[i * K + k] * B[k * N + j];
+                sum += static_cast<float>(A[i * K + k]) * static_cast<float>(B[k * N + j]);
             }
-            C[i * N + j] = sum;
+            C[i * N + j] = static_cast<dtype>(sum);
         }
     }
 }
@@ -328,9 +347,19 @@ void CPU<dtype>::apply_rotary_emb(const dtype* input, dtype* result, int start_p
             for (int h = 0; h < n_heads; h++) {
                 for (int d = 0; d < head_dim; d += 2) {
                     int offset = b * T * n_heads * head_dim + t * n_heads * head_dim + h * head_dim + d;
-                    dtype theta = (start_pos + t) * 1.0f / std::pow(10000.0f, static_cast<dtype>(d) / static_cast<dtype>(head_dim));
-                    dtype cos_theta = std::cos(theta);
-                    dtype sin_theta = std::sin(theta);
+                    // dtype theta = (start_pos + t) * 1.0f / std::pow(10000.0f, static_cast<dtype>(d) / static_cast<dtype>(head_dim));
+                    // dtype theta;
+                    // if constexpr (std::is_same_v<dtype, half>) {
+                    //     // theta = (start_pos + t) * 1.0f / std::pow(10000.0f, __float2half(static_cast<float>(d)) / __float2half(static_cast<float>(head_dim)));
+                    //     theta = (start_pos + t) * 1.0f / std::pow(10000.0f, __half2float(static_cast<float>(d)) / __half2float(static_cast<float>(head_dim)));
+                    // } else {
+                    //     theta = (start_pos + t) * 1.0f / std::pow(10000.0f, static_cast<dtype>(d) / static_cast<dtype>(head_dim));
+                    // }
+
+                    float theta = (start_pos + t) * 1.0f / std::pow(10000.0f, static_cast<float>(d) / static_cast<float>(head_dim));
+
+                    dtype cos_theta = static_cast<dtype>(std::cos(theta));
+                    dtype sin_theta = static_cast<dtype>(std::sin(theta));
 
                     dtype v0 = input[offset];
                     dtype v1 = input[offset + 1];

@@ -72,7 +72,7 @@ class Transformer : public nn::Module<dtype> {
 public:
     Transformer(ModelArgs& args, std::string device_type = "cpu");
 
-    Tensor<dtype> forward(const Tensor<dtype>& tokens, int start_pos) const;
+    Tensor<dtype> forward(const Tensor<int>& tokens, int start_pos) const;
 // private:
     int n_layers;
     int vocab_size;

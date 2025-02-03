@@ -5,9 +5,10 @@
 #include <iostream>
 #include "util.hpp"
 
+template class CUDA<int8_t>;
+template class CUDA<half>;
 template class CUDA<float>;
 template class CUDA<int>;
-template class CUDA<int8_t>;
 
 template <typename dtype> 
 static inline __device__ bool argmaxFunc(dtype a, dtype b) { 

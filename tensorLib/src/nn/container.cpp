@@ -2,6 +2,7 @@
 
 namespace nn  {
 
+template class ModuleList<half>;
 template class ModuleList<float>;
 template class ModuleList<int>;
 

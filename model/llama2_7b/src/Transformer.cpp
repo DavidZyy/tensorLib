@@ -104,8 +104,8 @@ Tensor<dtype> TransformerBlock<dtype>::forward(const Tensor<dtype>& x, int start
 }
 
 // Explicit instantiation for float, int
+template class Transformer<half>;
 template class Transformer<float>;
-// template class Transformer<int>;
 
 // without default constructor, not initialize members in member initializer list cause error.
 template <typename dtype>
@@ -162,10 +162,23 @@ std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen, int start_
     Tensor<dtype> mask = Tensor<dtype>({seqlen, seqlen + start_pos}, this->device_type);
     for (int i = 0; i < seqlen; i++) {
         for (int j = 0; j < seqlen + start_pos; j++) {
-            if (j > start_pos + i) { // set diagonal to zero
-                mask.setData({i, j}, -INFINITY);
-            } else {
-                mask.setData({i, j}, 0);
+            // if (j > start_pos + i) { // set diagonal to zero
+            //     mask.setData({i, j}, -INFINITY);
+            // } else {
+            //     mask.setData({i, j}, 0);
+            // }
+            if (j > start_pos + i) { // Set upper triangular part to -INFINITY
+                if constexpr (std::is_same<dtype, __half>::value) {
+                    mask.setData({i, j}, __float2half(-INFINITY)); // Convert -INFINITY to __half
+                } else {
+                    mask.setData({i, j}, -INFINITY); // Use directly for float/double
+                }
+            } else { // Set lower triangular part to 0
+                if constexpr (std::is_same<dtype, __half>::value) {
+                    mask.setData({i, j}, __float2half(0.0f)); // Convert 0 to __half
+                } else {
+                    mask.setData({i, j}, 0); // Use directly for int/float/double
+                }
             }
         }
     }
@@ -173,7 +186,7 @@ std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen, int start_
 }
 
 template <typename dtype>
-Tensor<dtype> Transformer<dtype>::forward(const Tensor<dtype>& tokens, int start_pos) const {
+Tensor<dtype> Transformer<dtype>::forward(const Tensor<int>& tokens, int start_pos) const {
     auto bsz = tokens.shape()[0];
     auto seqlen = tokens.shape()[1];
     auto h = this->tok_embeddings.forward(tokens);

@@ -19,6 +19,7 @@
 // Explicit instantiation for int8_t
 template class Tensor<int>;
 template class Tensor<float>;
+template class Tensor<half>;
 template class Tensor<int8_t>;
 
 template <typename dtype>
@@ -611,7 +612,13 @@ template<typename dtype> Tensor<dtype> Tensor<dtype>::mean(std::optional<int> ax
     }
 
     auto result1 = this->sum(axis, keepdims);
-    auto result2 = result1 / static_cast<dtype>(reduce_size);
+    Tensor<dtype> result2;
+    if constexpr (std::is_same_v<dtype, half>) {
+        // result2 = result1 / static_cast<half>(static_cast<float>(reduce_size)); 
+        result2 = result1 / __float2half(static_cast<float>(reduce_size)); 
+    } else {
+        result2 = result1 / static_cast<dtype>(reduce_size);
+    }
 
     return result2;
 }

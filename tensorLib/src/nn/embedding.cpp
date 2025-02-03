@@ -2,6 +2,7 @@
 
 namespace  nn {
 
+template class Embedding<half>;
 template class Embedding<float>;
 template class Embedding<int>;
 
@@ -19,7 +20,7 @@ Embedding<dtype>::Embedding(int num_embeddings, int embedding_dim, std::string d
  * input have shape (B, T), weight have shape (num_embeddings, embedding_dim)
  */
 template <typename dtype>
-Tensor<dtype> Embedding<dtype>::forward(const Tensor<dtype> &input) const {
+Tensor<dtype> Embedding<dtype>::forward(const Tensor<int> &input) const {
   auto new_shape = input.shape();
   new_shape.push_back(this->embedding_dim);
   auto result = Tensor<dtype>(new_shape, input.device_type); // (B, T, embedding_dim)

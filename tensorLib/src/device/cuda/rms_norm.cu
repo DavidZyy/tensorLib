@@ -9,6 +9,7 @@
 #include <vector>
 #include "util.hpp"
 
+template class CUDA<half>;
 template class CUDA<float>;
 // template class CUDA<int>;
 // template class CUDA<int8_t>;
@@ -147,17 +148,17 @@ __global__ void rms_norm_kernel_v1(dtype *output, dtype *input, dtype *weight, f
     const dtype *x = input + idx * hidden_size;
 
     // mean
-    dtype sum = 0.0f; // aussume dtype is float
+    float sum = 0.0f; // aussume dtype is float
     for (int i = warp.thread_rank(); i < hidden_size; i += warp.size()) {
-        sum += x[i] * x[i];
+        sum += static_cast<float>(x[i]) * static_cast<float>(x[i]);
     }
 
-    sum = cg::reduce(warp, sum, cg::plus<dtype>()); // sum of all elements in the row
+    sum = cg::reduce(warp, sum, cg::plus<float>()); // sum of all elements in the row
 
     // dtype mean = sum / hidden_size;
 
     // sum = 0.0f;
-    dtype rms = sqrtf(sum / hidden_size + epsilon);
+    dtype rms = static_cast<dtype>(sqrtf(sum / hidden_size + epsilon));
 
     dtype *o = output + idx * hidden_size;
     for (int i = warp.thread_rank(); i < hidden_size; i += warp.size()) {

@@ -8,9 +8,10 @@
 #include <vector>
 #include <curand_kernel.h>
 
+template class CUDA<int8_t>;
+template class CUDA<half>;
 template class CUDA<float>;
 template class CUDA<int>;
-template class CUDA<int8_t>;
 
 template <typename dtype>
 CUDA<dtype>::CUDA(size_t size) : Device<dtype>(size) {
@@ -210,15 +211,30 @@ void CUDA<dtype>::neg(dtype* result, size_t num_elements) {
     applyUnaryOperation<negateFunc<dtype>>(result, num_elements);
 }
 
+// template <typename dtype>
+// __device__ dtype sinFunc(dtype x) {
+//     if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
+//         // If dtype is an integer type, cast x to float and calculate sine, or it will link to std::sin, which is not supported on CUDA
+//         return static_cast<dtype>(sin(static_cast<float>(x)));
+//     } else {
+//         return sin(x);
+//     }
+// }
+
 template <typename dtype>
 __device__ dtype sinFunc(dtype x) {
     if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
         // If dtype is an integer type, cast x to float and calculate sine, or it will link to std::sin, which is not supported on CUDA
         return static_cast<dtype>(sin(static_cast<float>(x)));
+    } else if constexpr (std::is_same<dtype, __half>::value) {
+        // If dtype is __half (half precision), use the CUDA-specific __hsin
+        return __float2half(sinf(__half2float(x)));
     } else {
+        // For other types (float, double), use standard sin
         return sin(x);
     }
 }
+
 
 template <typename dtype>
 void CUDA<dtype>::sin(dtype* result, size_t num_elements) {
@@ -229,6 +245,9 @@ template <typename dtype>
 __device__ dtype cosFunc(dtype x) {
     if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
         return static_cast<dtype>(cos(static_cast<float>(x)));
+    } else if constexpr (std::is_same<dtype, __half>::value) {
+        // If dtype is __half (half precision), use the CUDA-specific __hsin
+        return __float2half(cosf(__half2float(x)));
     } else {
         return cos(x);
     }
@@ -243,6 +262,9 @@ template <typename dtype>
 __device__ dtype expFunc(dtype x) {
     if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
         return static_cast<dtype>(exp(static_cast<float>(x)));
+    } else if constexpr (std::is_same<dtype, __half>::value) {
+        // If dtype is __half (half precision), use the CUDA-specific __hsin
+        return __float2half(expf(__half2float(x)));
     } else {
         return exp(x);
     }
@@ -257,6 +279,9 @@ template <typename dtype>
 __device__ dtype logFunc(dtype x) {
     if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
         return static_cast<dtype>(log(static_cast<float>(x)));
+    } else if constexpr (std::is_same<dtype, __half>::value) {
+        // If dtype is __half (half precision), use the CUDA-specific __hsin
+        return __float2half(logf(__half2float(x)));
     } else {
         return log(x);
     }
@@ -269,7 +294,11 @@ void CUDA<dtype>::log(dtype* result, size_t num_elements) {
 
 template <typename dtype>
 __device__ dtype absFunc(dtype x) {
-    return abs(x);
+    if constexpr (std::is_same<dtype, __half>::value) {
+        return __float2half(abs(__half2float(x)));
+    } else {
+        return abs(x);
+    }
 }
 
 template <typename dtype>
@@ -281,7 +310,10 @@ template <typename dtype>
 __device__ dtype tanhFunc(dtype x) {
     if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
         return static_cast<dtype>(tanh(static_cast<float>(x)));
-    } else {
+    } else if constexpr (std::is_same<dtype, __half>::value) {
+        // If dtype is __half (half precision), use the CUDA-specific __hsin
+        return __float2half(tanhf(__half2float(x)));
+    }  else {
         return tanh(x);
     }
 }
@@ -293,7 +325,8 @@ void CUDA<dtype>::tanh(dtype* result, size_t num_elements) {
 
 template <typename dtype>
 __device__ dtype siluFunc(dtype x) {
-    if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
+    // if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
+    if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value || std::is_same_v<dtype, half>) {
         return static_cast<dtype>(static_cast<float>(x) * (1 / (1 + exp(-static_cast<float>(x)))));
     } else {
         return x * (1 / (1 + exp(-x)));
@@ -307,14 +340,23 @@ void CUDA<dtype>::silu(dtype* result, size_t num_elements) {
 
 template <typename dtype>
 __device__ dtype sqrtFunc(dtype x) {
-    if (x >= 0) {
-        if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
-            return static_cast<dtype>(sqrt(static_cast<float>(x)));
+    if constexpr (std::is_same<dtype, __half>::value) {
+        // For __half, first convert to float for comparison
+        if (__half2float(x) >= 0) {
+            return __float2half(sqrtf(__half2float(x)));
         } else {
-            return sqrt(x); // Rsqrt calculation
+            return __float2half(nanf("")); // Return NaN for negative input
         }
     } else {
-        return nan("");
+        if (x >= 0) {
+            if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
+                return static_cast<dtype>(sqrt(static_cast<float>(x)));
+            } else {
+                return sqrt(x); // Rsqrt calculation
+            }
+        } else {
+            return nan("");
+        }
     }
 }
 
@@ -325,14 +367,23 @@ void CUDA<dtype>::sqrt(dtype* result, size_t num_elements) {
 
 template <typename dtype>
 __device__ dtype rsqrtFunc(dtype x) {
-    if (x > 0) {
-        if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
-            return static_cast<dtype>(rsqrt(static_cast<float>(x)));
+    if constexpr (std::is_same<dtype, __half>::value) {
+        // For __half, first convert to float for comparison
+        if (__half2float(x) > 0) {
+            return __float2half(rsqrt(__half2float(x)));
         } else {
-            return rsqrt(x); // Rsqrt calculation
+            return __float2half(nanf("")); // Return NaN for negative input
         }
-    } else {
-        return nan("");
+    } else { 
+        if (x > 0) {
+            if constexpr (std::is_same<dtype, int>::value || std::is_same<dtype, int8_t>::value) {
+                return static_cast<dtype>(rsqrt(static_cast<float>(x)));
+            } else {
+                return rsqrt(x); // Rsqrt calculation
+            }
+        } else {
+            return nan("");
+        }
     }
 }
 
@@ -346,12 +397,33 @@ template <typename dtype> static inline __device__ dtype addFunc(dtype x, dtype 
 template <typename dtype> static inline __device__ dtype subFunc(dtype x, dtype y) { return x - y; }
 template <typename dtype> static inline __device__ dtype mulFunc(dtype x, dtype y) { return x * y; }
 template <typename dtype> static inline __device__ dtype divFunc(dtype a, dtype b) {
-    if (b == 0) {
-        return nan("");
+    // if (b == 0) {
+    //     return nan("");
+    // }
+    // return a / b;
+
+    // Handle comparison for __half type
+    if constexpr (std::is_same<dtype, __half>::value) {
+        if (__heq(b, __float2half(0.0f))) { // Use CUDA's __heq for comparison
+            return __float2half(nanf("")); // Return NaN for division by zero
+        }
+        return __hdiv(a, b); // Use CUDA's __hdiv for division
     }
-    return a / b;
+    // Handle comparison for other types
+    else if (b == 0) {
+        return nan(""); // Return NaN for division by zero
+    }
+    return a / b; // Default division for other types
 }
-template <typename dtype> static inline __device__ dtype powFunc(dtype a, dtype b) { return pow(a, b); }
+
+// template <typename dtype> static inline __device__ dtype powFunc(dtype a, dtype b) { return pow(a, b); }
+template <typename dtype> static inline __device__ dtype powFunc(dtype a, dtype b) { 
+    if constexpr (std::is_same<dtype, __half>::value) {
+        return __float2half(pow(__half2float(a), __half2float(b))); 
+    } else {
+        return pow(a, b); 
+    }
+}
 
 template <typename dtype, dtype (*op)(dtype, dtype)>
 __global__ void binaryKernel(dtype* result, const dtype* src1, const dtype* src2, size_t num_elements) {
@@ -443,9 +515,21 @@ __global__ void apply_rotary_emb_kernel(const dtype* input, dtype* result, int s
     int d = threadIdx.x * 2;
 
     int offset = b * T * n_heads * head_dim + t * n_heads * head_dim + h * head_dim + d;
-    dtype theta = (start_pos + t) * 1.0f / pow(10000.0f, static_cast<dtype>(d) / static_cast<dtype>(head_dim));
-    dtype cos_theta = cosf(theta); // only accept float for now
-    dtype sin_theta = sinf(theta);
+
+    float theta = (start_pos + t) * 1.0f / pow(10000.0f, static_cast<float>(d) / static_cast<float>(head_dim));
+    // dtype theta = (start_pos + t) * 1.0f / pow(10000.0f, static_cast<dtype>(d) / static_cast<dtype>(head_dim));
+    // dtype theta;
+    // if constexpr (std::is_same_v<dtype, half>) {
+    //     theta = (start_pos + t) * 1.0f / pow(10000.0f, __half2float(static_cast<float>(d)) / __half2float(static_cast<float>(head_dim)));
+    // } else {
+    //     theta = (start_pos + t) * 1.0f / pow(10000.0f, static_cast<dtype>(d) / static_cast<dtype>(head_dim));
+    // }
+
+    // dtype cos_theta = cosf(theta); // only accept float for now
+    // dtype sin_theta = sinf(theta);
+
+    dtype cos_theta = static_cast<dtype>(cos(theta));
+    dtype sin_theta = static_cast<dtype>(sin(theta));
 
     dtype v0 = input[offset];
     dtype v1 = input[offset + 1];

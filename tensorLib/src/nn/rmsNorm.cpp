@@ -2,6 +2,7 @@
 
 namespace nn {
 
+template class RMSNorm<half>;
 template class RMSNorm<float>;
 
 template <typename dtype>
@@ -16,7 +17,7 @@ Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) const {
     auto origin_shape = x.shape();
     auto temp = x;
     // std::cout << "x:" << std::endl << x << std::endl;
-    temp = temp.pow(2);
+    temp = temp.pow(static_cast<float>(2));
     // std::cout << "x:" << std::endl << x << std::endl;
     temp = temp.mean(-1, true);
     // std::cout << "temp:" << std::endl << temp << std::endl;

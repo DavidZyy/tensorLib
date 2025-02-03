@@ -4,9 +4,10 @@
 #include <utility>
 
 namespace ops {
+template struct matmul<int8_t>;
+template struct matmul<half>;
 template struct matmul<float>;
 template struct matmul<int>;
-template struct matmul<int8_t>;
 
 /**
  * should use ops::methods to replace Tensor.methods in the following codes.
