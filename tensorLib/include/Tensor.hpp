@@ -8,6 +8,7 @@
 #include <optional>
 #include <random>
 #include <string>
+#include <type_traits>
 #include <vector>
 #include <ostream>
 #include <atomic>
@@ -243,7 +244,44 @@ public:
     // num_elements should not put in device, maybe should put in Tensor ...
 };
 
+// // Definition of the conversion constructor outside the class
+// // OtherType -> dtype
+// template <typename dtype>  // This is the Tensor's dtype template
+// template <typename OtherType>  // This is the type we are converting from
+// Tensor<dtype>::Tensor(const Tensor<OtherType>& other) {
+//     this->num_elements = other.num_elements;  // Copy the number of elements
+//     this->offset_ = other.offset_;
+//     this->stride_ = other.stride_;
+//     this->ndim = other.ndim;
+//     this->shape_ = other.shape();  // Copy the shape
+//     this->device_type = other.device_type;
+//     
+//     if (device_type == "cpu") {
+//         this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(num_elements));
+//     } else if (device_type == "cuda") {
+//         this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(num_elements));
+//     } else {
+//         throw std::invalid_argument("Invalid device name");
+//     }
+// 
+//     Tensor<OtherType> other_contiguous = other.contiguous();
+// 
+//     for (int i = 0; i < other_contiguous.num_elements; ++i) {
+//         // dtype a = static_cast<dtype>(other_contiguous.device->getDataLinear(i));
+//         dtype a;
+//         if constexpr (std::is_same_v<dtype, half>) {
+//             // a = static_cast<half>(static_cast<float>(other_contiguous.device->getDataLinear(i)));
+//             a = __float2half(static_cast<float>(other_contiguous.device->getDataLinear(i)));
+//         } else {
+//             a = static_cast<dtype>(other_contiguous.device->getDataLinear(i));
+//         }
+//         this->device->setDataLinear(i, a);
+//     }
+// }
+
+
 // Definition of the conversion constructor outside the class
+// OtherType -> dtype
 template <typename dtype>  // This is the Tensor's dtype template
 template <typename OtherType>  // This is the type we are converting from
 Tensor<dtype>::Tensor(const Tensor<OtherType>& other) {
@@ -254,26 +292,18 @@ Tensor<dtype>::Tensor(const Tensor<OtherType>& other) {
     this->shape_ = other.shape();  // Copy the shape
     this->device_type = other.device_type;
     
-    if (device_type == "cpu") {
-        this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(num_elements));
-    } else if (device_type == "cuda") {
-        this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(num_elements));
-    } else {
-        throw std::invalid_argument("Invalid device name");
-    }
-
     Tensor<OtherType> other_contiguous = other.contiguous();
 
-    for (int i = 0; i < other_contiguous.num_elements; ++i) {
-        // dtype a = static_cast<dtype>(other_contiguous.device->getDataLinear(i));
-        dtype a;
-        if constexpr (std::is_same_v<dtype, half>) {
-            // a = static_cast<half>(static_cast<float>(other_contiguous.device->getDataLinear(i)));
-            a = __float2half(static_cast<float>(other_contiguous.device->getDataLinear(i)));
-        } else {
-            a = static_cast<dtype>(other_contiguous.device->getDataLinear(i));
-        }
-        this->device->setDataLinear(i, a);
+    if (device_type == "cpu") {
+        std::shared_ptr<CPU<dtype>> device(new CPU<dtype>(num_elements));
+        device->type_cast(device->getDataPtr(), other_contiguous.device->getDataPtr(), num_elements);
+        this->device = device;
+    } else if (device_type == "cuda") {
+        std::shared_ptr<CUDA<dtype>> device(new CUDA<dtype>(num_elements));
+        device->type_cast(device->getDataPtr(), other_contiguous.device->getDataPtr(), num_elements);
+        this->device = device;
+    } else {
+        throw std::invalid_argument("Invalid device name");
     }
 }
 
@@ -283,11 +313,20 @@ std::ostream& operator<<(std::ostream& os, const Tensor<dtype>& tensor) {
     const auto& shape = tensor.shape();
     // const auto& data = tensor.data();
 
+//     if (std::is_same_v<dtype, half>) {
+// 
+//     }
+
     // scalar
     if (shape.size() == 0) {
-        // os << "[]";
-        // os << tensor.data_[0];
-        os << tensor.device->getDataLinear(0);
+        dtype data = tensor.device->getDataLinear(0);
+        if constexpr (std::is_same_v<dtype, half>) { // correct !!!
+        // if (std::is_same_v<dtype, half>) { // error !!!
+            float data_f = __half2float(data);
+            os << data_f;
+        } else {
+            os << data;
+        } 
     } else {
         tensor.printTensor(os, 0, {});
     }

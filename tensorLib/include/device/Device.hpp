@@ -97,6 +97,11 @@ public:
         int T,
         int n_heads,
         int head_dim) const = 0;
+    
+    // do not declare this method in the base class, for template and polymorphism(virtual) can not appear in the same function
+    // OtherType -> dtype cast
+    // template <typename OtherType>
+    // virtual void type_cast(dtype* result, OtherType* src, size_t num_elements) const;
 
 // private:
     size_t size; // number of elements, the total bytes of data_ is: size * sizeof(dtype)

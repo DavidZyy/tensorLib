@@ -68,20 +68,21 @@ void CPU<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
 
 }
 
+/**
+ * 2D matrix multiplication
+ * naive implementation
+ * lhs is row major, rhs is col major
+ * @tparam dtype 
+ */
 template <typename dtype>
 void CPU<dtype>::matmul2d(const dtype* A, const dtype* B, dtype* C, size_t M, size_t N, size_t K) {
     #pragma omp parallel for collapse(2)
     for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++) {
-            // dtype sum = 0;
-            // for (int k = 0; k < K; k++) {
-            //     sum += A[i * K + k] * B[k * N + j];
-            // }
-            // C[i * N + j] = sum;
-
             float sum = 0.0f;
             for (int k = 0; k < K; k++) {
-                sum += static_cast<float>(A[i * K + k]) * static_cast<float>(B[k * N + j]);
+                // sum += static_cast<float>(A[i * K + k]) * static_cast<float>(B[k * N + j]);
+                sum += static_cast<float>(A[i * K + k]) * static_cast<float>(B[j * K + k]);
             }
             C[i * N + j] = static_cast<dtype>(sum);
         }
@@ -374,3 +375,28 @@ void CPU<dtype>::apply_rotary_emb(const dtype* input, dtype* result, int start_p
         }
     }
 }
+
+template <typename dtype>
+template <typename OtherType>
+void CPU<dtype>::type_cast(dtype* result, const OtherType* src, size_t num_elements) {
+    #pragma omp parallel for
+    for (size_t i = 0; i < num_elements; i++) {
+        if constexpr (std::is_same_v<dtype, half>) {
+            result[i] = __float2half(static_cast<float>(src[i]));
+        } else {
+            result[i] = static_cast<dtype>(src[i]);
+        }
+    }
+}
+// Explicit instantiation of the template function for specific types
+template void CPU<float>::type_cast<float>(float*, const float*, size_t);
+template void CPU<float>::type_cast<int>(float*, const int*, size_t);
+template void CPU<float>::type_cast<half>(float*, const half*, size_t);
+
+template void CPU<int>::type_cast<float>(int*, const float*, size_t);
+template void CPU<int>::type_cast<int>(int*, const int*, size_t);
+template void CPU<int>::type_cast<half>(int*, const half*, size_t);
+
+template void CPU<half>::type_cast<float>(half*, const float*, size_t);
+template void CPU<half>::type_cast<int>(half*, const int*, size_t);
+template void CPU<half>::type_cast<half>(half*, const half*, size_t);

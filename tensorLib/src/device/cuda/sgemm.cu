@@ -85,20 +85,32 @@ void CUDA<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
  * @tparam dtype 
  */
 template <typename dtype>
-__global__ void matmul2dKernelV0(const dtype* lhs, const dtype* rhs, dtype* result, 
-                               size_t M, size_t N, size_t K) 
+__global__ void matmul2dKernelV0(const dtype* lhs, const dtype* rhs, dtype* result,
+                               size_t M, size_t N, size_t K)
 {
     size_t i = blockIdx.x * blockDim.x + threadIdx.x;  // Row index
     size_t j = blockIdx.y * blockDim.y + threadIdx.y;  // Column index
 
     if (i < M && j < N) {
+
         dtype sum = 0;
+        // float sum = 0.0f;
+
         #pragma unroll
+
         for (size_t k = 0; k < K; ++k) {
-            // sum += lhs[i * K + k] * rhs[k * N + j];
-            sum += lhs[i * K + k] * rhs[j * K + k];
+            if constexpr (std::is_same<dtype, half>::value) {
+                sum += __half2float(lhs[i * K + k]) * __half2float(rhs[j * K + k]);
+            } else {
+                sum += lhs[i * K + k] * rhs[j * K + k];
+            }
         }
-        result[i * N + j] = sum;
+
+        if constexpr (std::is_same<dtype, half>::value) {
+            result[i * N + j] = __float2half(sum);
+        } else {
+            result[i * N + j] = sum;
+        }
     }
 }
 

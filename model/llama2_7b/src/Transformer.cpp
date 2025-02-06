@@ -96,10 +96,9 @@ TransformerBlock<dtype>::TransformerBlock(int layer_id, ModelArgs args, std::str
 template <typename dtype>
 Tensor<dtype> TransformerBlock<dtype>::forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask) {
     auto temp1 = this->attention_norm.forward(x);
-    // std::cout << this->attention_norm.weight << std::endl;
-    // std::cout << "temp1: " << temp1 << std::endl;
     auto h = x + this->attention.forward(temp1, start_pos, freqs, mask);
-    auto out = h + this->feed_forward.forward(this->ffn_norm.forward(h));
+    auto temp2 = this->ffn_norm.forward(h);
+    auto out = h + this->feed_forward.forward(temp2);
     return out;
 }
 
@@ -190,7 +189,6 @@ Tensor<dtype> Transformer<dtype>::forward(const Tensor<int>& tokens, int start_p
     auto bsz = tokens.shape()[0];
     auto seqlen = tokens.shape()[1];
     auto h = this->tok_embeddings.forward(tokens);
-    // std::cout << h << std::endl;
     auto freqs = this->freqs.slice(start_pos, start_pos+seqlen, 0);
     auto mask = this->get_mask(seqlen, start_pos);
     for (int i = 0; i < this->n_layers; i++) {

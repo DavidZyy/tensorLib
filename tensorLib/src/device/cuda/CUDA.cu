@@ -43,12 +43,13 @@ void CUDA<dtype>::full(size_t num_elements, dtype fill_value) {
 }
 
 template <typename dtype>
-__global__ void randnKernel(dtype* data, size_t num_elements) {
+__global__ void randnKernel(dtype* data, size_t num_elements, unsigned long long seed) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < num_elements) {
         curandState state;
-        curand_init(0, idx, 0, &state);
+        unsigned long long thread_seed = seed + idx + clock64(); // Timestamp + idx to ensure unique seeds
+        curand_init(thread_seed + idx, idx, 0, &state);
         data[idx] = curand_normal(&state);
     }
 }
@@ -57,7 +58,8 @@ template <typename dtype>
 void CUDA<dtype>::randn(size_t num_elements) {
     int threads_per_block = 256;
     int blocks_per_grid = (num_elements + threads_per_block - 1) / threads_per_block;
-    randnKernel<<<blocks_per_grid, threads_per_block>>>(this->data_, num_elements);
+    unsigned long long seed = time(NULL); // Get a time-based seed
+    randnKernel<<<blocks_per_grid, threads_per_block>>>(this->data_, num_elements, seed);
 }
 
 template <typename dtype>
@@ -393,15 +395,20 @@ void CUDA<dtype>::rsqrt(dtype* result, size_t num_elements) {
 }
 
 ////////////////////////////////////////////////////// binary operations ///////////////////////////////////////////////////////////////////////////////
-template <typename dtype> static inline __device__ dtype addFunc(dtype x, dtype y) { return x + y; }
+template <typename dtype> static inline __device__ dtype addFunc(dtype x, dtype y) { 
+    if constexpr (std::is_same_v<dtype, __half>) {
+        return __hadd(x, y); // Use CUDA's __haddfor addition}
+    }
+    return x + y; 
+}
 template <typename dtype> static inline __device__ dtype subFunc(dtype x, dtype y) { return x - y; }
-template <typename dtype> static inline __device__ dtype mulFunc(dtype x, dtype y) { return x * y; }
+template <typename dtype> static inline __device__ dtype mulFunc(dtype x, dtype y) { 
+    if constexpr (std::is_same<dtype, __half>::value) {
+        return __hmul(x, y); // Use CUDA's __hmul for multiplication
+    }
+    return x * y; 
+}
 template <typename dtype> static inline __device__ dtype divFunc(dtype a, dtype b) {
-    // if (b == 0) {
-    //     return nan("");
-    // }
-    // return a / b;
-
     // Handle comparison for __half type
     if constexpr (std::is_same<dtype, __half>::value) {
         if (__heq(b, __float2half(0.0f))) { // Use CUDA's __heq for comparison
@@ -550,4 +557,43 @@ void CUDA<dtype>::apply_rotary_emb(const dtype* input, dtype* result, int start_
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 }
+
+// CUDA kernel for type casting
+template <typename dtype, typename OtherType>
+__global__ void type_cast_kernel(dtype* result, const OtherType* src, size_t num_elements) {
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < num_elements) {
+        if constexpr (std::is_same_v<dtype, half>) {
+            result[i] = __float2half(static_cast<float>(src[i]));
+        } else {
+            result[i] = static_cast<dtype>(src[i]);
+        }
+    }
+}
+
+template <typename dtype>
+template <typename OtherType>
+void CUDA<dtype>::type_cast(dtype* result, const OtherType* src, size_t num_elements) {
+    // Define block and grid sizes
+    size_t blockSize = 256;
+    size_t numBlocks = (num_elements + blockSize - 1) / blockSize;
+
+    // Launch the CUDA kernel
+    type_cast_kernel<<<numBlocks, blockSize>>>(result, src, num_elements);
+
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+// Explicit instantiation of the template function for specific types
+template void CUDA<float>::type_cast<float>(float*, const float*, size_t);
+template void CUDA<float>::type_cast<int>(float*, const int*, size_t);
+template void CUDA<float>::type_cast<half>(float*, const half*, size_t);
+
+template void CUDA<int>::type_cast<float>(int*, const float*, size_t);
+template void CUDA<int>::type_cast<int>(int*, const int*, size_t);
+template void CUDA<int>::type_cast<half>(int*, const half*, size_t);
+
+template void CUDA<half>::type_cast<float>(half*, const float*, size_t);
+template void CUDA<half>::type_cast<int>(half*, const int*, size_t);
+template void CUDA<half>::type_cast<half>(half*, const half*, size_t);
 

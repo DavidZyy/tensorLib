@@ -44,182 +44,147 @@ void read_weights(char* checkpoint, Llama2<dtype>& generator,  int shared_weight
     size_t n_layers = p.n_layers;
 
     size_t cur_off = sizeof(Config);
-    // fseek(file, cur_off, SEEK_SET);
 
-    float *ptr = new float[p.vocab_size * p.dim];
+    dtype *ptr = new dtype[p.vocab_size * p.dim];
     fseek(file, cur_off, SEEK_SET);
-    fread(ptr, sizeof(float), p.vocab_size * p.dim, file);
-    // cur_off += p.vocab_size * p.dim * sizeof(float);
-    // generator.model.tok_embeddings.weight.data_ = std::shared_ptr<float[]>(ptr);
+    fread(ptr, sizeof(dtype), p.vocab_size * p.dim, file);
+
     if (device_type == "cpu") {
-        std::memcpy(generator.model.tok_embeddings.weight.device->getDataPtr(), ptr, p.vocab_size * p.dim * sizeof(float));
+        std::memcpy(generator.model.tok_embeddings.weight.device->getDataPtr(), ptr, p.vocab_size * p.dim * sizeof(dtype));
     } else if (device_type == "cuda") {
-        CUDA_CHECK(cudaMemcpy(generator.model.tok_embeddings.weight.device->getDataPtr(), ptr, p.vocab_size * p.dim * sizeof(float), cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpy(generator.model.tok_embeddings.weight.device->getDataPtr(), ptr, p.vocab_size * p.dim * sizeof(dtype), cudaMemcpyHostToDevice));
     }
     delete [] ptr;
-    // std::cout << "tok_embeddings.weight " << std::endl;
-    // std::cout << generator.model.tok_embeddings.weight << std::endl;
 
     for (size_t l = 0; l < n_layers; l++) {
-        float* ptr = new float[p.dim]; //allocate 
-        // fseek(file, cur_off, SEEK_SET);
-        fread(ptr, sizeof(float), p.dim, file);
-        // cur_off += p.dim * sizeof(float);
+        dtype* ptr = new dtype[p.dim]; //allocate 
+        fread(ptr, sizeof(dtype), p.dim, file);
 
-        auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-        // layer->attention_norm.weight.data_ = std::shared_ptr<float[]>(ptr);
+        auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(generator.model.layers[l]);
         if (device_type == "cpu") {
-            std::memcpy(layer->attention_norm.weight.device->getDataPtr(), ptr, p.dim * sizeof(float));
+            std::memcpy(layer->attention_norm.weight.device->getDataPtr(), ptr, p.dim * sizeof(dtype));
         } else if (device_type == "cuda") {
-            CUDA_CHECK(cudaMemcpy(layer->attention_norm.weight.device->getDataPtr(), ptr, p.dim * sizeof(float), cudaMemcpyHostToDevice));
+            CUDA_CHECK(cudaMemcpy(layer->attention_norm.weight.device->getDataPtr(), ptr, p.dim * sizeof(dtype), cudaMemcpyHostToDevice));
         }
         delete [] ptr;
-        // std::cout << "attention_norm " << l << std::endl;
-        // std::cout << layer->attention_norm.weight << std::endl;
-        // ptr += p.dim;
     }
     for (size_t l = 0; l < n_layers; l++) {
-        float *ptr = new float[p.dim * (p.n_heads * head_size)];
-        fread(ptr, sizeof(float), p.dim * (p.n_heads * head_size), file);
-        auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-        // layer->attention.wq.weight.data_ = std::shared_ptr<float[]>(ptr);
+        dtype *ptr = new dtype[p.dim * (p.n_heads * head_size)];
+        fread(ptr, sizeof(dtype), p.dim * (p.n_heads * head_size), file);
+        auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(generator.model.layers[l]);
         if (device_type == "cpu") {
-            std::memcpy(layer->attention.wq.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(float));
+            std::memcpy(layer->attention.wq.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(dtype));
         } else if (device_type == "cuda") {
-            CUDA_CHECK(cudaMemcpy(layer->attention.wq.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(float), cudaMemcpyHostToDevice));
+            CUDA_CHECK(cudaMemcpy(layer->attention.wq.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(dtype), cudaMemcpyHostToDevice));
         }
         delete [] ptr;
-        // std::cout << "attention.wq " << l << std::endl;
-        // std::cout << layer->attention.wq.weight << std::endl;
-        // ptr += p.dim * (p.n_heads * head_size);
     }
     for (size_t l = 0; l < n_layers; l++) {
-        float *ptr = new float[p.dim * (p.n_heads * head_size)];
-        fread(ptr, sizeof(float), p.dim * (p.n_heads * head_size), file);
-        auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-        // layer->attention.wk.weight.data_ = std::shared_ptr<float[]>(ptr);
+        dtype *ptr = new dtype[p.dim * (p.n_heads * head_size)];
+        fread(ptr, sizeof(dtype), p.dim * (p.n_heads * head_size), file);
+        auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(generator.model.layers[l]);
         if (device_type == "cpu") {
-            std::memcpy(layer->attention.wk.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(float));
+            std::memcpy(layer->attention.wk.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(dtype));
         } else if (device_type == "cuda") {
-            CUDA_CHECK(cudaMemcpy(layer->attention.wk.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(float), cudaMemcpyHostToDevice));
+            CUDA_CHECK(cudaMemcpy(layer->attention.wk.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(dtype), cudaMemcpyHostToDevice));
         }
         delete [] ptr;
-        // ptr += p.dim * (p.n_kv_heads * head_size);
     }
     for (size_t l = 0; l < n_layers; l++) {
-        float *ptr = new float[p.dim * (p.n_heads * head_size)];
-        fread(ptr, sizeof(float), p.dim * (p.n_heads * head_size), file);
-        auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-        // layer->attention.wv.weight.data_ = std::shared_ptr<float[]>(ptr);
+        dtype *ptr = new dtype[p.dim * (p.n_heads * head_size)];
+        fread(ptr, sizeof(dtype), p.dim * (p.n_heads * head_size), file);
+        auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(generator.model.layers[l]);
         if (device_type == "cpu") {
-            std::memcpy(layer->attention.wv.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(float));
+            std::memcpy(layer->attention.wv.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(dtype));
         } else if (device_type == "cuda") {
-            CUDA_CHECK(cudaMemcpy(layer->attention.wv.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(float), cudaMemcpyHostToDevice));
+            CUDA_CHECK(cudaMemcpy(layer->attention.wv.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(dtype), cudaMemcpyHostToDevice));
         }
         delete [] ptr;
-        // ptr += p.dim * (p.n_kv_heads * head_size);
+    }
+    // wo
+    for (size_t l = 0; l < n_layers; l++) {
+        dtype *ptr = new dtype[p.dim * (p.n_heads * head_size)];
+        fread(ptr, sizeof(dtype), p.dim * (p.n_heads * head_size), file);
+        auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(generator.model.layers[l]);
+        if (device_type == "cpu") {
+            std::memcpy(layer->attention.wo.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(dtype));
+        } else if (device_type == "cuda") {
+            CUDA_CHECK(cudaMemcpy(layer->attention.wo.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(dtype), cudaMemcpyHostToDevice));
+        }
+        delete [] ptr;
+    }
+    // ffn_norm
+    for (size_t l = 0; l < n_layers; l++) {
+        dtype* ptr = new dtype[p.dim]; //allocate 
+        fread(ptr, sizeof(dtype), p.dim, file);
+        auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(generator.model.layers[l]);
+        if (device_type == "cpu") {
+            std::memcpy(layer->ffn_norm.weight.device->getDataPtr(), ptr, p.dim * sizeof(dtype));
+        } else if (device_type == "cuda") {
+            CUDA_CHECK(cudaMemcpy(layer->ffn_norm.weight.device->getDataPtr(), ptr, p.dim * sizeof(dtype), cudaMemcpyHostToDevice));
+        }
+        delete [] ptr;
+    }
+    // feed_forward.w1
+    for (size_t l = 0; l < n_layers; l++) {
+        dtype *ptr = new dtype[p.hidden_dim * p.dim];
+        fread(ptr, sizeof(dtype), p.hidden_dim * p.dim, file);
+        auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(generator.model.layers[l]);
+        if (device_type == "cpu") {
+            std::memcpy(layer->feed_forward.w1.weight.device->getDataPtr(), ptr, p.hidden_dim * p.dim * sizeof(dtype));
+        } else if (device_type == "cuda") {
+            CUDA_CHECK(cudaMemcpy(layer->feed_forward.w1.weight.device->getDataPtr(), ptr, p.hidden_dim * p.dim* sizeof(dtype), cudaMemcpyHostToDevice));
+        }
+        delete [] ptr;
     }
     for (size_t l = 0; l < n_layers; l++) {
-        float *ptr = new float[p.dim * (p.n_heads * head_size)];
-        fread(ptr, sizeof(float), p.dim * (p.n_heads * head_size), file);
-        auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-        // layer->attention.wo.weight.data_ = std::shared_ptr<float[]>(ptr);
+        dtype *ptr = new dtype[p.hidden_dim * p.dim];
+        fread(ptr, sizeof(dtype), p.hidden_dim * p.dim, file);
+        auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(generator.model.layers[l]);
         if (device_type == "cpu") {
-            std::memcpy(layer->attention.wo.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(float));
+            std::memcpy(layer->feed_forward.w2.weight.device->getDataPtr(), ptr, p.hidden_dim * p.dim * sizeof(dtype));
         } else if (device_type == "cuda") {
-            CUDA_CHECK(cudaMemcpy(layer->attention.wo.weight.device->getDataPtr(), ptr, p.dim * (p.n_heads * head_size) * sizeof(float), cudaMemcpyHostToDevice));
+            CUDA_CHECK(cudaMemcpy(layer->feed_forward.w2.weight.device->getDataPtr(), ptr, p.hidden_dim * p.dim* sizeof(dtype), cudaMemcpyHostToDevice));
         }
         delete [] ptr;
-        // ptr += p.dim * (p.n_heads * head_size);
     }
     for (size_t l = 0; l < n_layers; l++) {
-        float* ptr = new float[p.dim]; //allocate 
-        fread(ptr, sizeof(float), p.dim, file);
-        auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-        // layer->ffn_norm.weight.data_ = std::shared_ptr<float[]>(ptr);
+        dtype *ptr = new dtype[p.hidden_dim * p.dim];
+        fread(ptr, sizeof(dtype), p.hidden_dim * p.dim, file);
+        auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(generator.model.layers[l]);
         if (device_type == "cpu") {
-            std::memcpy(layer->ffn_norm.weight.device->getDataPtr(), ptr, p.dim * sizeof(float));
+            std::memcpy(layer->feed_forward.w3.weight.device->getDataPtr(), ptr, p.hidden_dim * p.dim * sizeof(dtype));
         } else if (device_type == "cuda") {
-            CUDA_CHECK(cudaMemcpy(layer->ffn_norm.weight.device->getDataPtr(), ptr, p.dim * sizeof(float), cudaMemcpyHostToDevice));
+            CUDA_CHECK(cudaMemcpy(layer->feed_forward.w3.weight.device->getDataPtr(), ptr, p.hidden_dim * p.dim* sizeof(dtype), cudaMemcpyHostToDevice));
         }
         delete [] ptr;
-        // ptr += p.dim;
     }
-    for (size_t l = 0; l < n_layers; l++) {
-        float *ptr = new float[p.hidden_dim * p.dim];
-        fread(ptr, sizeof(float), p.hidden_dim * p.dim, file);
-        auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-        // layer->feed_forward.w1.weight.data_ = std::shared_ptr<float[]>(ptr);
-        if (device_type == "cpu") {
-            std::memcpy(layer->feed_forward.w1.weight.device->getDataPtr(), ptr, p.hidden_dim * p.dim * sizeof(float));
-        } else if (device_type == "cuda") {
-            CUDA_CHECK(cudaMemcpy(layer->feed_forward.w1.weight.device->getDataPtr(), ptr, p.hidden_dim * p.dim* sizeof(float), cudaMemcpyHostToDevice));
-        }
-        delete [] ptr;
-        // ptr += p.hidden_dim * p.dim;
-    }
-    for (size_t l = 0; l < n_layers; l++) {
-        float *ptr = new float[p.hidden_dim * p.dim];
-        fread(ptr, sizeof(float), p.hidden_dim * p.dim, file);
-        auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-        // layer->feed_forward.w2.weight.data_ = std::shared_ptr<float[]>(ptr);
-        if (device_type == "cpu") {
-            std::memcpy(layer->feed_forward.w2.weight.device->getDataPtr(), ptr, p.hidden_dim * p.dim * sizeof(float));
-        } else if (device_type == "cuda") {
-            CUDA_CHECK(cudaMemcpy(layer->feed_forward.w2.weight.device->getDataPtr(), ptr, p.hidden_dim * p.dim* sizeof(float), cudaMemcpyHostToDevice));
-        }
-        delete [] ptr;
-        // ptr += p.dim * p.hidden_dim;
-    }
-    for (size_t l = 0; l < n_layers; l++) {
-        float *ptr = new float[p.hidden_dim * p.dim];
-        fread(ptr, sizeof(float), p.hidden_dim * p.dim, file);
-        auto layer = std::dynamic_pointer_cast<TransformerBlock<float>>(generator.model.layers[l]);
-        // layer->feed_forward.w3.weight.data_ = std::shared_ptr<float[]>(ptr);
-        if (device_type == "cpu") {
-            std::memcpy(layer->feed_forward.w3.weight.device->getDataPtr(), ptr, p.hidden_dim * p.dim * sizeof(float));
-        } else if (device_type == "cuda") {
-            CUDA_CHECK(cudaMemcpy(layer->feed_forward.w3.weight.device->getDataPtr(), ptr, p.hidden_dim * p.dim* sizeof(float), cudaMemcpyHostToDevice));
-        }
-        delete [] ptr;
-        // ptr += p.hidden_dim * p.dim;
-    }
-    ptr = new float[p.dim]; //allocate 
-    fread(ptr, sizeof(float), p.dim, file);
-    // generator.model.norm.weight.data_ = std::shared_ptr<float[]>(ptr);
+    ptr = new dtype[p.dim]; //allocate 
+    fread(ptr, sizeof(dtype), p.dim, file);
     if (device_type == "cpu") {
-        std::memcpy(generator.model.norm.weight.device->getDataPtr(), ptr, p.dim * sizeof(float));
+        std::memcpy(generator.model.norm.weight.device->getDataPtr(), ptr, p.dim * sizeof(dtype));
     } else if (device_type == "cuda") {
-        CUDA_CHECK(cudaMemcpy(generator.model.norm.weight.device->getDataPtr(), ptr, p.dim * sizeof(float), cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpy(generator.model.norm.weight.device->getDataPtr(), ptr, p.dim * sizeof(dtype), cudaMemcpyHostToDevice));
     }
     delete [] ptr;
 
     if (shared_weight) {
-        // generator.model.output.weight.data_ = generator.model.tok_embeddings.weight.data_;
         generator.model.output.weight.device = generator.model.tok_embeddings.weight.device;
-        // if (device_type == "cpu") {
-        //     std::memcpy(generator.model.output.weight.device->getDataPtr(), generator.model.tok_embeddings.weight.device->getDataPtr(), p.vocab_size * p.dim * sizeof(float));
-        // } else if (device_type == "cuda") {
-        //     CUDA_CHECK(cudaMemcpy(generator.model.output.weight.device->getDataPtr(), generator.model.tok_embeddings.weight.device->getDataPtr(), p.vocab_size * p.dim * sizeof(float), cudaMemcpyHostToDevice));
-        // }
     } else {
-        // fseek(file, p.max_seq_len * head_size, SEEK_CUR); // rope
-        ptr = new float[p.max_seq_len * head_size];
-        fread(ptr, sizeof(float), p.max_seq_len* head_size, file);
+        ptr = new dtype[p.max_seq_len * head_size];
+        fread(ptr, sizeof(dtype), p.max_seq_len* head_size, file);
         delete [] ptr;
 
-        ptr = new float[p.vocab_size * p.dim];
-        fread(ptr, sizeof(float), p.vocab_size * p.dim, file);
-        // generator.model.output.weight.data_ = std::shared_ptr<float[]>(ptr);
+        ptr = new dtype[p.vocab_size * p.dim];
+        fread(ptr, sizeof(dtype), p.vocab_size * p.dim, file);
         if (device_type == "cpu") {
-            std::memcpy(generator.model.output.weight.device->getDataPtr(), ptr, p.vocab_size * p.dim * sizeof(float));
+            std::memcpy(generator.model.output.weight.device->getDataPtr(), ptr, p.vocab_size * p.dim * sizeof(dtype));
         } else if (device_type == "cuda") {
-            CUDA_CHECK(cudaMemcpy(generator.model.output.weight.device->getDataPtr(), ptr, p.vocab_size * p.dim * sizeof(float), cudaMemcpyHostToDevice));
+            CUDA_CHECK(cudaMemcpy(generator.model.output.weight.device->getDataPtr(), ptr, p.vocab_size * p.dim * sizeof(dtype), cudaMemcpyHostToDevice));
         }
         delete [] ptr;
     }
 
-    // generator.model.norm
     fclose(file);
 }
 
@@ -266,8 +231,8 @@ int main(int argc, char *argv[]) {
     args.max_batch_size = 1; // set 1 first
     args.max_seq_len = 1024;
 
-    auto generator = read_checkpoint<float>(argv[1]);
-    // auto generator = read_checkpoint<half>(argv[1]);
+    // auto generator = read_checkpoint<float>(argv[1]);
+    auto generator = read_checkpoint<half>(argv[1]);
     generator.text_completion(prompt);
     // generator.chat();
 }

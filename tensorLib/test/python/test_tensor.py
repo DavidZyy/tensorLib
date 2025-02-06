@@ -6,7 +6,8 @@ import random
 import operator
 
 import sys
-sys.path.append('/home/zyy/project/tensorLib/build')
+# sys.path.append('/home/zyy/project/tensorLib/build')
+sys.path.append('/root/autodl-tmp/tensorLib/build')
 import tensor_bindings as tb
 
 def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10) -> list[tuple]:
@@ -32,7 +33,7 @@ def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10) -> lis
     return shapes
 
 
-def generate_batched_matmul_shapes(num_batch_dims_range=(1, 4), batch_size_range=(2, 4), dim_range=(100, 500)):
+def generate_batched_matmul_shapes(num_batch_dims_range=(1, 4), batch_size_range=(2, 4), dim_range=(1, 500)):
     """
     Generate valid shape1 and shape2 for batched matrix multiplication with 1 or 2 batch dimensions.
     
@@ -67,26 +68,30 @@ def generate_batched_matmul_shapes(num_batch_dims_range=(1, 4), batch_size_range
 
     return shape1, shape2
 
+##############################################################################################################################################################################
 
+data_type_list = [np.float32]
+
+##############################################################################################################################################################################
 convert_shapes = generate_random_shapes(100, min_dims=0, max_dims=4, max_size=100)
 @pytest.mark.parametrize("shape", convert_shapes)
-def test_convert(shape):
-    # print(shape)
+@pytest.mark.parametrize("data_type", data_type_list)
+def test_convert(shape, data_type):
     # Generate random data
     A = np.random.randn(*shape)
-    # A = np.array([-1.234])
+    # A = np.random.randn(2, 3)
 
     # If shape is (), convert A to a NumPy array to ensure it's not a mere float
     if shape == ():
-        A = np.array(A, dtype=np.float32)
+        # A = np.array(A, dtype=np.float32)
+        A = np.array(A, dtype=data_type)
     else:
-        A = A.astype(np.float32)
+        # A = A.astype(np.float32)
+        A = A.astype(data_type)
 
     A_t = tb.convert_to_tensor(A, "cpu")
     A_t_a = tb.convert_to_numpy(A_t)
-    
-    # print(A)
-    # print(A_t)
+
     assert A.shape == A_t_a.shape
     assert A.dtype == A_t_a.dtype
     assert A.size == A_t_a.size
@@ -99,6 +104,8 @@ bached_matmul_shapes = [generate_batched_matmul_shapes() for _ in range(50)]
 def test_batched_matmul(shape1, shape2, device):
     A = np.random.randn(*shape1).astype(np.float32)  # must convert to float32!!! or it will be float64!!
     B = np.random.randn(*shape2).astype(np.float32)
+    # A = np.random.randn(2, 3).astype(np.float32)  # must convert to float32!!! or it will be float64!!
+    # B = np.random.randn(3, 4).astype(np.float32)
     C = np.matmul(A, B)
 
     A_t = tb.convert_to_tensor(A, device)
@@ -237,7 +244,8 @@ def test_unary_methods(shape, op_name, np_op, device):
     np.testing.assert_allclose(np_result, tensor_result_a, atol=1e-5, rtol=1e-5)
 
 
-def generate_random_tensor(shape, device) -> tuple[np.ndarray, tb.Tensor_float32]:
+# def generate_random_tensor(shape, device) -> tuple[np.ndarray, tb.Tensor_float32]:
+def generate_random_tensor(shape, device):
     """Helper function to create a random numpy array and tensor with the same shape."""
     np_data = np.random.randn(*shape).astype(np.float32)
     tensor_data = tb.convert_to_tensor(np_data, device)

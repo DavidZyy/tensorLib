@@ -9,7 +9,7 @@ template class Linear<int>;
 template <typename dtype>
 Linear<dtype>::Linear(int in_features, int out_features, std::string device_type)
     : Module<dtype>(device_type), in_features(in_features), out_features(out_features),
-      weight(Tensor<dtype>(std::vector<int>{out_features, in_features}, device_type)){
+      weight(Tensor<dtype>(std::vector<int>{out_features, in_features}, device_type)) {
       // weight(randn<dtype>({out_features, in_features})) { // randn use a lot of time when parameter initialization
 } // maybe should add kaiming uniform first !!
 

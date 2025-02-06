@@ -102,7 +102,7 @@ public:
     //     int H,
     //     int W) const override;
 
-    virtual void apply_rotary_emb(
+    void apply_rotary_emb(
         const dtype* input,
         dtype* result,
         int start_pos,
@@ -110,6 +110,10 @@ public:
         int T,
         int n_heads,
         int head_dim) const override;
+
+    template <typename OtherType>
+    // void type_cast(dtype* result, OtherType src, size_t num_elements) const; // can not use const, for result is data_ to be changed
+    void type_cast(dtype* result, const OtherType* src, size_t num_elements);
 
 // private:
     dtype *data_;

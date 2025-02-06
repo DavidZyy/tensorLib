@@ -14,6 +14,7 @@
 #include "device/CPU.hpp"
 #include <sstream>
 #include "nn/rmsNorm.hpp"
+#include <cuda_fp16.h>  // For CUDA half-precision support
 
 // Function to convert vector to string
 // std::string vector_to_string(const std::vector<int>& vec) {
@@ -102,8 +103,11 @@ std::vector<std::vector<int>> convert_slices(const py::tuple& py_slices, const s
     return c_slices;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 PYBIND11_MODULE(tensor_bindings, m) {
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     py::class_<Tensor<float>>(m, "Tensor_float32")
         .def(py::init<const std::vector<int>&>())
         .def("shape", &Tensor<float>::shape)
@@ -243,6 +247,12 @@ PYBIND11_MODULE(tensor_bindings, m) {
             data_ptr = new float[a.size()];
             std::memcpy(data_ptr, a.data(), a.size() * sizeof(float));
             device = std::shared_ptr<CPU<float>>(new CPU<float>(a.size(), data_ptr));
+
+            std::cout << "a.data() addr:" << a.data()  <<std::endl;
+            std::cout << "a.data():" << a.data()[0] << std::endl;
+            // std::cout << "a.data():" << *(reinterpret_cast<half*>(a.data()) + 0) << std::endl;
+            std::cout << "data_ptr:" << data_ptr[0] << std::endl;
+
         } else if (device_type == "cuda") {
             CUDA_CHECK(cudaMalloc(&data_ptr, a.size() * sizeof(float)));
             CUDA_CHECK(cudaMemcpy(data_ptr, a.data(), a.size() * sizeof(float), cudaMemcpyHostToDevice));
@@ -257,6 +267,197 @@ PYBIND11_MODULE(tensor_bindings, m) {
     });
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // float 16 support
+    // because pybind can not bind float16 directly, we must use float as the intermediate type, so fp16 tensor and fp32 tensor can not define simultaneously
+//     py::class_<Tensor<half>>(m, "Tensor_float16")
+//         .def(py::init<const std::vector<int>&>())
+//         .def("shape", &Tensor<half>::shape)
+//         // .def("data", &Tensor<half>::data)
+// 
+//         .def("matmul", &Tensor<half>::matmul)
+// 
+//         // reduce functions
+//         .def("sum", &Tensor<half>::sum)
+//         .def("mean", &Tensor<half>::mean)
+//         .def("max", &Tensor<half>::max)
+//         .def("min", &Tensor<half>::min)
+//         .def("argmax", &Tensor<half>::argmax)
+//         .def("argmin", &Tensor<half>::argmin)
+// 
+//         // unary operations
+//         .def(-py::self)
+//         .def("sin", &Tensor<half>::sin)
+//         .def("cos", &Tensor<half>::cos)
+//         .def("exp", &Tensor<half>::exp)
+//         .def("log", &Tensor<half>::log)
+//         .def("abs", &Tensor<half>::abs)
+//         .def("tanh", &Tensor<half>::tanh)
+//         .def("silu", &Tensor<half>::silu)
+//         .def("sqrt", &Tensor<half>::sqrt)
+//         .def("rsqrt", &Tensor<half>::rsqrt)
+// 
+//         // binary operations see https://pybind11.readthedocs.io/en/stable/advanced/classes.html#operator-overloading
+//         .def(py::self + half())
+//         .def(py::self - half())
+//         .def(py::self * half())
+//         .def(py::self / half())
+//         .def("pow", &Tensor<half>::pow)
+//         .def(py::self + py::self)
+//         .def(py::self - py::self)
+//         .def(py::self * py::self)
+//         .def(py::self / py::self)
+// 
+//         .def("broadcast_to", &Tensor<half>::broadcast_to)
+//         .def("permute", &Tensor<half>::permute)
+//         .def("transpose", &Tensor<half>::transpose)
+// 
+//         // set, get item
+//         .def("__getitem__", [](const Tensor<half>& self, const py::list& py_slices) {
+//             // Convert Python list of slices to std::vector<std::vector<int>>
+//             auto c_slices = convert_slices(py_slices, self.shape());
+//             return self.getItem(c_slices);
+//         })
+//         .def("__getitem__", [](const Tensor<half>& self, const py::tuple& py_slices) {
+//             // Convert Python tuple of slices to std::vector<std::vector<int>>
+//             auto c_slices = convert_slices(py_slices, self.shape());
+//             return self.getItem(c_slices);
+//         })
+//         .def("__setitem__", [](Tensor<half>& self, const py::tuple& indices, Tensor<half>& value) {
+//             auto c_slices = convert_slices(indices, self.shape());
+//             self.setItem(c_slices, value);
+//         })
+//         .def("__setitem__", [](Tensor<half>& self, const py::tuple& indices, half value) {
+//             auto c_slices = convert_slices(indices, self.shape());
+//             self.setItem(c_slices, value);
+//         })
+//         // .def("__setitem__", [](Tensor<half>& self, const std::vector<int>& indices, half value) {
+//         // })
+// 
+//         // accept slice in python, convert to vetor<vector<int>> pass to cpp method.
+//         .def("getItem", [](const Tensor<half>& self, const py::list& py_slices) {
+//             // Convert Python list of slices to std::vector<std::vector<int>>
+//             auto c_slices = convert_slices(py_slices, self.shape());
+//             return self.getItem(c_slices);
+//         })
+//         .def("getItem", [](const Tensor<half>& self, const py::tuple& py_slices) {
+//             // Convert Python tuple of slices to std::vector<std::vector<int>>
+//             auto c_slices = convert_slices(py_slices, self.shape());
+//             return self.getItem(c_slices);
+//         })
+//         // .def("setItem", &Tensor<half>::setItem, py::arg("slices"), py::arg("value"))
+// 
+//         .def("softmax", &Tensor<half>::softmax)
+//         .def("transpose", &Tensor<half>::transpose)
+// 
+//         // represent functions
+//         .def("__repr__", [](const Tensor<half>& t) { // used for debugging
+//             std::ostringstream oss;
+//             oss << "Tensor(shape=(";
+//             for (size_t i = 0; i < t.shape().size(); ++i) {
+//                 oss << t.shape()[i];
+//                 if (i < t.shape().size() - 1) {
+//                     oss << ", ";
+//                 }
+//             }
+//             oss << "), data=" << t << ")";
+//             return oss.str();
+//         })
+//         .def("__str__", [](const Tensor<half>& t) { // used for printing
+//             std::ostringstream oss;
+//             oss << t;
+//             return oss.str();
+//         });
+// 
+//     // Bind the apply_rotary_emb function
+//     m.def("apply_rotary_emb", &apply_rotary_emb<half>, py::arg("input"), py::arg("start_pos"));
+//         
+//     // convert a Tensor to numpy array
+//     m.def("convert_to_numpy", [](const Tensor<half>& t) {
+//     // m.def("convert_to_numpy", [](const Tensor<float>& t) {
+//         std::vector<int> numpy_strides = t.stride_;
+//         std::transform(numpy_strides.begin(), numpy_strides.end(), numpy_strides.begin(),
+//                [](int& c) { return c * sizeof(half); });
+//         // half *data_ptr = new half[t.num_elements]; // error, not enough
+//         half *data_ptr = new half[t.device->size - t.offset_];
+//         if (t.device_type == "cpu") {
+//             // std::memcpy(data_ptr, t.device->getDataPtr() + t.offset_, t.num_elements * sizeof(half)); // error !!
+//             std::memcpy(data_ptr, t.device->getDataPtr() + t.offset_, (t.device->size - t.offset_) * sizeof(half)); // should copy all data after offset_, or may cause error due to stride ...
+//         } else if (t.device_type == "cuda") {
+//             CUDA_CHECK(cudaMemcpy(data_ptr, (half *)(t.device->getDataPtr()) + t.offset_, (t.device->size - t.offset_) * sizeof(half), cudaMemcpyDeviceToHost));
+//         } else {
+//             throw std::runtime_error("Unsupported device type: " + t.device_type);
+//         }
+// 
+//         return py::array_t<half>(t.shape_, numpy_strides, data_ptr);
+//     });
+// 
+//     // convert a numpy array to Tensor
+//     /*
+//      pybind can not acceess fp16 directly, so the conversion of fp16 is: 
+// 
+//      python(fp16) -> fp32 -> pybind -> fp16 -> c++
+//      c++(fp16)  
+//     
+//     
+//     */
+//     m.def("convert_to_tensor", [](py::array_t<float> a, const std::string& device_type) {
+//     // m.def("convert_to_tensor", [](py::array_t a, const std::string& device_type) {
+//     // m.def("convert_to_tensor", [](py::array_t<half> a, const std::string& device_type) {
+//     // m.def("convert_to_tensor", [](py::array_t<py::dtype("float16")> a, const std::string& device_type) {
+//     // m.def("convert_to_tensor", [](py::array_t<std::float16_t> a, const std::string& device_type) {
+//         // Get shape and strides from the numpy array and convert them to std::vector<int>
+//         std::vector<int> shape(a.ndim());
+//         std::vector<int> strides(a.ndim());
+// 
+//         for (size_t i = 0; i < a.ndim(); ++i) {
+//             shape[i] = static_cast<int>(a.shape(i));
+//             strides[i] = static_cast<int>(a.strides(i) / sizeof(half)); // Convert byte strides to element strides
+//         }
+// 
+//         half *data_ptr = nullptr;
+//         std::shared_ptr<Device<half>> device;
+// 
+//         // printf("a.size(): %ld\n", a.size());
+//         // printf("sizeof(half): %ld\n", sizeof(half));
+// 
+//         if (device_type == "cpu") {
+//             data_ptr = new half[a.size()];
+//             std::memcpy(data_ptr, a.data(), a.size() * sizeof(half));
+//             device = std::shared_ptr<CPU<half>>(new CPU<half>(a.size(), data_ptr));
+// 
+//             std::cout << "a.data() addr:" << a.data()  <<std::endl;
+//             std::cout << "a.data():" << *(reinterpret_cast<half*>(const_cast<float*>(a.data())) + 1) << std::endl;
+//             std::cout << "data_ptr:" << data_ptr[1] << std::endl;
+// 
+//         } else if (device_type == "cuda") {
+//             CUDA_CHECK(cudaMalloc(&data_ptr, a.size() * sizeof(half)));
+//             CUDA_CHECK(cudaMemcpy(data_ptr, a.data(), a.size() * sizeof(half), cudaMemcpyHostToDevice));
+//             device = std::shared_ptr<CUDA<half>>(new CUDA<half>(a.size(), data_ptr));
+//         } else {
+//             throw std::invalid_argument("Invalid device type. Supported types are 'cpu' and 'cuda'.");
+//         }
+// 
+//         // Construct and return the Tensor object
+//         // return Tensor<half>(std::move(shape), std::move(strides), 0, data_ptr, device_type);
+//         return Tensor<half>(std::move(shape), std::move(strides), 0, device, device_type);
+//     });
+// 
+//     m.def("is_float16", [](py::dtype &type)  // use of dtype class from numpy.h
+//       {
+//         if (type.is(py::dtype("float16")))
+//         {
+//           py::print("First overload.");
+//         }
+//         else
+//         {
+//           py::print("Not float16!");
+//         }
+//     });
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // int 32 support
     py::class_<Tensor<int>>(m, "Tensor_int32")
         .def(py::init<const std::vector<int>&>())
         .def("shape", &Tensor<int>::shape)
@@ -406,6 +607,8 @@ PYBIND11_MODULE(tensor_bindings, m) {
         return Tensor<int>(std::move(shape), std::move(strides), 0, device, device_type);
     });
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //  bind modules 
     py::class_<nn::RMSNorm<float_t>>(m, "RMSNorm")

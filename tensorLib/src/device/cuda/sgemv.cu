@@ -270,13 +270,21 @@ __global__ void gemv_kernel_v4(const dtype* A, const dtype* B, dtype* C, size_t 
     const size_t K_iters = div_ceil(K, THREADS_PER_GROUP);
     const size_t group_lane_id = threadIdx.x % THREADS_PER_GROUP;
 
+    // dtype tmp = 0.0;
     float tmp = 0.0f;
 #pragma unroll
     for (size_t i = 0; i < K_iters; ++i) {
         size_t A_idx = i * THREADS_PER_GROUP + group_lane_id;
         size_t B_idx = i * THREADS_PER_GROUP + group_lane_id + group_col * K;
         if (A_idx < K) {
+            // tmp += A[A_idx] * B[B_idx];
             tmp += static_cast<float>(A[A_idx]) * static_cast<float>(B[B_idx]);
+            // tmp += __half2float(A[A_idx]) * __half2float(B[B_idx]);
+            // if constexpr (std::is_same_v<dtype, half>) {
+            //     tmp += __half2float(A[A_idx]) * __half2float(B[B_idx]);
+            // } else {
+            //     tmp += A[A_idx] * B[B_idx];
+            // }
         }
     }
 
@@ -287,7 +295,14 @@ __global__ void gemv_kernel_v4(const dtype* A, const dtype* B, dtype* C, size_t 
     }
 
     if (group_lane_id == 0) {
+        // C[group_col] = tmp;
         C[group_col] = static_cast<dtype>(tmp);
+        // if constexpr (std::is_same_v<dtype, half>) {
+        //     // C[group_col] = static_cast<dtype>(tmp);
+        //     C[group_col] = __float2half(tmp);
+        // } else {
+        //     C[group_col] = tmp;
+        // }
     }
 }
 

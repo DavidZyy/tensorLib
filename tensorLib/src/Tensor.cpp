@@ -188,10 +188,21 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
             idx += dim;
 
         for (int i = 0; i < shape_[depth]; ++i) {
-            if (i > 0) os << ", ";
-            // os << std::setw(3) << data_[idx + i*stride_[depth] + offset_];
-            os << std::setw(3) << this->device->getDataLinear(idx + i*stride_[depth] + offset_);
+            // if (i > 0) os << ", ";
+            // os << std::setw(3) << this->device->getDataLinear(idx + i*stride_[depth] + offset_);
+
+            // for debug output
+            if (i >= 0 && i <= 2 ) {
+                os << std::setw(3) << this->device->getDataLinear(idx + i*stride_[depth] + offset_) << ", ";
+            } else if ( i>= shape_[depth]-3 && i <= shape_[depth]-1) {
+                os << std::setw(3) << this->device->getDataLinear(idx + i*stride_[depth] + offset_) << ", ";
+            } else if (i == 3){
+                os << "..., ";
+            } else {
+                // not print anything
+            }
         }
+
         os << "]";
     } else {
         os << "[";
@@ -798,3 +809,22 @@ template <typename dtype> Tensor<dtype> Tensor<dtype>::pow(dtype scalar) const {
 void print_tensor_float(const Tensor<float>& tensor) {
     std::cout << tensor << std::endl << std::endl;
 }
+
+void print_tensor_half(const Tensor<half>& tensor) {
+    std::cout << tensor << std::endl << std::endl;
+}
+
+void print_tensor_int(const Tensor<int>& tensor) {
+    std::cout << tensor << std::endl << std::endl;
+}
+
+// can not be called in gdb
+// template <typename dtype>
+// void print_tensor(const Tensor<dtype>& tensor) {
+//     std::cout << tensor << std::endl << std::endl;
+// }
+// 
+// // Explicit instantiation for common types (optional, but can help with reducing compilation time)
+// template void print_tensor<float>(const Tensor<float>& tensor);
+// template void print_tensor<half>(const Tensor<half>& tensor);
+// template void print_tensor<int>(const Tensor<int>& tensor);

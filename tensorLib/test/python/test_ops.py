@@ -8,7 +8,8 @@ import numpy as np
 
 import sys
 # sys.path.append('/home/zyy/project/tensorLib/build')
-sys.path.append('/raid/home/zhuyangyang/tensorLib/build')
+# sys.path.append('/raid/home/zhuyangyang/tensorLib/build')
+sys.path.append('/root/autodl-tmp/tensorLib/build')
 import tensor_bindings as tb
 import time
 

@@ -77,23 +77,29 @@ target_link_libraries(tensorLib PRIVATE ${CUDA_LIBRARIES} cublas)
 # add_executable(test_device tensorLib/test/test_device.cpp)
 # target_link_libraries(test_device PRIVATE tensorLib)
 
-add_executable(test_rms_norm 
-    tensorLib/test/cuda_fuse_op/test_rms_norm.cpp
-    # model/llama2_7b/src/Transformer.cpp 
-    # tensorLib/src/nn/modules.cpp
+# add_executable(test_rms_norm 
+#     tensorLib/test/cuda_fuse_op/test_rms_norm.cpp
+# )
+# target_link_libraries(test_rms_norm PRIVATE tensorLib)
+# target_include_directories(test_rms_norm PUBLIC 
+#     model/llama2_7b/include
+#     tensorLib/include
+# )
+
+# add_executable(sgemm_benchmark
+#     tensorLib/test/cuda_benchmark/sgemm_benchmark.cpp
+# )
+# target_link_libraries(sgemm_benchmark PRIVATE tensorLib)
+
+add_executable(test_fp16
+    tensorLib/test/fp16/test_fp16.cu
+    model/llama2_7b/src/Transformer.cpp
 )
-target_link_libraries(test_rms_norm PRIVATE tensorLib)
-target_include_directories(test_rms_norm PUBLIC 
+target_link_libraries(test_fp16 PRIVATE tensorLib)
+target_include_directories(test_fp16 PUBLIC 
     model/llama2_7b/include
     tensorLib/include
-    # tensorLib/include/device
-    # tensorLib/include/nn
 )
-
-add_executable(sgemm_benchmark
-    tensorLib/test/cuda_benchmark/sgemm_benchmark.cpp
-)
-target_link_libraries(sgemm_benchmark PRIVATE tensorLib)
 ################################## llama2 ##########################################################
 add_executable(llama2
     model/llama2_7b/src/main.cpp 
@@ -110,24 +116,24 @@ target_link_libraries(llama2 PRIVATE tensorLib)
 
 ################################## tensor_bindings module ##########################################################
 # Set the PYBIND11_FINDPYTHON option to ON
-# set(PYBIND11_FINDPYTHON ON)
-# 
-# # pybind11
-# find_package(pybind11 REQUIRED)
-# include_directories(${pybind11_INCLUDE_DIRS})
-# 
-# find_package(Python3 REQUIRED)
-# include_directories(${Python3_INCLUDE_DIRS})
-# 
-# # Add your source files
-# add_library(tensor_bindings MODULE tensorLib/test/tensor_bindings.cpp)
-# 
-# # Set the output name without the 'lib' prefix
-# set_target_properties(tensor_bindings
-#     PROPERTIES
-#     PREFIX ""
-# )
-# 
-# # Link with pybind11
-# target_link_libraries(tensor_bindings PRIVATE pybind11::module tensorLib)
-# pybind11_strip(tensor_bindings)
+set(PYBIND11_FINDPYTHON ON)
+
+# pybind11
+find_package(pybind11 REQUIRED)
+include_directories(${pybind11_INCLUDE_DIRS})
+
+find_package(Python3 REQUIRED)
+include_directories(${Python3_INCLUDE_DIRS})
+
+# Add your source files
+add_library(tensor_bindings MODULE tensorLib/test/python/tensor_bindings.cpp)
+
+# Set the output name without the 'lib' prefix
+set_target_properties(tensor_bindings
+    PROPERTIES
+    PREFIX ""
+)
+
+# Link with pybind11
+target_link_libraries(tensor_bindings PRIVATE pybind11::module tensorLib)
+pybind11_strip(tensor_bindings)

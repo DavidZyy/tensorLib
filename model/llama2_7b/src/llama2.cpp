@@ -14,7 +14,7 @@ int total_pos = 0;
 template <typename dtype>
 Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
     // int total_len = 1024;
-    int total_len = 256;
+    int total_len = 512;
     // int total_len = 128;
     // int total_len = 32;
     Tensor<int> tokens({1, total_len}, this->device_type); // (bsz, max_seq_len)
@@ -37,7 +37,8 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
     for (int cur_pos = prompt_len; cur_pos < total_len; cur_pos++) {
         std::vector<std::vector<int>> slices  = {{}, {prev_pos, cur_pos}};
         // auto logits = model.forward(tokens.getItem(slices), prev_pos);  // logits.shape = (bsz, seq_len, vocab_size), seq_len = cur_pos - prev_pos
-        auto logits = model.forward(tokens.getItem(slices), total_pos);  // logits.shape = (bsz, seq_len, vocab_size), seq_len = cur_pos - prev_pos
+        auto logits_half = model.forward(tokens.getItem(slices), total_pos);  // logits.shape = (bsz, seq_len, vocab_size), seq_len = cur_pos - prev_pos
+        Tensor<float> logits(logits_half); // half -> float is very important !!!! or it will get error!!!
         slices = {{}, {logits.shape_[1]-1, logits.shape_[1]}, {}};
         logits = logits.getItem(slices); // (bsz, vocab_size), get the last of dim=1
 
