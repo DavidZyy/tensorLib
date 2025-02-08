@@ -93,8 +93,8 @@ __global__ void matmul2dKernelV0(const dtype* lhs, const dtype* rhs, dtype* resu
 
     if (i < M && j < N) {
 
-        dtype sum = 0;
-        // float sum = 0.0f;
+        // dtype sum = 0;
+        float sum = 0.0f;
 
         #pragma unroll
 

@@ -41,11 +41,24 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
         Tensor<float> logits(logits_half); // half -> float is very important !!!! or it will get error!!!
         slices = {{}, {logits.shape_[1]-1, logits.shape_[1]}, {}};
         logits = logits.getItem(slices); // (bsz, vocab_size), get the last of dim=1
-
-        // std::cout << logits << std::endl;
-
         auto next_token = logits.argmax(-1); // (bsz, )
         int next_token_int = next_token.getData({});
+
+        // for debug
+//         {
+//             logits_half = logits_half.getItem(slices);
+//             auto next_token_half = logits_half.argmax(-1);
+//             int next_token_int_half = next_token_half.getData({});
+// 
+//             // std::cout << logits.device->getDataLinear(0) << std::endl;
+//             std::cout << next_token_int << " " <<logits.getData({0, 0, next_token_int}) << std::endl;
+//             std::cout << next_token_int << " " <<logits.getData({0, 0, next_token_int_half}) << std::endl;
+// 
+//             std::cout << next_token_int_half << " " <<logits_half.getData({0, 0, next_token_int_half}) << std::endl;
+//             std::cout << next_token_int_half << " " <<logits_half.getData({0, 0, next_token_int}) << std::endl;
+//             std::cout << std::endl;
+//         }
+
         tokens_generated++;
         // if (next_token.data_[0] == 1) break;
         if (next_token.getData({}) == 1) break;
@@ -54,13 +67,10 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
             break;
         }
 
-        // std::cout << next_token.data_[0] << " " << std::flush;
-        // std::cout << this->tokenizer.decode(-1, next_token.data_[0]) << std::flush; // use flush to output immediately, not cache in buffer
         std::cout << this->tokenizer.decode(-1, next_token_int) << std::flush; // use flush to output immediately, not cache in buffer
 
         slices = {{}, {cur_pos, cur_pos+1}};
 
-        // NOTE: token is float, next_token is int, have implicit type conversion(call conversion ) !!!
         tokens.setItem(slices, next_token);
 
         total_pos += (cur_pos - prev_pos);

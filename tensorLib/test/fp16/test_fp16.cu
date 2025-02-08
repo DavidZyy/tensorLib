@@ -152,7 +152,8 @@ float get_max_abs_difference(const Tensor<T>& a, const Tensor<T>& b) {
 
 /************************************************************************************************************************************************************/
 
-void check_equal_and_max_diff(Tensor<half>& a, Tensor<half>& b) {
+template <typename T>
+void check_equal_and_max_diff(Tensor<T>& a, Tensor<T>& b) {
     if (check_equal(a, b)) {
         std::cout << "pass!" << std::endl;
     } else {
@@ -318,9 +319,40 @@ void test_ffn() {
 
 /************************************************************************************************************************************************************/
 
+void test_argmax() {
+    int m = 10;
+    int n = 32000;
+
+    Tensor<float> x = randn<float>({m, n}, "cuda");
+    Tensor<int> y;
+    MEASURE_TIME({
+        y = x.argmax(1);
+    });
+
+    // std::cout << "x: " << std::endl << x << std::endl;
+    // std::cout << "y: " << std::endl << y << std::endl;
+
+    Tensor<half> x_fp16(x);
+    Tensor<int> y_fp16;
+    MEASURE_TIME({
+        y_fp16 = x_fp16.argmax(1);
+    });
+
+    // std::cout << "x_fp16: " << std::endl << x_fp16 << std::endl;
+    // std::cout << "y_fp16: " << std::endl << y_fp16 << std::endl;
+
+    std::cout << "y: " << std::endl << y << std::endl;
+    std::cout << "y_fp16: " << std::endl << y_fp16 << std::endl;
+
+    // check_equal_and_max_diff(y_fp16, y);
+}
+
+/************************************************************************************************************************************************************/
+
 int main() {
-    test_matmul();
+    // test_matmul();
     // test_rms();
     // test_ffn();
+    test_argmax();
     return 0;
 }

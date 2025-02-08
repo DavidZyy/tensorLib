@@ -11,12 +11,22 @@ template class CUDA<float>;
 template class CUDA<int>;
 
 template <typename dtype> 
-static inline __device__ bool argmaxFunc(dtype a, dtype b) { 
-    return a > b; 
+static inline __device__ bool argmaxFunc(dtype a, dtype b) {
+    if constexpr (std::is_same_v<dtype, half>) {
+        // return __hgt(a, b);
+        return __half2float(a) > __half2float(b);
+    } else {
+        return a > b;
+    }
 }
 template <typename dtype> 
 static inline __device__ bool argminFunc(dtype a, dtype b) { 
-    return a < b; 
+    if constexpr (std::is_same_v<dtype, half>) {
+        // return __hlt(a, b);
+        return __half2float(a) < __half2float(b);
+    } else {
+        return a < b;
+    }
 }
 
 /************************************************************************************************************************************************************/
@@ -53,14 +63,14 @@ void reduceArg_v0(int* result, const dtype* data, size_t reduce_size, size_t num
 }
 
 /************************************************************************************************************************************************************/
-#define THREADS_PER_BLOCK 64
+// #define THREADS_PER_BLOCK 64
+#define THREADS_PER_BLOCK 2
 /**
  * use a block to reduce a row
  */
 template <typename dtype, bool (*comp)(dtype, dtype)>
 __global__ void reduceArgKernel_v1(int* result, const dtype* data, size_t reduce_size, size_t num_elements) {
-    // const dtype* reduce_row = data + blockIdx.x * reduce_size; // the row to reduce
-    const dtype* reduce_row = data;
+    const dtype* reduce_row = data + blockIdx.x * reduce_size; // the row to reduce
 
     dtype best_value;
     int best_idx;
@@ -118,7 +128,7 @@ __global__ void reduceArgKernel_v1(int* result, const dtype* data, size_t reduce
     }
 }
 
-/**rows = 1 in llm last step of get the max prob*/
+/* have bug on dtype = half !!! */
 template <typename dtype, bool (*comp)(dtype, dtype)>
 void reduceArg_v1(int* result, const dtype* data, size_t reduce_size, size_t num_elements) {
     assert(reduce_size >= THREADS_PER_BLOCK);

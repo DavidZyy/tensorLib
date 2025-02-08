@@ -43,7 +43,7 @@
       },
       {
         "name": "CUDA_VISIBLE_DEVICES",
-        "value": "1" // Specify the GPU IDs you want to use, e.g., "0,1" for the first two GPUs
+        "value": "0" // Specify the GPU IDs you want to use, e.g., "0,1" for the first two GPUs
       }
     ],
     "externalConsole": false,
