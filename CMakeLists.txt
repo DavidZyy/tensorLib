@@ -45,14 +45,13 @@ set(ALL_SOURCES
     ${OPS_SOURCES}
     ${DEVICE_SOURCES}
     tensorLib/src/Tensor.cpp
+    tensorLib/src/Log.cpp
 )
 
 add_library(tensorLib STATIC ${ALL_SOURCES})
 
 target_include_directories(tensorLib PUBLIC 
     tensorLib/include
-    # tensorLib/include/device
-    # tensorLib/include/nn
 )
 
 set_target_properties(tensorLib
