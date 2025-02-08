@@ -86,7 +86,8 @@ __global__ void reduceArgKernel_v1(int* result, const dtype* data, size_t reduce
     //     best_idx = -1; // can not be 
     // }
     __shared__ dtype shared_best_value[THREADS_PER_BLOCK];
-    __shared__ dtype shared_best_idx[THREADS_PER_BLOCK];
+    // __shared__ dtype shared_best_idx[THREADS_PER_BLOCK]; // bug!!
+    __shared__ int shared_best_idx[THREADS_PER_BLOCK];
 
                 // printf("threadIdx.x: %d, best_value: %d, best_idx: %d\n", threadIdx.x, (int)best_value, best_idx);
     for (size_t i = THREADS_PER_BLOCK; i < reduce_size; i += THREADS_PER_BLOCK) {

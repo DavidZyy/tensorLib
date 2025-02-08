@@ -13,10 +13,8 @@ int total_pos = 0;
 
 template <typename dtype>
 Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
-    // int total_len = 1024;
-    int total_len = 512;
-    // int total_len = 128;
-    // int total_len = 32;
+    int total_len = 128 * 2;
+
     Tensor<int> tokens({1, total_len}, this->device_type); // (bsz, max_seq_len)
     int prompt_len = prompt_tokens.size();
 
@@ -36,31 +34,13 @@ Tensor<dtype> Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
     int prev_pos = 0;
     for (int cur_pos = prompt_len; cur_pos < total_len; cur_pos++) {
         std::vector<std::vector<int>> slices  = {{}, {prev_pos, cur_pos}};
-        // auto logits = model.forward(tokens.getItem(slices), prev_pos);  // logits.shape = (bsz, seq_len, vocab_size), seq_len = cur_pos - prev_pos
-        auto logits_half = model.forward(tokens.getItem(slices), total_pos);  // logits.shape = (bsz, seq_len, vocab_size), seq_len = cur_pos - prev_pos
-        Tensor<float> logits(logits_half); // half -> float is very important !!!! or it will get error!!!
+        auto logits = model.forward(tokens.getItem(slices), prev_pos);  // logits.shape = (bsz, seq_len, vocab_size), seq_len = cur_pos - prev_pos
         slices = {{}, {logits.shape_[1]-1, logits.shape_[1]}, {}};
         logits = logits.getItem(slices); // (bsz, vocab_size), get the last of dim=1
         auto next_token = logits.argmax(-1); // (bsz, )
         int next_token_int = next_token.getData({});
 
-        // for debug
-//         {
-//             logits_half = logits_half.getItem(slices);
-//             auto next_token_half = logits_half.argmax(-1);
-//             int next_token_int_half = next_token_half.getData({});
-// 
-//             // std::cout << logits.device->getDataLinear(0) << std::endl;
-//             std::cout << next_token_int << " " <<logits.getData({0, 0, next_token_int}) << std::endl;
-//             std::cout << next_token_int << " " <<logits.getData({0, 0, next_token_int_half}) << std::endl;
-// 
-//             std::cout << next_token_int_half << " " <<logits_half.getData({0, 0, next_token_int_half}) << std::endl;
-//             std::cout << next_token_int_half << " " <<logits_half.getData({0, 0, next_token_int}) << std::endl;
-//             std::cout << std::endl;
-//         }
-
         tokens_generated++;
-        // if (next_token.data_[0] == 1) break;
         if (next_token.getData({}) == 1) break;
         if (next_token.getData({}) == 2) { // EOS token
             std::cout << "\n" << std::flush;
