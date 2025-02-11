@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstddef>
 #include <memory>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include <iomanip>
@@ -188,18 +189,31 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
             idx += dim;
 
         for (int i = 0; i < shape_[depth]; ++i) {
-            // if (i > 0) os << ", ";
-            // os << std::setw(3) << this->device->getDataLinear(idx + i*stride_[depth] + offset_);
-
-            // for debug output
-            if (i >= 0 && i <= 2 ) {
-                os << std::setw(3) << this->device->getDataLinear(idx + i*stride_[depth] + offset_) << ", ";
-            } else if ( i>= shape_[depth]-3 && i <= shape_[depth]-1) {
-                os << std::setw(3) << this->device->getDataLinear(idx + i*stride_[depth] + offset_) << ", ";
-            } else if (i == 3){
-                os << "..., ";
+            if constexpr (std::is_same_v<dtype, half>) {
+                if (i >= 0 && i <= 2 ) {
+                    os << std::setw(3) << __half2float(this->device->getDataLinear(idx + i*stride_[depth] + offset_)) << ", ";
+                } else if ( i>= shape_[depth]-3 && i <= shape_[depth]-1) {
+                    os << std::setw(3) << __half2float(this->device->getDataLinear(idx + i*stride_[depth] + offset_)) << ", ";
+                } else if (i == 3){
+                    os << "..., ";
+                } else {
+                    // not print anything
+                }
             } else {
-                // not print anything
+
+                // if (i > 0) os << ", ";
+                // os << std::setw(3) << this->device->getDataLinear(idx + i*stride_[depth] + offset_);
+
+                // for debug output
+                if (i >= 0 && i <= 2 ) {
+                    os << std::setw(3) << this->device->getDataLinear(idx + i*stride_[depth] + offset_) << ", ";
+                } else if ( i>= shape_[depth]-3 && i <= shape_[depth]-1) {
+                    os << std::setw(3) << this->device->getDataLinear(idx + i*stride_[depth] + offset_) << ", ";
+                } else if (i == 3){
+                    os << "..., ";
+                } else {
+                    // not print anything
+                }
             }
         }
 

@@ -62,5 +62,7 @@
     "python.testing.pytestEnabled": true,
     "terminal.integrated.env.linux": {
         "PYTHONPATH": "${workspaceFolder}/tensorLib:${workspaceFolder}/build"
-    }
+    },
+     "clangd.path": "/usr/bin/clangd" // for https://github.com/clangd/vscode-clangd/issues/267
 }
+

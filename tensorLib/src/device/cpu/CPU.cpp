@@ -172,28 +172,85 @@ void CPU<dtype>::setItemScalar(
 
 ////////////////////////////////////////////////////// unary operations ///////////////////////////////////////////////////////////////////////////////
 template <typename dtype> inline dtype negFunc(dtype x) { return -x; }
-template <typename dtype> inline dtype sinFunc(dtype x) { return std::sin(x); }
-template <typename dtype> inline dtype cosFunc(dtype x) { return std::cos(x); }
-template <typename dtype> inline dtype expFunc(dtype x) { return std::exp(x); }
-template <typename dtype> inline dtype logFunc(dtype x) { return std::log(x); }
-template <typename dtype> inline dtype absFunc(dtype x) { return std::abs(x); }
-template <typename dtype> inline dtype tanhFunc(dtype x) { return std::tanh(x); }
+template <typename dtype> inline dtype sinFunc(dtype x) { 
+    if constexpr (std::is_same_v<dtype, half>) {
+        return __float2half(std::sin(__half2float(x)));
+    } else {
+        return std::sin(x); 
+    }
+}
+template <typename dtype> inline dtype cosFunc(dtype x) { 
+    if constexpr (std::is_same_v<dtype, half>) {
+        return __float2half(std::cos(__half2float(x)));
+    } else {
+        return std::cos(x); 
+    }
+}
+template <typename dtype> inline dtype expFunc(dtype x) { 
+    if constexpr (std::is_same_v<dtype, half>) {
+        return __float2half(std::exp(__half2float(x)));
+    } else {
+        return std::exp(x); 
+    } 
+}
+template <typename dtype> inline dtype logFunc(dtype x) { 
+    if constexpr (std::is_same_v<dtype, half>) {
+        return __float2half(std::log(__half2float(x)));
+    } else {
+        return std::log(x); 
+    }
+}
+template <typename dtype> inline dtype absFunc(dtype x) {
+    if constexpr (std::is_same_v<dtype, half>) {
+        return __float2half(std::abs(__half2float(x)));
+    } else {
+        return std::abs(x);
+    }
+}
+template <typename dtype> inline dtype tanhFunc(dtype x) {
+    if constexpr (std::is_same_v<dtype, half>) {
+        return __float2half(std::tanh(__half2float(x)));
+    } else {
+        return std::tanh(x);
+    }
+}
 template <typename dtype> inline dtype siluFunc(dtype x) {
-    dtype sigmoid_x = 1 / (1 + std::exp(-x));
-    return x * sigmoid_x;
+    if constexpr (std::is_same_v<dtype, half>) {
+        half sigmoid_x = __float2half(1 / (1 + std::exp(__half2float(x))));
+        return x * sigmoid_x;
+    } else {
+        dtype sigmoid_x = 1 / (1 + std::exp(-x));
+        return x * sigmoid_x;
+    }
 }
 template <typename dtype> inline dtype sqrtFunc(dtype x) {
-    if (x > 0) {
-        return std::sqrt(x);
+    if constexpr (std::is_same_v<dtype, half>) {
+        if (__half2float(x) > 0.0f) {
+            return __float2half(std::sqrt(__half2float(x)));
+        } else {
+            throw std::domain_error("Cannot take sqrt of non-positive values.");
+        }
     } else {
-        throw std::domain_error("Cannot take sqrt of non-positive values.");
+        if (x > 0) {
+            return std::sqrt(x);
+        } else {
+            throw std::domain_error("Cannot take sqrt of non-positive values.");
+        }
     }
 }
 template <typename dtype> inline dtype rsqrtFunc(dtype x) {
-    if (x > 0) {
-        return 1 / std::sqrt(x);
+    if constexpr (std::is_same_v<dtype, half>) {
+        if (__half2float(x) > 0.0f) {
+            return __float2half(1 / std::sqrt(__half2float(x)));
+        } else {
+            throw std::domain_error("Cannot take sqrt of non-positive values.");
+        }
     } else {
-        throw std::domain_error("Cannot take sqrt of non-positive values.");
+        if (x > 0) {
+            return 1 / std::sqrt(x);
+        } else {
+            throw std::domain_error("Cannot take sqrt of non-positive values.");
+        }
     }
 }
 
@@ -222,13 +279,34 @@ template <typename dtype> static inline dtype addFunc(dtype a, dtype b) { return
 template <typename dtype> static inline dtype subFunc(dtype a, dtype b) { return a - b; }
 template <typename dtype> static inline dtype mulFunc(dtype a, dtype b) { return a * b; }
 template <typename dtype> static inline dtype divFunc(dtype a, dtype b) {
-    if (b == 0) {
-        // or return inf / -inf ?
-        throw std::invalid_argument("Division by zero.");
+    if constexpr (std::is_same_v<dtype, half>) {
+        if (__half2float(b) == 0) {
+            throw std::invalid_argument("Division by zero.");
+        }
+        return __float2half(__half2float(a) / __half2float(b));
+    } else {
+        if (b == 0) {
+            // or return inf / -inf ?
+            throw std::invalid_argument("Division by zero.");
+        }
+        return a / b;
     }
-    return a / b;
 }
-template <typename dtype> static inline dtype powFunc(dtype a, dtype b) { return std::pow(a, b); }
+// template <typename dtype> static inline dtype powFunc(dtype a, dtype b) { return std::pow(a, b); }
+template <typename dtype> static inline dtype powFunc(dtype a, dtype b) {
+    if constexpr (std::is_same_v<dtype, half>) {
+        if (__half2float(a) == 0 && __half2float(b) < 0) {
+            throw std::invalid_argument("Cannot take negative power of zero.");
+        }
+        return __float2half(std::pow(__half2float(a), __half2float(b)));
+    } else {
+        if (a == 0 && b < 0) {
+            throw std::invalid_argument("Cannot take negative power of zero.");
+        }
+        return std::pow(a, b);
+    }
+}
+
 
 template <typename dtype>
 template <dtype (*op)(dtype, dtype)>

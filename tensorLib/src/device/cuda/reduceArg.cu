@@ -63,8 +63,8 @@ void reduceArg_v0(int* result, const dtype* data, size_t reduce_size, size_t num
 }
 
 /************************************************************************************************************************************************************/
-// #define THREADS_PER_BLOCK 64
-#define THREADS_PER_BLOCK 2
+#define THREADS_PER_BLOCK 64
+// #define THREADS_PER_BLOCK 2
 /**
  * use a block to reduce a row
  */

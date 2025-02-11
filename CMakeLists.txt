@@ -12,7 +12,7 @@ set(CMAKE_BUILD_TYPE Release)
 ################################# compile tensorLib library #############################################
 
 # Adjust based on your target GPU
-set(CMAKE_CUDA_ARCHITECTURES 75)
+set(CMAKE_CUDA_ARCHITECTURES 86)
 
 # Add OpenMP support
 find_package(OpenMP REQUIRED)
