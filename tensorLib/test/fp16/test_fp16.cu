@@ -1,6 +1,6 @@
 
 /**
-    NOTE: this file mainly check the correctness of fp16 in cuda, in cpu not been checked.
+    NOTE: this file mainly check the correctness of fp16 in cuda, in cpu not been checked. use fp32 module to test fp16 module.
  */
 #include "Tensor.hpp"
 #include "device/CUDA.hpp"

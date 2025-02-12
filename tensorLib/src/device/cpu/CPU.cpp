@@ -25,7 +25,7 @@ void CPU<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
         const std::vector<int>& result_shape, 
         size_t result_elements,
         size_t K
-        ) 
+        )
 {
     size_t ndim = result_shape.size();
 
