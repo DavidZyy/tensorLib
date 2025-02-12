@@ -16,7 +16,10 @@
             "label": "make",
             "type": "shell",
             "command": "make",
-            "args": [],
+            "args": [
+                "-j",
+                "16"
+            ],
             "options": {
                 "cwd": "${workspaceFolder}/build"
             }, 

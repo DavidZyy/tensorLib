@@ -13,6 +13,8 @@ template class CUDA<half>;
 template class CUDA<float>;
 template class CUDA<int>;
 
+#define WARP_SIZE 32
+
 /************************************************************************************************************************************************************/
 size_t initThreadSmem(size_t K) {
     int dev_id = 0;
@@ -34,38 +36,38 @@ size_t initThreadSmem(size_t K) {
 }
 
 /************************************************************************************************************************************************************/
-// // threads
-// #define WARP_SIZE 32
-// #define WARPS_PER_BLOCK 4
-// #define THREADS_PER_BLOCK 128  // WARP_SIZE * WARPS_PER_BLOCK
-// template<typename dtype>
-// __global__ void gemv_kernel_v0(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
-//     const size_t col = blockIdx.x * THREADS_PER_BLOCK + threadIdx.x;
-//     if (col >= N) return;
-// 
-//     float tmp = 0.0;
-// 
-//     #pragma unroll
-//     for (size_t i = 0; i < K; ++i) {
-//         tmp += A[i] * B[i + col * K]; // B is col major
-//         // tmp += A[i] * B[i*N + col];  // B is row major
-//     }
-// 
-//     C[col] = tmp;
-// }
-// 
-// template<typename dtype>
-// void gemv_v0(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
-//     dim3 block(THREADS_PER_BLOCK);
-//     dim3 grid(div_ceil(N, THREADS_PER_BLOCK));
-//     gemv_kernel_v0<<<grid, block>>>(A, B, C, N, K);
-//     CUDA_CHECK(cudaGetLastError());
-//     CUDA_CHECK(cudaDeviceSynchronize());
-// }
-// 
-// template void gemv_v0<float>(const float* A, const float* B, float* C, size_t N, size_t K);
-// template void gemv_v0<int>(const int* A, const int* B, int* C, size_t N, size_t K);
-// template void gemv_v0<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
+// threads
+#define WARPS_PER_BLOCK_v0 4
+#define THREADS_PER_BLOCK_v0  (WARP_SIZE * WARPS_PER_BLOCK_v0)
+
+template<typename dtype>
+__global__ void gemv_kernel_v0(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
+    const size_t col = blockIdx.x * THREADS_PER_BLOCK_v0 + threadIdx.x;
+    if (col >= N) return;
+
+    float tmp = 0.0;
+
+    #pragma unroll
+    for (size_t i = 0; i < K; ++i) {
+        tmp += static_cast<float>(A[i]) * static_cast<float>(B[i + col * K]); // B is col major
+    }
+
+    C[col] = static_cast<dtype>(tmp);
+}
+
+template<typename dtype>
+void gemv_v0(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
+    dim3 block(THREADS_PER_BLOCK_v0);
+    dim3 grid(div_ceil(N, THREADS_PER_BLOCK_v0));
+    gemv_kernel_v0<<<grid, block>>>(A, B, C, N, K);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+template void gemv_v0<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
+template void gemv_v0<half>(const half* A, const half* B, half* C, size_t N, size_t K);
+template void gemv_v0<float>(const float* A, const float* B, float* C, size_t N, size_t K);
+template void gemv_v0<int>(const int* A, const int* B, int* C, size_t N, size_t K);
 
 /************************************************************************************************************************************************************/
 // // threads + shared memory
@@ -176,141 +178,117 @@ size_t initThreadSmem(size_t K) {
 // template void gemv_v2<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
 
 /************************************************************************************************************************************************************/
+#define WARPS_PER_BLOCK_v3 4
+#define THREADS_PER_BLOCK_v3  (WARP_SIZE * WARPS_PER_BLOCK_v3)
 
-// #define WARP_SIZE 32
-// #define WARPS_PER_BLOCK 4
-// #define THREADS_PER_BLOCK 128  // WARP_SIZE * WARPS_PER_BLOCK
-// 
-// template <typename dtype>
-// __global__ void gemv_kernel_v3(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
-//     // extern __shared__ float A_smem[]; // assume dtype is float
-//     __shared__ float A_smem[2048]; // assume dtype is float
-//     size_t A_smem_iters = div_ceil(K, THREADS_PER_BLOCK);
-// #pragma unroll
-//     // load contiguously
-//     // for (size_t i = 0; i < A_smem_iters; ++i) {
-//     //     size_t idx = threadIdx.x * A_smem_iters + i;
-//     //     if (idx < K) {
-//     //         A_smem[idx] = A[idx];
-//     //     }
-//     // }
-// 
-//     // load interleaved
-//     for (size_t i = 0; i < A_smem_iters; ++i) {
-//         size_t idx = i * THREADS_PER_BLOCK + threadIdx.x;
-//         if (idx < K) {
-//             A_smem[idx] = A[idx];
-//         }
-//     }
-// 
-//     __syncthreads();
-// 
-//     const size_t warp_id = threadIdx.x / WARP_SIZE; // the warp index which this thread belongs to
-//     const size_t warp_col = blockIdx.x * WARPS_PER_BLOCK + warp_id; // the column index this warp will process
-// 
-//     if (warp_col >= N) return;
-// 
-//     const size_t K_iters = div_ceil(K, WARP_SIZE); // the number of iterations to process all elements in A
-//     const size_t lane_id = threadIdx.x % WARP_SIZE; // the lane index in the warp
-// 
-//     float tmp = 0.0;
-// #pragma unroll
-//     for (size_t i = 0; i < K_iters; ++i) {
-//         size_t A_idx = i * WARP_SIZE + lane_id;
-//         size_t B_idx = i * WARP_SIZE + lane_id + warp_col * K;
-//         if (A_idx < K) {
-//             tmp += A_smem[A_idx] * B[B_idx];
-//             // tmp += A[A_idx] * B[B_idx];
-//         }
-//     }
-// 
-//     const unsigned int mask = 0xffffffff;
-// 
-// #pragma unroll
-//     for (size_t i = WARP_SIZE / 2; i >= 1; i /= 2) {
-//         tmp += __shfl_xor_sync(mask, tmp, i);
-//     }
-// 
-//     if (lane_id == 0) {
-//         C[warp_col] = tmp;
-//     }
-// }
-// 
-// template<typename dtype>
-// void gemv_v3(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
-//     // initThreadSmem(K);
-//     dim3 block(THREADS_PER_BLOCK);
-//     dim3 grid(div_ceil(N, WARPS_PER_BLOCK));
-//     // gemv_kernel_v3<<<grid, block, K*sizeof(dtype)>>>(A, B, C, N, K);
-//     gemv_kernel_v3<<<grid, block>>>(A, B, C, N, K);
-//     CUDA_CHECK(cudaGetLastError());
-//     CUDA_CHECK(cudaDeviceSynchronize());
-// }
-// 
-// template void gemv_v3<float>(const float* A, const float* B, float* C, size_t N, size_t K);
-// template void gemv_v3<int>(const int* A, const int* B, int* C, size_t N, size_t K);
-// template void gemv_v3<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
+template <typename dtype>
+__global__ void gemv_kernel_v3(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
+    // if constexpr (std::is_same_v<dtype, half>) {
+        // __shared__ dtype A_smem[4096 * 4];
+    // } else {
+        __shared__ dtype A_smem[4096 * 2];
+    // }
+    size_t A_smem_iters = div_ceil(K, THREADS_PER_BLOCK_v3);
+
+#pragma unroll
+    for (size_t i = 0; i < A_smem_iters; ++i) {
+        size_t idx = i * THREADS_PER_BLOCK_v3 + threadIdx.x;
+        if (idx < K) {
+            A_smem[idx] = A[idx];
+        }
+    }
+
+    __syncthreads();
+
+    const size_t warp_id = threadIdx.x / WARP_SIZE; // the warp index which this thread belongs to
+    const size_t warp_col = blockIdx.x * WARPS_PER_BLOCK_v3 + warp_id; // the column index this warp will process
+
+    if (warp_col >= N) return;
+
+    const size_t K_iters = div_ceil(K, WARP_SIZE); // the number of iterations to process all elements in A
+    const size_t lane_id = threadIdx.x % WARP_SIZE; // the lane index in the warp
+
+    float tmp = 0.0;
+#pragma unroll
+    for (size_t i = 0; i < K_iters; ++i) {
+        size_t A_idx = i * WARP_SIZE + lane_id;
+        size_t B_idx = i * WARP_SIZE + lane_id + warp_col * K;
+        if (A_idx < K) {
+            tmp += static_cast<float>(A_smem[A_idx]) * static_cast<float>(B[B_idx]);
+            // tmp += static_cast<float>(A[A_idx]) * static_cast<float>(B[B_idx]);
+        }
+    }
+
+    const unsigned int mask = 0xffffffff;
+
+#pragma unroll
+    for (size_t i = WARP_SIZE / 2; i >= 1; i /= 2) {
+        tmp += __shfl_xor_sync(mask, tmp, i);
+    }
+
+    if (lane_id == 0) {
+        C[warp_col] = static_cast<dtype>(tmp);
+    }
+}
+
+template<typename dtype>
+void gemv_v3(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
+    dim3 block(THREADS_PER_BLOCK_v3);
+    dim3 grid(div_ceil(N, WARPS_PER_BLOCK_v3));
+    gemv_kernel_v3<<<grid, block>>>(A, B, C, N, K);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+template void gemv_v3<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
+template void gemv_v3<half>(const half* A, const half* B, half* C, size_t N, size_t K);
+template void gemv_v3<float>(const float* A, const float* B, float* C, size_t N, size_t K);
+template void gemv_v3<int>(const int* A, const int* B, int* C, size_t N, size_t K);
 
 /************************************************************************************************************************************************************/
-#define WARP_SIZE 32
-#define WARPS_PER_BLOCK 4
-#define THREADS_PER_BLOCK 128  // WARP_SIZE * WARPS_PER_BLOCK
+#define WARPS_PER_BLOCK_v4 4
+#define THREADS_PER_BLOCK_v4 (WARP_SIZE * WARPS_PER_BLOCK_v4)
 
-#define COLS_PER_WARP 4 // each warp processes 2 columns
-#define COLS_PER_BLOCK  (COLS_PER_WARP * WARPS_PER_BLOCK)
-#define THREADS_PER_GROUP (WARP_SIZE / COLS_PER_WARP)
+#define COLS_PER_WARP_v4 4 // each warp processes columns
+#define COLS_PER_BLOCK_v4  (COLS_PER_WARP_v4 * WARPS_PER_BLOCK_v4)
+#define THREADS_PER_GROUP_v4 (WARP_SIZE / COLS_PER_WARP_v4)
 
 template <typename dtype>
 __global__ void gemv_kernel_v4(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
-    const size_t group_id = threadIdx.x / THREADS_PER_GROUP;
-    const size_t group_col = blockIdx.x * COLS_PER_BLOCK + group_id;
+    const size_t group_id = threadIdx.x / THREADS_PER_GROUP_v4;
+    const size_t group_col = blockIdx.x * COLS_PER_BLOCK_v4 + group_id;
 
     if (group_col >= N) return;
 
-    const size_t K_iters = div_ceil(K, THREADS_PER_GROUP);
-    const size_t group_lane_id = threadIdx.x % THREADS_PER_GROUP;
+    const size_t K_iters = div_ceil(K, THREADS_PER_GROUP_v4);
+    const size_t group_lane_id = threadIdx.x % THREADS_PER_GROUP_v4;
 
-    // dtype tmp = 0.0;
     float tmp = 0.0f;
 #pragma unroll
     for (size_t i = 0; i < K_iters; ++i) {
-        size_t A_idx = i * THREADS_PER_GROUP + group_lane_id;
-        size_t B_idx = i * THREADS_PER_GROUP + group_lane_id + group_col * K;
+        size_t A_idx = i * THREADS_PER_GROUP_v4 + group_lane_id;
+        size_t B_idx = i * THREADS_PER_GROUP_v4 + group_lane_id + group_col * K;
         if (A_idx < K) {
-            // tmp += A[A_idx] * B[B_idx];
             tmp += static_cast<float>(A[A_idx]) * static_cast<float>(B[B_idx]);
-            // tmp += __half2float(A[A_idx]) * __half2float(B[B_idx]);
-            // if constexpr (std::is_same_v<dtype, half>) {
-            //     tmp += __half2float(A[A_idx]) * __half2float(B[B_idx]);
-            // } else {
-            //     tmp += A[A_idx] * B[B_idx];
-            // }
         }
     }
 
     const unsigned int mask = 0xffffffff;
 #pragma unroll
-    for (size_t i = THREADS_PER_GROUP / 2; i >= 1; i /= 2) {
+    for (size_t i = THREADS_PER_GROUP_v4 / 2; i >= 1; i /= 2) {
         tmp += __shfl_xor_sync(mask, tmp, i);
     }
 
     if (group_lane_id == 0) {
-        // C[group_col] = tmp;
         C[group_col] = static_cast<dtype>(tmp);
-        // if constexpr (std::is_same_v<dtype, half>) {
-        //     // C[group_col] = static_cast<dtype>(tmp);
-        //     C[group_col] = __float2half(tmp);
-        // } else {
-        //     C[group_col] = tmp;
-        // }
     }
 }
 
 template<typename dtype>
 void gemv_v4(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
     // initThreadSmem(K);
-    dim3 block(THREADS_PER_BLOCK);
-    dim3 grid(div_ceil(N, COLS_PER_BLOCK));
+    dim3 block(THREADS_PER_BLOCK_v4);
+    dim3 grid(div_ceil(N, COLS_PER_BLOCK_v4));
     // gemv_kernel_v3<<<grid, block, K*sizeof(dtype)>>>(A, B, C, N, K);
     gemv_kernel_v4<<<grid, block>>>(A, B, C, N, K);
     CUDA_CHECK(cudaGetLastError());
@@ -325,54 +303,62 @@ template void gemv_v4<int>(const int* A, const int* B, int* C, size_t N, size_t 
 
 /************************************************************************************************************************************************************/
 /**
- * A and B must be aligned to 16 bytes, so use float4 maybe get error.
+ * if B is 4097 * 4097, the first row of B may be aligned to 16 bytes, 
+ * but if the second row is consecutive to the first row in memory, it not be aligned to 16 bytes
  */
-// #define WARP_SIZE 32
-// #define WARPS_PER_BLOCK 4
-// #define THREADS_PER_BLOCK 128  // WARP_SIZE * WARPS_PER_BLOCK
-// template<typename dtype>
-// __global__ void gemv_kernel_v5(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
-//     const size_t col = blockIdx.x * THREADS_PER_BLOCK + threadIdx.x;
-//     if (col >= N) return;
-// 
-//     // float tmp = 0.0;
-//     float4 tmp = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-// 
-//     // #pragma unroll
-//     for (size_t i = 0; i < K; i+=4) {
-//         // tmp += A[i] * B[i + col * K]; // B is col major
-//         if (i + 4 <= K) {
-//             // float4 a = reinterpret_cast<const float4*>(A)[i];
-//             // float4 b = reinterpret_cast<const float4*>(B)[col * K + i];
-//             float4 a = *(reinterpret_cast<const float4*>(A + i));
-//             float4 b = *(reinterpret_cast<const float4*>(B + col * K + i));
-//             // float4 a;
-//             // float4 b;
-//             tmp.x += a.x * b.x;
-//             tmp.y += a.y * b.y;
-//             tmp.z += a.z * b.z;
-//             tmp.w += a.w * b.w;
-//         } else {
-//             for (size_t j = i; j < K; ++j) {
-//                 // tmp.x += A[j] * B[j + col * K];
-//             }
-//         }
-//     }
-// 
-//     C[col] = tmp.x + tmp.y + tmp.z + tmp.w;
-// }
-// 
-// template<typename dtype>
-// void gemv_v5(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
-//     printf("N: %zu, K: %zu\n", N, K);
-//     dim3 block(THREADS_PER_BLOCK);
-//     dim3 grid(div_ceil(N, THREADS_PER_BLOCK));
-//     gemv_kernel_v5<<<grid, block>>>(A, B, C, N, K);
-//     CUDA_CHECK(cudaGetLastError());
-//     CUDA_CHECK(cudaDeviceSynchronize());
-// }
-// 
-// template void gemv_v5<float>(const float* A, const float* B, float* C, size_t N, size_t K);
-// template void gemv_v5<int>(const int* A, const int* B, int* C, size_t N, size_t K);
-// template void gemv_v5<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
+#define WARP_SIZE 32
+#define WARPS_PER_BLOCK 4
+#define THREADS_PER_BLOCK (WARP_SIZE * WARPS_PER_BLOCK)
+template<typename dtype>
+__global__ void gemv_kernel_v5(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
+    if constexpr (std::is_same_v<dtype, half>) {
+        // raise not support half error
+        assert(0);
+    } else {
+        const size_t col = blockIdx.x * THREADS_PER_BLOCK + threadIdx.x;
+        if (col >= N) return;
 
+        // float tmp = 0.0;
+        float4 tmp = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+
+        // #pragma unroll
+        for (size_t i = 0; i < K; i+=4) {
+            // tmp += A[i] * B[i + col * K]; // B is col major
+            if (i + 4 <= K) {
+                // float4 a = reinterpret_cast<const float4*>(A)[i];
+                // float4 b = reinterpret_cast<const float4*>(B)[col * K + i];
+                float4 a = *(reinterpret_cast<const float4*>(A + i));
+                float4 b = *(reinterpret_cast<const float4*>(B + col * K + i));
+                // float4 a;
+                // float4 b;
+                tmp.x += a.x * b.x;
+                tmp.y += a.y * b.y;
+                tmp.z += a.z * b.z;
+                tmp.w += a.w * b.w;
+            } else {
+                for (size_t j = i; j < K; ++j) {
+                    tmp.x += A[j] * B[j + col * K];
+                }
+            }
+        }
+
+        C[col] = tmp.x + tmp.y + tmp.z + tmp.w;
+    }
+}
+
+template<typename dtype>
+void gemv_v5(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
+    assert (K % 4 == 0); // else will raise misaligned address error.
+    dim3 block(THREADS_PER_BLOCK);
+    dim3 grid(div_ceil(N, THREADS_PER_BLOCK));
+    gemv_kernel_v5<<<grid, block>>>(A, B, C, N, K);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+template void gemv_v5<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
+template void gemv_v5<half>(const half* A, const half* B, half* C, size_t N, size_t K);
+template void gemv_v5<float>(const float* A, const float* B, float* C, size_t N, size_t K);
+template void gemv_v5<int>(const int* A, const int* B, int* C, size_t N, size_t K);
+
+/************************************************************************************************************************************************************/

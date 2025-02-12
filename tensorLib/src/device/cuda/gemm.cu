@@ -170,6 +170,8 @@ template<typename dtype>
 void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
     // printf("M: %d, N: %d, K: %d\n", M, N, K);
 
+
+    // maybe we can check if (K % 4 == 0) here, it it is true, use gemv which load float4, else just use gemv kernel.
     if (M == 1) {
         // use gemv kernel, see sgemv.cu
         // gemv_v0(lhs, rhs, result, N, K);

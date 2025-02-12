@@ -18,6 +18,12 @@ CUDA<dtype>::CUDA(size_t size) : Device<dtype>(size) {
     CUDA_CHECK(cudaMalloc(&this->data_, size * sizeof(dtype)));
 }
 
+// template <typename dtype>
+// CUDA<dtype>::CUDA(size_t size) : Device<dtype>(size) {
+//     // Allocate memory aligned to 16 bytes
+//     CUDA_CHECK(cudaMallocAligned(&this->data_, size * sizeof(dtype), 16));
+// }
+
 template <typename dtype>
 CUDA<dtype>::~CUDA() {
     // free a null prt get error: code: 4, reason: driver shutting down

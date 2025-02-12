@@ -231,8 +231,8 @@ int main(int argc, char *argv[]) {
     args.max_batch_size = 1; // set 1 first
     args.max_seq_len = 1024;
 
-    // auto generator = read_checkpoint<float>(argv[1]);
-    auto generator = read_checkpoint<half>(argv[1]);
-    // generator.text_completion(prompt);
-    generator.chat();
+    auto generator = read_checkpoint<float>(argv[1]);
+    // auto generator = read_checkpoint<half>(argv[1]);
+    generator.text_completion(prompt);
+    // generator.chat();
 }
