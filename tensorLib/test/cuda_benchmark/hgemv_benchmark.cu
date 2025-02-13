@@ -2,10 +2,12 @@
 #include "device/CUDA.hpp"
 
 #define M 1
-// #define N (4096)
-// #define K (4096)
-#define N (4096 + 1)
-#define K (4096 + 1)
+// #define N (8)
+// #define K (8)
+#define N (4096)
+#define K (4096)
+// #define N (4096 + 1)
+// #define K (4096 + 1)
 
 /************************************************************************************************************************************************************/
 
@@ -67,6 +69,7 @@ template<typename dtype> void gemv_v0(const dtype* A, const dtype* B, dtype* C, 
 template<typename dtype> void gemv_v3(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
 template<typename dtype> void gemv_v4(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
 template<typename dtype> void gemv_v5(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
+template<typename dtype> void gemv_v6(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
 
 /************************************************************************************************************************************************************/
 template<typename dtype, typename GemvFunc>
@@ -105,37 +108,40 @@ void profile(GemvFunc gemv, Tensor<dtype> A, Tensor<dtype> B, Tensor<dtype> C, T
     }
 }
 
+int main() {
+    Tensor<half> A = randn<half>({M, K}, "cuda");
+    Tensor<half> B = randn<half>({K, N}, "cuda");
+    // Tensor<half> A = full<half>({M, K}, 1, "cuda");
+    // Tensor<half> B = full<half>({K, N}, 1, "cuda");
+    Tensor<half> C = A.matmul(B.transpose(0, 1)); // B is col major, a little mess ... We can think that C is correctness
+
+    Tensor<half> C0 = full<half>({M, N}, 0, "cuda");
+    Tensor<half> C3 = full<half>({M, N}, 0, "cuda");
+    Tensor<half> C4 = full<half>({M, N}, 0, "cuda");
+    Tensor<half> C6 = full<half>({M, N}, 0, "cuda");
+
+    int repeat = 100;
+
+    profile(gemv_v0<half>, A, B, C0, C, repeat, "gemv_v0");
+    profile(gemv_v3<half>, A, B, C3, C, repeat, "gemv_v3");
+    profile(gemv_v4<half>, A, B, C4, C, repeat, "gemv_v4");
+    profile(gemv_v6<half>, A, B, C6, C, repeat, "gemv_v6");
+}
+
 // int main() {
-//     Tensor<half> A = randn<half>({M, K}, "cuda");
-//     Tensor<half> B = randn<half>({K, N}, "cuda");
-//     Tensor<half> C = A.matmul(B.transpose(0, 1)); // B is col major, a little mess ... We can think that C is correctness
+//     Tensor<float> A = randn<float>({M, K}, "cuda");
+//     Tensor<float> B = randn<float>({K, N}, "cuda");
+//     Tensor<float> C = A.matmul(B.transpose(0, 1)); // B is col major, a little mess ... We can think that C is correctness
 // 
-//     Tensor<half> C0 = full<half>({M, N}, 0, "cuda");
-//     Tensor<half> C3 = full<half>({M, N}, 0, "cuda");
-//     Tensor<half> C4 = full<half>({M, N}, 0, "cuda");
+//     Tensor<float> C0 = full<float>({M, N}, 0, "cuda");
+//     Tensor<float> C3 = full<float>({M, N}, 0, "cuda");
+//     Tensor<float> C4 = full<float>({M, N}, 0, "cuda");
+//     Tensor<float> C5 = full<float>({M, N}, 0, "cuda");
 // 
 //     int repeat = 50;
 // 
-//     profile(gemv_v0<half>, A, B, C0, repeat, "gemv_v0");
-//     profile(gemv_v3<half>, A, B, C3, repeat, "gemv_v3");
-//     profile(gemv_v4<half>, A, B, C4, repeat, "gemv_v4");
+//     profile(gemv_v0<float>, A, B, C0, C, repeat, "gemv_v0");
+//     profile(gemv_v3<float>, A, B, C3, C, repeat, "gemv_v3");
+//     profile(gemv_v4<float>, A, B, C4, C, repeat, "gemv_v4");
+//     profile(gemv_v5<float>, A, B, C5, C, repeat, "gemv_v5");
 // }
-
-int main() {
-    Tensor<float> A = randn<float>({M, K}, "cuda");
-    Tensor<float> B = randn<float>({K, N}, "cuda");
-    Tensor<float> C = A.matmul(B.transpose(0, 1)); // B is col major, a little mess ... We can think that C is correctness
-
-    Tensor<float> C0 = full<float>({M, N}, 0, "cuda");
-    Tensor<float> C3 = full<float>({M, N}, 0, "cuda");
-    Tensor<float> C4 = full<float>({M, N}, 0, "cuda");
-    Tensor<float> C5 = full<float>({M, N}, 0, "cuda");
-
-    int repeat = 50;
-
-    profile(gemv_v0<float>, A, B, C0, C, repeat, "gemv_v0");
-    profile(gemv_v3<float>, A, B, C3, C, repeat, "gemv_v3");
-    profile(gemv_v4<float>, A, B, C4, C, repeat, "gemv_v4");
-    profile(gemv_v5<float>, A, B, C5, C, repeat, "gemv_v5");
-}
-
