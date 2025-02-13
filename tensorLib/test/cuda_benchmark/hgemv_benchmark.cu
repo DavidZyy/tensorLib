@@ -70,6 +70,9 @@ template<typename dtype> void gemv_v3(const dtype* A, const dtype* B, dtype* C, 
 template<typename dtype> void gemv_v4(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
 template<typename dtype> void gemv_v5(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
 template<typename dtype> void gemv_v6(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
+template<typename dtype> void gemv_v7(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
+template<typename dtype> void gemv_v8(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
+// template<typename dtype> void gemv_v9(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
 
 /************************************************************************************************************************************************************/
 template<typename dtype, typename GemvFunc>
@@ -119,6 +122,9 @@ int main() {
     Tensor<half> C3 = full<half>({M, N}, 0, "cuda");
     Tensor<half> C4 = full<half>({M, N}, 0, "cuda");
     Tensor<half> C6 = full<half>({M, N}, 0, "cuda");
+    Tensor<half> C7 = full<half>({M, N}, 0, "cuda");
+    Tensor<half> C8 = full<half>({M, N}, 0, "cuda");
+    // Tensor<half> C9 = full<half>({M, N}, 0, "cuda");
 
     int repeat = 100;
 
@@ -126,6 +132,10 @@ int main() {
     profile(gemv_v3<half>, A, B, C3, C, repeat, "gemv_v3");
     profile(gemv_v4<half>, A, B, C4, C, repeat, "gemv_v4");
     profile(gemv_v6<half>, A, B, C6, C, repeat, "gemv_v6");
+    // profile(gemv_v7<half>, A, B, C7, C, repeat, "gemv_v7");
+    profile(gemv_v8<half>, A, B, C8, C, repeat, "gemv_v8");
+    // profile(gemv_v9<half>, A, B, C8, C, repeat, "gemv_v9");
+
 }
 
 // int main() {

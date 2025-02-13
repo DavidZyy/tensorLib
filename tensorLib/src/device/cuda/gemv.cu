@@ -185,22 +185,22 @@ template void gemv_v0<int>(const int* A, const int* B, int* C, size_t N, size_t 
 
 template <typename dtype>
 __global__ void gemv_kernel_v3(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
-    // if constexpr (std::is_same_v<dtype, half>) {
-        // __shared__ dtype A_smem[4096 * 4];
-    // } else {
-        __shared__ dtype A_smem[4096 * 2];
-    // }
-    size_t A_smem_iters = div_ceil(K, THREADS_PER_BLOCK_v3);
-
-#pragma unroll
-    for (size_t i = 0; i < A_smem_iters; ++i) {
-        size_t idx = i * THREADS_PER_BLOCK_v3 + threadIdx.x;
-        if (idx < K) {
-            A_smem[idx] = A[idx];
-        }
-    }
-
-    __syncthreads();
+//     // if constexpr (std::is_same_v<dtype, half>) {
+//         // __shared__ dtype A_smem[4096 * 4];
+//     // } else {
+//         __shared__ dtype A_smem[4096 * 2];
+//     // }
+//     size_t A_smem_iters = div_ceil(K, THREADS_PER_BLOCK_v3);
+// 
+// #pragma unroll
+//     for (size_t i = 0; i < A_smem_iters; ++i) {
+//         size_t idx = i * THREADS_PER_BLOCK_v3 + threadIdx.x;
+//         if (idx < K) {
+//             A_smem[idx] = A[idx];
+//         }
+//     }
+// 
+//     __syncthreads();
 
     const size_t warp_id = threadIdx.x / WARP_SIZE; // the warp index which this thread belongs to
     const size_t warp_col = blockIdx.x * WARPS_PER_BLOCK_v3 + warp_id; // the column index this warp will process
@@ -216,8 +216,8 @@ __global__ void gemv_kernel_v3(const dtype* A, const dtype* B, dtype* C, size_t 
         size_t A_idx = i * WARP_SIZE + lane_id;
         size_t B_idx = i * WARP_SIZE + lane_id + warp_col * K;
         if (A_idx < K) {
-            tmp += static_cast<float>(A_smem[A_idx]) * static_cast<float>(B[B_idx]);
-            // tmp += static_cast<float>(A[A_idx]) * static_cast<float>(B[B_idx]);
+            // tmp += static_cast<float>(A_smem[A_idx]) * static_cast<float>(B[B_idx]);
+            tmp += static_cast<float>(A[A_idx]) * static_cast<float>(B[B_idx]);
         }
     }
 
@@ -251,7 +251,7 @@ template void gemv_v3<int>(const int* A, const int* B, int* C, size_t N, size_t 
 #define WARPS_PER_BLOCK_v4 4
 #define THREADS_PER_BLOCK_v4 (WARP_SIZE * WARPS_PER_BLOCK_v4)
 
-#define COLS_PER_WARP_v4 4 // each warp processes columns
+#define COLS_PER_WARP_v4 1 // each warp processes columns
 #define COLS_PER_BLOCK_v4  (COLS_PER_WARP_v4 * WARPS_PER_BLOCK_v4)
 #define THREADS_PER_GROUP_v4 (WARP_SIZE / COLS_PER_WARP_v4)
 
@@ -372,6 +372,8 @@ __device__ __forceinline__ float warpReduceSum(float sum,
   return sum;
 }
 
+/************************************************************************************************************************************************************/
+// reference: git@github.com:wangsiping97/FastGEMV.git
 template<typename dtype>
 __global__ void gemv_kernel_v6(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
 if constexpr (std::is_same_v<dtype, half>) {
@@ -434,7 +436,7 @@ void gemv_v6(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
     assert (K % 4 == 0); // else will raise misaligned address error.
 
     int block_dim_x = 32; // number of threads handle a single row
-    int block_dim_y = 16; // number of rows handled by a single block
+    int block_dim_y = 4; // number of rows handled by a single block
 
     dim3 block(block_dim_x, block_dim_y);
     dim3 grid(1, div_ceil(N, block_dim_y));
@@ -449,3 +451,274 @@ template void gemv_v6<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_
 template void gemv_v6<half>(const half* A, const half* B, half* C, size_t N, size_t K);
 template void gemv_v6<float>(const float* A, const float* B, float* C, size_t N, size_t K);
 template void gemv_v6<int>(const int* A, const int* B, int* C, size_t N, size_t K);
+
+/************************************************************************************************************************************************************/
+
+// slower than v6 ...
+template<typename dtype>
+__global__ void gemv_kernel_v7(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
+if constexpr (std::is_same_v<dtype, half>) {
+    /////////////////////////////// load to shared memory ////////////////////////////////
+    __shared__ dtype A_smem[4096 * 2];
+
+    const size_t threads_per_block = blockDim.x * blockDim.y;
+    size_t thread_id = threadIdx.x + threadIdx.y * blockDim.x;
+
+    #pragma unroll
+    for (size_t i = thread_id; i < K; i += threads_per_block) {
+        A_smem[i] = A[i];
+    }
+
+    __syncthreads();
+    /////////////////////////////// compute ////////////////////////////////
+    const size_t tid = threadIdx.x;
+    const size_t col = blockIdx.y * blockDim.y + threadIdx.y;
+
+    float sum = 0.0f;
+
+    for (int i = tid * 8; i < K; i += 8 * blockDim.x) {
+        float4 a = *(reinterpret_cast<const float4*>(A_smem + i));
+        float4 b = *(reinterpret_cast<const float4*>(B + col * K + i));
+        // convert each float in float4 to half2
+        half2 a0 = *(reinterpret_cast<half2*>(&a.x));
+        half2 a1 = *(reinterpret_cast<half2*>(&a.y));
+        half2 a2 = *(reinterpret_cast<half2*>(&a.z));
+        half2 a3 = *(reinterpret_cast<half2*>(&a.w));
+        half2 b0 = *(reinterpret_cast<half2*>(&b.x));
+        half2 b1 = *(reinterpret_cast<half2*>(&b.y));
+        half2 b2 = *(reinterpret_cast<half2*>(&b.z));
+        half2 b3 = *(reinterpret_cast<half2*>(&b.w));
+        sum += __half2float(a0.x) * __half2float(b0.x);
+        sum += __half2float(a0.y) * __half2float(b0.y);
+        sum += __half2float(a1.x) * __half2float(b1.x);
+        sum += __half2float(a1.y) * __half2float(b1.y);
+        sum += __half2float(a2.x) * __half2float(b2.x);
+        sum += __half2float(a2.y) * __half2float(b2.y);
+        sum += __half2float(a3.x) * __half2float(b3.x);
+        sum += __half2float(a3.y) * __half2float(b3.y);
+    }
+
+    sum = warpReduceSum(sum, blockDim.x);
+
+    if (blockDim.x <= WARP_SIZE) {
+        if (tid == 0) {
+          C[col] = __float2half(sum);
+        }
+    } else {
+        assert(0);
+    }
+
+//     const unsigned int mask = 0xffffffff;
+//     #pragma unroll
+//     for (size_t i = blockDim.x / 2; i >= 1; i /= 2) {
+//         sum += __shfl_xor_sync(mask, sum, i);
+//     }
+// 
+//     if (tid == 0) {
+//         C[col] = static_cast<dtype>(sum);
+//     }
+
+} 
+}
+
+template<typename dtype>
+void gemv_v7(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
+    assert (K % 4 == 0); // else will raise misaligned address error.
+
+    int block_dim_x = 32; // number of threads handle a single row
+    int block_dim_y = 16; // number of rows handled by a single block
+
+    dim3 block(block_dim_x, block_dim_y);
+    dim3 grid(1, div_ceil(N, block_dim_y));
+
+    gemv_kernel_v7<<<grid, block>>>(A, B, C, N, K);
+
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+template void gemv_v7<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
+template void gemv_v7<half>(const half* A, const half* B, half* C, size_t N, size_t K);
+template void gemv_v7<float>(const float* A, const float* B, float* C, size_t N, size_t K);
+template void gemv_v7<int>(const int* A, const int* B, int* C, size_t N, size_t K);
+
+/************************************************************************************************************************************************************/
+
+template<typename dtype>
+__global__ void gemv_kernel_v8(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
+if constexpr (std::is_same_v<dtype, half>) {
+
+    const size_t tid = threadIdx.x;
+    const size_t col = blockIdx.y * blockDim.y + threadIdx.y;
+
+    float sum = 0.0f;
+
+    for (int i = tid * 8; i < K; i += 8 * blockDim.x) {
+        float4 a = *(reinterpret_cast<const float4*>(A + i));
+        float4 b = *(reinterpret_cast<const float4*>(B + col * K + i));
+        // convert each float in float4 to half2
+        half2 a0 = *(reinterpret_cast<half2*>(&a.x));
+        half2 a1 = *(reinterpret_cast<half2*>(&a.y));
+        half2 a2 = *(reinterpret_cast<half2*>(&a.z));
+        half2 a3 = *(reinterpret_cast<half2*>(&a.w));
+        half2 b0 = *(reinterpret_cast<half2*>(&b.x));
+        half2 b1 = *(reinterpret_cast<half2*>(&b.y));
+        half2 b2 = *(reinterpret_cast<half2*>(&b.z));
+        half2 b3 = *(reinterpret_cast<half2*>(&b.w));
+        sum += __half2float(a0.x) * __half2float(b0.x);
+        sum += __half2float(a0.y) * __half2float(b0.y);
+        sum += __half2float(a1.x) * __half2float(b1.x);
+        sum += __half2float(a1.y) * __half2float(b1.y);
+        sum += __half2float(a2.x) * __half2float(b2.x);
+        sum += __half2float(a2.y) * __half2float(b2.y);
+        sum += __half2float(a3.x) * __half2float(b3.x);
+        sum += __half2float(a3.y) * __half2float(b3.y);
+    }
+
+    sum = warpReduceSum(sum, blockDim.x);
+
+    if (blockDim.x <= WARP_SIZE) {
+        if (tid == 0) {
+          C[col] = __float2half(sum);
+        }
+        return;
+    }
+
+
+    assert(blockDim.y <= 32); // row num
+    assert(blockDim.x <= WARP_SIZE * WARP_SIZE);
+
+    __shared__ float warpLevelSums[32][WARP_SIZE];
+
+    const int laneId = threadIdx.x % WARP_SIZE;
+    const int warpId = threadIdx.x / WARP_SIZE;
+
+    if (laneId == 0) {
+        warpLevelSums[threadIdx.y][warpId] = sum;
+    }
+
+    __syncthreads();
+
+    if (threadIdx.x < blockDim.x / WARP_SIZE) {
+        sum = warpLevelSums[threadIdx.y][laneId];
+    } else {
+        sum = 0.0f;
+    }
+
+    if (warpId == 0) {
+        sum = warpReduceSum(sum, blockDim.x / WARP_SIZE);
+    }
+
+    if (tid == 0) {
+        C[col] = __float2half(sum);
+    }
+
+
+} else {
+    assert(0);
+}
+
+}
+
+template<typename dtype>
+void gemv_v8(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
+    assert (K % 4 == 0); // else will raise misaligned address error.
+
+    int block_dim_x = 32; // number of threads handle a single row
+    int block_dim_y = 4; // number of rows handled by a single block
+
+    dim3 block(block_dim_x, block_dim_y);
+    dim3 grid(1, div_ceil(N, block_dim_y));
+
+    gemv_kernel_v8<<<grid, block>>>(A, B, C, N, K);
+
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+}
+
+template void gemv_v8<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
+template void gemv_v8<half>(const half* A, const half* B, half* C, size_t N, size_t K);
+template void gemv_v8<float>(const float* A, const float* B, float* C, size_t N, size_t K);
+template void gemv_v8<int>(const int* A, const int* B, int* C, size_t N, size_t K);
+
+/************************************************************************************************************************************************************/
+
+// copy from reference 2, not quicker than other.
+// __global__ void gemv_fp16(const half* mat, const half* vec, half* res, unsigned int n,
+//                           unsigned int num_per_thread) {
+//   float sum = 0;
+//   // each thread load num_per_thread elements from global
+//   unsigned int tid = threadIdx.x;
+//   unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
+//   unsigned int start_idx = threadIdx.x;
+//   const float4* mat4 = reinterpret_cast<const float4*>(mat);
+//   const float4* vec4 = reinterpret_cast<const float4*>(vec);
+// 
+// #pragma unroll
+//   for (int iter = 0; iter < num_per_thread >> 3; iter++) {
+//     unsigned int j = start_idx + iter * blockDim.x;
+//     if (j < n >> 3) {
+//       float4 vec_val = vec4[j];
+//       float4 mat_val = mat4[row * (n >> 3) + j];
+//       const half2* vec_h1 = (half2*)&vec_val.x;
+//       const half2* vec_h2 = (half2*)&vec_val.y;
+//       const half2* vec_h3 = (half2*)&vec_val.z;
+//       const half2* vec_h4 = (half2*)&vec_val.w;
+//       const half2* mat_h1 = (half2*)&mat_val.x;
+//       const half2* mat_h2 = (half2*)&mat_val.y;
+//       const half2* mat_h3 = (half2*)&mat_val.z;
+//       const half2* mat_h4 = (half2*)&mat_val.w;
+//       sum += static_cast<float>(vec_h1->x) * static_cast<float>(mat_h1->x);
+//       sum += static_cast<float>(vec_h1->y) * static_cast<float>(mat_h1->y);
+//       sum += static_cast<float>(vec_h2->x) * static_cast<float>(mat_h2->x);
+//       sum += static_cast<float>(vec_h2->y) * static_cast<float>(mat_h2->y);
+//       sum += static_cast<float>(vec_h3->x) * static_cast<float>(mat_h3->x);
+//       sum += static_cast<float>(vec_h3->y) * static_cast<float>(mat_h3->y);
+//       sum += static_cast<float>(vec_h4->x) * static_cast<float>(mat_h4->x);
+//       sum += static_cast<float>(vec_h4->y) * static_cast<float>(mat_h4->y);
+//     }
+//   }
+// 
+//   sum = warpReduceSum(sum, blockDim.x);
+// 
+//   if (blockDim.x <= WARP_SIZE) {
+//     if (tid == 0) {
+//       res[row] = __float2half(sum);
+//     }
+//     return;
+//   }
+// 
+//   // Shared mem for partial sums (one per warp in the block)
+//   static __shared__ float warpLevelSums[32][WARP_SIZE];
+//   const int laneId = threadIdx.x % WARP_SIZE;
+//   const int warpId = threadIdx.x / WARP_SIZE;
+//   if (laneId == 0) warpLevelSums[threadIdx.y][warpId] = sum;
+//   __syncthreads();
+//   // read from shared memory only if that warp existed
+//   sum = (threadIdx.x < blockDim.x / WARP_SIZE)
+//             ? warpLevelSums[threadIdx.y][laneId]
+//             : 0.0;
+//   // Final reduce using first warp
+//   if (warpId == 0) sum = warpReduceSum(sum, blockDim.x / WARP_SIZE);
+//   if (tid == 0) {
+//     res[row] = __float2half(sum);
+//   }
+// }
+// 
+// template<typename dtype>
+// void gemv_v9(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
+//     assert (K % 4 == 0); // else will raise misaligned address error.
+// 
+//     int block_dim_x = 32 * 4; // number of threads handle a single row
+//     int block_dim_y = 4; // number of rows handled by a single block
+// 
+//     dim3 block(block_dim_x, block_dim_y);
+//     dim3 grid(1, div_ceil(N, block_dim_y));
+// 
+//     gemv_fp16<<<grid, block>>>(B, A,  C, N, K / block_dim_x);
+// 
+//     CUDA_CHECK(cudaGetLastError());
+//     CUDA_CHECK(cudaDeviceSynchronize());
+// }
+// 
+// template void gemv_v9<half>(const half* A, const half* B, half* C, size_t N, size_t K);
