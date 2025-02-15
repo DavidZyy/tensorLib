@@ -722,3 +722,43 @@ template void gemv_v8<int>(const int* A, const int* B, int* C, size_t N, size_t 
 // }
 // 
 // template void gemv_v9<half>(const half* A, const half* B, half* C, size_t N, size_t K);
+
+/************************************************************************************************************************************************************/
+
+template<typename dtype>
+void gemv_cublasSgemv(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
+if constexpr (std::is_same<dtype, float>::value) {
+
+    // Create a handle for cuBLAS
+    cublasHandle_t handle;
+    cublasCreate(&handle);
+
+    // Define scalars alpha and beta
+    dtype alpha = 1.0f, beta = 0.0f;
+
+    CUBLAS_CHECK(cublasSgemv(
+        handle,               // cuBLAS handle
+        CUBLAS_OP_T,          // No transpose on Matrix
+        K,                    // Number of rows in A
+        N,                    // Number of columns in A
+        &alpha,               // Scalar multiplier for A * B
+        B, K,                 // Matrix  (size N x K)
+        A, 1,                 // Vector  (size K)
+        &beta,                // Scalar multiplier for C
+        C, 1                  // Resulting vector C (size N)
+    ));
+
+    // Clean up cuBLAS handle
+    cublasDestroy(handle);
+
+} else {
+    throw std::runtime_error("gemv_cublasSgemv only supports float.");
+}
+
+}
+
+template void gemv_cublasSgemv<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
+template void gemv_cublasSgemv<half>(const half* A, const half* B, half* C, size_t N, size_t K);
+template void gemv_cublasSgemv<float>(const float* A, const float* B, float* C, size_t N, size_t K);
+template void gemv_cublasSgemv<int>(const int* A, const int* B, int* C, size_t N, size_t K);
+/************************************************************************************************************************************************************/

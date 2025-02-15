@@ -155,12 +155,14 @@ void CUDA<dtype>::matmul2d_Cublas(const dtype* lhs, const dtype* rhs, dtype* res
 }
 /************************************************************************************************************************************************************/
 
-template<typename dtype> void gemv_v0(const dtype* A, const dtype* B, dtype* C,  size_t N, size_t K);
+template<typename dtype> void gemv_v0(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
 template<typename dtype> void gemv_v1(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
 template<typename dtype> void gemv_v2(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
 template<typename dtype> void gemv_v3(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
 template<typename dtype> void gemv_v4(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
 template<typename dtype> void gemv_v5(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
+template<typename dtype> void gemv_v6(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
+template<typename dtype> void gemv_cublasSgemv(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
 
 /************************************************************************************************************************************************************/
 /**
@@ -181,6 +183,15 @@ void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, si
         gemv_v4(lhs, rhs, result, N, K);
         // gemv_v5(lhs, rhs, result, N, K);
         // matmul2dImplV0(lhs, rhs, result, M, N, K);
+        // gemv_cublasSgemv(lhs, rhs, result, N, K);
+
+        // lhs and rhs align to 16 bytes, use gemv kernel
+//         if (K % 4 == 0 && ((size_t)lhs % 16 == 0) && ((size_t)rhs % 16 == 0)) {
+//             gemv_v6(lhs, rhs, result, N, K);
+//         } else {
+//             gemv_v4(lhs, rhs, result, N, K);
+//         }
+
     } else {
         // v0
         matmul2dImplV0(lhs, rhs, result, M, N, K);
