@@ -5,6 +5,7 @@
 #include <cmath>
 #include <optional>
 #include <vector>
+#include "Log.hpp"
 
 template <typename dtype>
 Attention<dtype>::Attention(ModelArgs args, std::string device_type) : nn::Module<dtype>(device_type) {
@@ -196,8 +197,10 @@ Tensor<dtype> Transformer<dtype>::forward(const Tensor<int>& tokens, int start_p
         h = layer->forward(h, start_pos, freqs, mask);
         // std::cout << "layer " << i << " done" << std::endl;
         // std::cout << h << std::endl;
+        // LOG_INFO("\n");
     }
     h = this->norm.forward(h);
     auto result = this->output.forward(h);
+    // LOG_INFO("\n\n");
     return result;
 }

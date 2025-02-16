@@ -180,17 +180,17 @@ void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, si
         // gemv_v1(lhs, rhs, result, N, K);
         // gemv_v2(lhs, rhs, result, N, K);
         // gemv_v3(lhs, rhs, result, N, K);
-        gemv_v4(lhs, rhs, result, N, K);
+        // gemv_v4(lhs, rhs, result, N, K);
         // gemv_v5(lhs, rhs, result, N, K);
         // matmul2dImplV0(lhs, rhs, result, M, N, K);
         // gemv_cublasSgemv(lhs, rhs, result, N, K);
 
         // lhs and rhs align to 16 bytes, use gemv kernel
-//         if (K % 4 == 0 && ((size_t)lhs % 16 == 0) && ((size_t)rhs % 16 == 0)) {
-//             gemv_v6(lhs, rhs, result, N, K);
-//         } else {
-//             gemv_v4(lhs, rhs, result, N, K);
-//         }
+        if (K == 11008 || K == 4096) {
+            gemv_v6(lhs, rhs, result, N, K);
+        } else {
+            gemv_v4(lhs, rhs, result, N, K);
+        }
 
     } else {
         // v0

@@ -13,7 +13,7 @@ public:
         tokenizer(tokenizer_path, 32000), 
         device_type(device_type) 
         {}
-    Tensor<dtype> generate(std::vector<int> prompt_tokens);
+    void generate(std::vector<int> prompt_tokens);
     void text_completion(const std::string& prompts);
     void chat();
 // private:
