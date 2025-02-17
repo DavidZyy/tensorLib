@@ -65,6 +65,7 @@ bool check_equal(const Tensor<T>& a, const Tensor<T>& b) {
 }
 
 /************************************************************************************************************************************************************/
+
 template<typename dtype> void gemv_v0(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
 template<typename dtype> void gemv_v3(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
 template<typename dtype> void gemv_v4(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);

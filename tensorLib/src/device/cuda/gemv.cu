@@ -518,7 +518,7 @@ if constexpr (std::is_same_v<dtype, half>) {
 //         C[col] = static_cast<dtype>(sum);
 //     }
 
-} 
+}
 }
 
 template<typename dtype>

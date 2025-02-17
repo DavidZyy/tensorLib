@@ -1,5 +1,12 @@
-// the file provides various versions of single matrix multiplication (sgemm) using different techniques to optimize the performance.
-// using cuda core, not tensor core.
+/**
+ * @file gemm.cu
+ * @author Yangyang Zhu (1929772352@qq.com)
+ * @version 0.1
+ * @date 2025-02-17
+ * 
+ * @copyright Copyright (c) 2025
+ * this file provides gemm kernels which support dtype (both half and float)
+ */
 #include "device/CUDA.hpp"
 #include <iostream>
 
@@ -85,7 +92,7 @@ void CUDA<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
  * @tparam dtype 
  */
 template <typename dtype>
-__global__ void matmul2dKernelV0(const dtype* lhs, const dtype* rhs, dtype* result,
+__global__ void gemm_kernel_v0(const dtype* lhs, const dtype* rhs, dtype* result,
                                size_t M, size_t N, size_t K)
 {
     size_t i = blockIdx.x * blockDim.x + threadIdx.x;  // Row index
@@ -115,44 +122,18 @@ __global__ void matmul2dKernelV0(const dtype* lhs, const dtype* rhs, dtype* resu
 }
 
 template<typename dtype>
-void matmul2dImplV0(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
+void gemm_v0(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
     dim3 threadsPerBlock(16, 16);  // Define block size (16x16 is a typical choice, can be adjusted)
     dim3 numBlocks((M + threadsPerBlock.x - 1) / threadsPerBlock.x,
                    (N + threadsPerBlock.y - 1) / threadsPerBlock.y);  // Number of blocks
 
-    matmul2dKernelV0<<<numBlocks, threadsPerBlock>>>(lhs, rhs, result, M, N, K);
+    gemm_kernel_v0<<<numBlocks, threadsPerBlock>>>(lhs, rhs, result, M, N, K);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 }
 
-/************************************************************************************************************************************************************/
-/**
- * block matrix multiplication
- * @tparam dtype 
- */
-template <typename dtype>
-__global__ void matmulKernelV1(const dtype* lhs, const dtype* rhs, dtype* result, 
-                               size_t M, size_t N, size_t K) 
-{
-    // to be implemented
-}
-
-/************************************************************************************************************************************************************/
-/**
- * cublas implementation of 2D matrix multiplication
- * @tparam dtype 
- */
-template<typename dtype>
-void CUDA<dtype>::matmul2d_Cublas(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
-    if constexpr (std::is_same<dtype, float>::value) {
-        cublasHandle_t handle;
-        CUBLAS_CHECK(cublasCreate(&handle));
-        float alpha = 1.0f;
-        float beta = 0.0f;
-        CUBLAS_CHECK(cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, N, M, K, &alpha, rhs, N, lhs, K, &beta, result, N));
-        CUBLAS_CHECK(cublasDestroy(handle));
-    }
-}
+template void gemm_v0<half>(const half* A, const half* B, half* C, size_t m, size_t n, size_t k);
+template void gemm_v0<float>(const float* A, const float* B, float* C, size_t m, size_t n, size_t k);
 /************************************************************************************************************************************************************/
 
 template<typename dtype> void gemv_v0(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
@@ -164,39 +145,27 @@ template<typename dtype> void gemv_v5(const dtype* A, const dtype* B, dtype* C, 
 template<typename dtype> void gemv_v6(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
 template<typename dtype> void gemv_cublasSgemv(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
 
+void hgemm_cublas(const half* lhs, const half* rhs, half* result, size_t M, size_t N, size_t K);
 /************************************************************************************************************************************************************/
 /**
  * NOTE: lhs is row major, rhs is col major !!!
  */
 template<typename dtype>
 void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
-    // printf("M: %d, N: %d, K: %d\n", M, N, K);
-
-
-    // maybe we can check if (K % 4 == 0) here, it it is true, use gemv which load float4, else just use gemv kernel.
     if (M == 1) {
-        // use gemv kernel, see sgemv.cu
-        // gemv_v0(lhs, rhs, result, N, K);
-        // gemv_v1(lhs, rhs, result, N, K);
-        // gemv_v2(lhs, rhs, result, N, K);
-        // gemv_v3(lhs, rhs, result, N, K);
-        // gemv_v4(lhs, rhs, result, N, K);
-        // gemv_v5(lhs, rhs, result, N, K);
-        // matmul2dImplV0(lhs, rhs, result, M, N, K);
-        // gemv_cublasSgemv(lhs, rhs, result, N, K);
-
-        // lhs and rhs align to 16 bytes, use gemv kernel
+        // use gemv kernel
         if (K == 11008 || K == 4096) {
+            // lhs and rhs align to 16 bytes, use gemv_6 kernel
             gemv_v6(lhs, rhs, result, N, K);
         } else {
             gemv_v4(lhs, rhs, result, N, K);
         }
-
     } else {
-        // v0
-        matmul2dImplV0(lhs, rhs, result, M, N, K);
-    }
+        gemm_v0(lhs, rhs, result, M, N, K);
 
-    // use cublas
-    // matmul2d_Cublas(lhs, rhs, result, M, N, K);
+        // if dtype is half
+        // if constexpr (std::is_same<dtype, half>::value) {
+        //     hgemm_cublas(lhs, rhs, result, M, N, K);
+        // } 
+    }
 }

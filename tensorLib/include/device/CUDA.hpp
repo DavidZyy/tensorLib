@@ -26,7 +26,7 @@ public:
         size_t K) override;
  
     void matmul2d(const dtype* A, const dtype* B, dtype* C, size_t M, size_t N, size_t K) override;
-    void matmul2d_Cublas(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K);
+    // void matmul2d_Cublas(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K);
 
     dtype* getDataPtr() override { return data_; }
     void full (size_t num_elements, dtype fill_value) override;

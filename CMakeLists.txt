@@ -100,11 +100,15 @@ target_link_libraries(tensorLib PRIVATE ${CUDA_LIBRARIES} cublas)
 #     tensorLib/include
 # )
 ################################## cuda kernel benchmark ##########################################################
-add_executable(hgemv_benchmark
-    tensorLib/test/cuda_benchmark/hgemv_benchmark.cu
-)
+# add_executable(gemv_benchmark
+#     tensorLib/test/cuda_benchmark/gemv_benchmark.cu
+# )
+# target_link_libraries(gemv_benchmark PRIVATE tensorLib)
 
-target_link_libraries(hgemv_benchmark PRIVATE tensorLib)
+add_executable(gemm_benchmark
+    tensorLib/test/cuda_benchmark/gemm_benchmark.cu
+)
+target_link_libraries(gemm_benchmark PRIVATE tensorLib)
 ################################## llama2 ##########################################################
 add_executable(llama2
     model/llama2_7b/src/main.cpp 
@@ -116,9 +120,7 @@ add_executable(llama2
 target_include_directories(llama2 PUBLIC 
     model/llama2_7b/include
 )
-
 target_link_libraries(llama2 PRIVATE tensorLib)
-
 ################################## tensor_bindings module ##########################################################
 # # Set the PYBIND11_FINDPYTHON option to ON
 # set(PYBIND11_FINDPYTHON ON)

@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <unistd.h> // Add this line at the top of your file
+#include <chrono>
 
 // const std::string prompt = "Once";
 // const std::string prompt = "";
@@ -214,7 +215,15 @@ Llama2<dtype> read_checkpoint(char * checkpoint) {
     // auto generator = Llama2<dtype>(tokenizer_path, args, "cpu");
     auto generator = Llama2<dtype>(tokenizer_path, args, "cuda");
 
+    std::cout <<"Loading model weights..." << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+
     read_weights<dtype>(checkpoint, generator, shared_weight);
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_time = end - start;
+    std::cout << "Load time: " << elapsed_time.count() << " seconds" << std::endl;
+
     return generator;
 }
 
