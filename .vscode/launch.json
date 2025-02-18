@@ -20,15 +20,14 @@
     "type": "cppdbg",
     "request": "launch",
     "MIMode": "gdb",
-    "program": "${workspaceFolder}/build/${fileBasenameNoExtension}",
-    // "program": "${workspaceFolder}/build/llama2",
+    // "program": "${workspaceFolder}/build/${fileBasenameNoExtension}",
+    "program": "${workspaceFolder}/build/llama2",
     // "program": "${workspaceFolder}/build/test_fp16",
     // "program": "${workspaceFolder}/build/test_rms_norm",
     // "program": "${workspaceFolder}/build/sgemm_benchmark",
     "args": [
       // "../llama2_7b.bin",
-      // "../llama2_7b_chat.bin",
-      // "/root/autodl-tmp/llama2.c/llama2_7b_f16.bin"
+      "../llama2_7b_chat.bin",
       // "../stories15M.bin",
       // "../stories42M.bin",
       // "../stories110M.bin",

@@ -92,15 +92,12 @@ void CUDA<dtype>::matmul(const dtype* lhs, const dtype* rhs, dtype* result,
  * @tparam dtype 
  */
 template <typename dtype>
-__global__ void gemm_kernel_v0(const dtype* lhs, const dtype* rhs, dtype* result,
-                               size_t M, size_t N, size_t K)
-{
+__global__ void gemm_kernel_v0(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K) {
     size_t i = blockIdx.x * blockDim.x + threadIdx.x;  // Row index
     size_t j = blockIdx.y * blockDim.y + threadIdx.y;  // Column index
 
     if (i < M && j < N) {
 
-        // dtype sum = 0;
         float sum = 0.0f;
 
         #pragma unroll
@@ -135,7 +132,7 @@ void gemm_v0(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t
 template void gemm_v0<half>(const half* A, const half* B, half* C, size_t m, size_t n, size_t k);
 template void gemm_v0<float>(const float* A, const float* B, float* C, size_t m, size_t n, size_t k);
 /************************************************************************************************************************************************************/
-
+// gemv
 template<typename dtype> void gemv_v0(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
 template<typename dtype> void gemv_v1(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
 template<typename dtype> void gemv_v2(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
@@ -145,7 +142,10 @@ template<typename dtype> void gemv_v5(const dtype* A, const dtype* B, dtype* C, 
 template<typename dtype> void gemv_v6(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
 template<typename dtype> void gemv_cublasSgemv(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K);
 
+// gemm
 void hgemm_cublas(const half* lhs, const half* rhs, half* result, size_t M, size_t N, size_t K);
+void hgemm_v0(const half* lhs, const half* rhs, half* result, size_t M, size_t N, size_t K);
+
 /************************************************************************************************************************************************************/
 /**
  * NOTE: lhs is row major, rhs is col major !!!
@@ -161,11 +161,12 @@ void CUDA<dtype>::matmul2d(const dtype* lhs, const dtype* rhs, dtype* result, si
             gemv_v4(lhs, rhs, result, N, K);
         }
     } else {
-        gemm_v0(lhs, rhs, result, M, N, K);
+        // gemm_v0(lhs, rhs, result, M, N, K);
 
         // if dtype is half
-        // if constexpr (std::is_same<dtype, half>::value) {
-        //     hgemm_cublas(lhs, rhs, result, M, N, K);
-        // } 
+        if constexpr (std::is_same<dtype, half>::value) {
+            hgemm_cublas(lhs, rhs, result, M, N, K);
+            // hgemm_v0(lhs, rhs, result, M, N, K);
+        } 
     }
 }

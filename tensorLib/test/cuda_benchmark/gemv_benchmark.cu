@@ -1,5 +1,6 @@
 #include "Tensor.hpp"
 #include "device/CUDA.hpp"
+#include "test.hpp"
 
 #define M 1
 // #define N (16)
@@ -8,61 +9,6 @@
 // #define K (4096 * 1)
 #define N (11008)
 #define K (11008)
-
-/************************************************************************************************************************************************************/
-
-// Helper CUDA kernel to compare tensors element-wise
-template <typename T>
-__global__ void compare_kernel(const T* a_data, const T* b_data, size_t num_elements, bool* result_flag) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < num_elements) {
-        float a, b;
-        if constexpr (std::is_same_v<T, half>) {
-            // Convert half to float for comparison
-            a = __half2float(a_data[idx]);
-            b = __half2float(b_data[idx]);
-        } else {
-            a = a_data[idx];
-            b = b_data[idx];
-        }
-
-        // Compare the elements, and if they are different, set the flag
-        if (fabs(a - b) >= 1e-1) {
-            printf("idx: %d, a: %f, b: %f\n", idx, a, b);
-            *result_flag = false; // Set result flag to false if difference is found
-        }
-    }
-}
-
-// Function to check equality of two tensors
-template <typename T>
-bool check_equal(const Tensor<T>& a, const Tensor<T>& b) {
-    if (a.num_elements != b.num_elements) {
-        std::cerr << "Tensors have different sizes!" << std::endl;
-        return false;
-    }
-
-    // Allocate memory for a flag on the device to indicate equality
-    bool* d_result_flag;
-    bool h_result_flag = true; // Initialize to true (assume equality)
-    cudaMalloc(&d_result_flag, sizeof(bool));
-    cudaMemcpy(d_result_flag, &h_result_flag, sizeof(bool), cudaMemcpyHostToDevice);
-
-    // Launch kernel to compare the tensors
-    int block_size = 256; // Choose an appropriate block size
-    int grid_size = (a.num_elements + block_size - 1) / block_size;
-    compare_kernel<<<grid_size, block_size>>>(a.device->getDataPtr(), b.device->getDataPtr(), a.num_elements, d_result_flag);
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
-
-    // Copy the result flag back to the host
-    cudaMemcpy(&h_result_flag, d_result_flag, sizeof(bool), cudaMemcpyDeviceToHost);
-
-    // Free the device memory for the flag
-    cudaFree(d_result_flag);
-
-    return h_result_flag; // Return whether the tensors are equal
-}
 
 /************************************************************************************************************************************************************/
 
@@ -77,6 +23,7 @@ template<typename dtype> void gemv_v8(const dtype* A, const dtype* B, dtype* C, 
 template<typename dtype> void gemv_cublasSgemv(const dtype* A, const dtype* B, dtype* C, size_t n, size_t k);
 
 /************************************************************************************************************************************************************/
+
 template<typename dtype, typename GemvFunc>
 float timer(GemvFunc gemv, Tensor<dtype> A, Tensor<dtype> B, Tensor<dtype> C, int repeat) {
     cudaEvent_t start, end;
@@ -112,6 +59,8 @@ void profile(GemvFunc gemv, Tensor<dtype> A, Tensor<dtype> B, Tensor<dtype> C, T
         std::cout << "failed!" << std::endl;
     }
 }
+
+/************************************************************************************************************************************************************/
 
 int main() {
     Tensor<half> A = randn<half>({M, K}, "cuda");

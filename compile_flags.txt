@@ -1,5 +1,6 @@
 -I./tensorLib/include
 -I./model/llama2_7b/include
+-I./tensorLib/test/include
 -I/home/zhuyangyang/miniconda3/envs/llm/bin/python3
 -I/usr/local/cuda/include
 -std=c++17
