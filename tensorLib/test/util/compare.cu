@@ -73,7 +73,7 @@ float get_max_abs_difference(const Tensor<T>& a, const Tensor<T>& b) {
     int grid_size = (a.num_elements + block_size - 1) / block_size;
     compare_max_kernel<<<grid_size, block_size>>>(a.device->getDataPtr(), b.device->getDataPtr(), a.num_elements, d_max_diff);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 
     // Copy the max difference back to the host
     cudaMemcpy(&h_max_diff, d_max_diff, sizeof(float), cudaMemcpyDeviceToHost);
@@ -125,7 +125,7 @@ bool check_equal(const Tensor<T>& a, const Tensor<T>& b) {
     int grid_size = (a.num_elements + block_size - 1) / block_size;
     compare_kernel<<<grid_size, block_size>>>(a.device->getDataPtr(), b.device->getDataPtr(), a.num_elements, d_result_flag);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 
     // Copy the result flag back to the host
     cudaMemcpy(&h_result_flag, d_result_flag, sizeof(bool), cudaMemcpyDeviceToHost);

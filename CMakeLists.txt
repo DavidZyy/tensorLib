@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
+set(CMAKE_CUDA_ARCHITECTURES 61 75)  # Adjust with your desired GPU architecture(s)
 project(MyProject LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)

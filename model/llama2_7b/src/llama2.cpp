@@ -99,7 +99,7 @@ void Llama2<dtype>::chat() {
      If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.";
     char rendered_prompt[1152];
     char user_template[] = "[INST] %s [/INST]";
-    while (true) {
+    // while (true) {
         // user input prompt
         std::cout<< "> ";
         // read_stdin(user_prompt, sizeof(user_prompt));
@@ -112,5 +112,5 @@ void Llama2<dtype>::chat() {
         std::vector<int> prompt_tokens = this->tokenizer.encode(prompts, true, false);
         // auto generation_tokens = generate(prompt_tokens);
         generate(prompt_tokens);
-    }
+    // }
 }

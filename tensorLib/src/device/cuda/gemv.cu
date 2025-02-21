@@ -63,7 +63,7 @@ void gemv_v0(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
     dim3 grid(div_ceil(N, THREADS_PER_BLOCK_v0));
     gemv_kernel_v0<<<grid, block>>>(A, B, C, N, K);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 template void gemv_v0<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
@@ -124,7 +124,7 @@ template void gemv_v0<int>(const int* A, const int* B, int* C, size_t N, size_t 
 //     // static size_t smm = 4*256;
 //     // gemvKernelV1<<<grid, block, smm>>>(A, B, C, M, N, K);
 //     CUDA_CHECK(cudaGetLastError());
-//     CUDA_CHECK(cudaDeviceSynchronize());
+//     // CUDA_CHECK(cudaDeviceSynchronize());
 // }
 // 
 // template void gemv_v1<float>(const float* A, const float* B, float* C, size_t N, size_t K);
@@ -172,7 +172,7 @@ template void gemv_v0<int>(const int* A, const int* B, int* C, size_t N, size_t 
 //     dim3 grid(div_ceil(N, WARPS_PER_BLOCK));
 //     gemv_kernel_v2<<<grid, block>>>(A, B, C, N, K);
 //     CUDA_CHECK(cudaGetLastError());
-//     CUDA_CHECK(cudaDeviceSynchronize());
+//     // CUDA_CHECK(cudaDeviceSynchronize());
 // }
 // 
 // template void gemv_v2<float>(const float* A, const float* B, float* C, size_t N, size_t K);
@@ -239,7 +239,7 @@ void gemv_v3(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
     dim3 grid(div_ceil(N, WARPS_PER_BLOCK_v3));
     gemv_kernel_v3<<<grid, block>>>(A, B, C, N, K);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 template void gemv_v3<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
@@ -294,7 +294,7 @@ void gemv_v4(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
     // gemv_kernel_v3<<<grid, block, K*sizeof(dtype)>>>(A, B, C, N, K);
     gemv_kernel_v4<<<grid, block>>>(A, B, C, N, K);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 
@@ -348,7 +348,7 @@ void gemv_v5(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
     dim3 grid(div_ceil(N, THREADS_PER_BLOCK_v5));
     gemv_kernel_v5<<<grid, block>>>(A, B, C, N, K);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 template void gemv_v5<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
@@ -444,7 +444,7 @@ void gemv_v6(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
     gemv_kernel_v6<<<grid, block>>>(A, B, C, N, K);
 
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 template void gemv_v6<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
@@ -534,7 +534,7 @@ void gemv_v7(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
     gemv_kernel_v7<<<grid, block>>>(A, B, C, N, K);
 
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 template void gemv_v7<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
@@ -633,7 +633,7 @@ void gemv_v8(const dtype* A, const dtype* B, dtype* C, size_t N, size_t K) {
     gemv_kernel_v8<<<grid, block>>>(A, B, C, N, K);
 
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 template void gemv_v8<int8_t>(const int8_t* A, const int8_t* B, int8_t* C, size_t N, size_t K);
@@ -718,7 +718,7 @@ template void gemv_v8<int>(const int* A, const int* B, int* C, size_t N, size_t 
 //     gemv_fp16<<<grid, block>>>(B, A,  C, N, K / block_dim_x);
 // 
 //     CUDA_CHECK(cudaGetLastError());
-//     CUDA_CHECK(cudaDeviceSynchronize());
+//     // CUDA_CHECK(cudaDeviceSynchronize());
 // }
 // 
 // template void gemv_v9<half>(const half* A, const half* B, half* C, size_t N, size_t K);

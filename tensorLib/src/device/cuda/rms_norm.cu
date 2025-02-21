@@ -126,7 +126,7 @@ void rms_norm_v0(dtype *output, dtype *input, dtype *weight, float epsilon, int 
     rms_norm_kernel_v0<<<gridSize, blockSize, shared_mem_size>>>(output, input, weight, epsilon, hidden_size);
 
     CUDA_CHECK(cudaGetLastError()); // if shared memory is not enough or grid / block size too large, it will return an error here.
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 /*********************************************************************************************************************/
@@ -172,7 +172,7 @@ void rms_norm_v1(dtype *output, dtype *input, dtype *weight, float epsilon, int 
     int gridSize = div_ceil(num_tokens * 32, blockSize);
     rms_norm_kernel_v1<<<gridSize, blockSize>>>(output, input, weight, epsilon, hidden_size, num_tokens);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 /********************************************************* rms_norm ****************************************************/

@@ -126,7 +126,7 @@ void gemm_v0(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t
 
     gemm_kernel_v0<<<numBlocks, threadsPerBlock>>>(lhs, rhs, result, M, N, K);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 template void gemm_v0<half>(const half* A, const half* B, half* C, size_t m, size_t n, size_t k);

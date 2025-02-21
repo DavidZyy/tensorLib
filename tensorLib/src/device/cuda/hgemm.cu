@@ -17,7 +17,6 @@
 #define WARP_SIZE 32
 
 /************************************************************************************************************************************************************/
-// may have error...
 void hgemm_cublas(const half* lhs, const half* rhs, half* result, size_t M, size_t N, size_t K) {
         cublasHandle_t handle;
         CUBLAS_CHECK(cublasCreate(&handle));
@@ -111,7 +110,7 @@ void hgemm_v0(const half *A, const half *B, half *C, size_t M, size_t N, size_t 
 
     hgemm_kernel_v0<<<grid, block>>>(A, B, C, M, N, K);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 /************************************************************************************************************************************************************/

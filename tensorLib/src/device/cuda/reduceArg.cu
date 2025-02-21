@@ -59,7 +59,7 @@ void reduceArg_v0(int* result, const dtype* data, size_t reduce_size, size_t num
 
     reduceArgKernel_v0<dtype, comp><<<gridSize, blockSize>>>(result, data, reduce_size, num_elements);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 /************************************************************************************************************************************************************/
@@ -141,7 +141,7 @@ void reduceArg_v1(int* result, const dtype* data, size_t reduce_size, size_t num
 
     reduceArgKernel_v1<dtype, comp><<<grid, block>>>(result, data, reduce_size, num_elements);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 /************************************************************************************************************************************************************/
@@ -192,5 +192,5 @@ void CUDA<dtype>::argmin(int* result, size_t reduce_size, size_t num_elements) c
 // 
 //     reduceArgKernel<dtype, comp><<<gridSize, blockSize>>>(result, this->data_, reduce_size, num_elements);
 //     CUDA_CHECK(cudaGetLastError());
-//     CUDA_CHECK(cudaDeviceSynchronize());
+//     // CUDA_CHECK(cudaDeviceSynchronize());
 // }

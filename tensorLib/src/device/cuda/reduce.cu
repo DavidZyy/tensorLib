@@ -40,7 +40,7 @@ void CUDA<dtype>::reduceOperation(dtype* result, size_t reduce_size, size_t num_
 
     reduceKernel<dtype, op><<<gridSize, blockSize>>>(result, this->data_, reduce_size, num_elements);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 template <typename dtype> void CUDA<dtype>::max(dtype* result, size_t reduce_size, size_t num_elements) const { 

@@ -45,7 +45,7 @@ void CUDA<dtype>::full(size_t num_elements, dtype fill_value) {
     int blocks_per_grid = (num_elements + threads_per_block - 1) / threads_per_block;
     fullKernel<<<blocks_per_grid, threads_per_block>>>(this->data_, num_elements, fill_value);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 template <typename dtype>
@@ -206,7 +206,7 @@ void CUDA<dtype>::applyUnaryOperation(dtype* result, size_t num_elements) const 
     int gridSize = (num_elements + blockSize - 1) / blockSize;  // Number of blocks
     unaryKernel<dtype, op><<<gridSize, blockSize>>>(result, this->data_, num_elements);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 template <typename dtype>
@@ -453,7 +453,7 @@ void CUDA<dtype>::applyBinaryOperation(dtype* result,  const dtype* other, size_
     int gridSize = (num_elements + blockSize - 1) / blockSize;  // Number of blocks
     binaryKernel<dtype, op><<<gridSize, blockSize>>>(result, this->data_, other, num_elements);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 template <typename dtype, dtype (*op)(dtype, dtype)>
@@ -471,7 +471,7 @@ void CUDA<dtype>::applyBinaryScalarOperation(dtype* result,  dtype value, size_t
     int gridSize = (num_elements + blockSize - 1) / blockSize;  // Number of blocks
     binaryScalarKernel<dtype, op><<<gridSize, blockSize>>>(result, this->data_, value, num_elements);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 template <typename dtype> void CUDA<dtype>::add(dtype* result, dtype* other, size_t num_elements) const {applyBinaryOperation<addFunc<dtype>>(result, other, num_elements);}
@@ -517,7 +517,7 @@ template <typename dtype> void CUDA<dtype>::pow(dtype* result, dtype value, size
 // 
 //     apply_rotary_emb_kernel<<<numBlocks, threadsPerBlock>>>(input, result, start_pos, H, W);
 //     CUDA_CHECK(cudaGetLastError());
-//     CUDA_CHECK(cudaDeviceSynchronize());
+//     // CUDA_CHECK(cudaDeviceSynchronize());
 // }
 
 template <typename dtype>
@@ -561,7 +561,7 @@ void CUDA<dtype>::apply_rotary_emb(const dtype* input, dtype* result, int start_
 
     apply_rotary_emb_kernel<<<grid, block>>>(input, result, start_pos, B, T, n_heads, head_dim);
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 // CUDA kernel for type casting
@@ -588,7 +588,7 @@ void CUDA<dtype>::type_cast(dtype* result, const OtherType* src, size_t num_elem
     type_cast_kernel<<<numBlocks, blockSize>>>(result, src, num_elements);
 
     CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // CUDA_CHECK(cudaDeviceSynchronize());
 }
 // Explicit instantiation of the template function for specific types
 template void CUDA<float>::type_cast<float>(float*, const float*, size_t);
