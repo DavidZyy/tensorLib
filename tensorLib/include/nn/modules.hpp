@@ -1,5 +1,6 @@
 #pragma once
 #include "Tensor.hpp"
+#include <optional>
 
 namespace nn {
 

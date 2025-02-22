@@ -94,6 +94,7 @@ target_link_libraries(tensorLib PRIVATE ${CUDA_LIBRARIES} cublas)
 add_executable(test_fp16
     tensorLib/test/fp16/test_fp16.cu
     model/llama2_7b/src/Transformer.cpp
+    # model/llama2_7b/src/Transformer_activation.cpp
     tensorLib/test/util/compare.cu
 )
 target_link_libraries(test_fp16 PRIVATE tensorLib)

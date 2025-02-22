@@ -10,7 +10,8 @@ public:
   Embedding(int num_embeddings, int embedding_dim, std::string device_type);
   ~Embedding() = default;
 
-  Tensor<dtype> forward(const Tensor<int> &input) const;
+  // Tensor<dtype> forward(const Tensor<int> &input) const;
+  Tensor<dtype> forward(const Tensor<int> &input, std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
 
   // private:
   // protected:

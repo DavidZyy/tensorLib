@@ -1,5 +1,6 @@
 #pragma once
 #include "Tensor.hpp"
+#include "ActivationBuffer.hpp"
 #include "nn/modules.hpp"
 #include "nn/rmsNorm.hpp"
 #include "nn/linear.hpp"
@@ -72,7 +73,7 @@ class Transformer : public nn::Module<dtype> {
 public:
     Transformer(ModelArgs& args, std::string device_type = "cpu");
 
-    Tensor<dtype> forward(const Tensor<int>& tokens, int start_pos) const;
+    Tensor<dtype> forward(const Tensor<int>& tokens, int start_pos, ActivationBuffer<dtype>& activation_buffer) const;
 // private:
     int n_layers;
     int vocab_size;

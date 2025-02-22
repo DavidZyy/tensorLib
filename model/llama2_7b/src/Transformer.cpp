@@ -6,6 +6,7 @@
 #include <optional>
 #include <vector>
 #include "Log.hpp"
+#include "ActivationBuffer.hpp"
 
 template <typename dtype>
 Attention<dtype>::Attention(ModelArgs args, std::string device_type) : nn::Module<dtype>(device_type) {
@@ -45,8 +46,8 @@ Tensor<dtype> Attention<dtype>::forward(const Tensor<dtype>& x, int start_pos, c
 
     // get keys and values from kv_cache
     std::vector<std::vector<int>> slices2  = {{0, bsz}, {0, start_pos+seqlen}, {}, {}};
-    auto keys = this->cache_k.getItem(slices2);
-    auto values = this->cache_v.getItem(slices2);
+    auto keys = this->cache_k.getItem(slices2); // (bsz, cache_len+seqlen, n_heads, head_dim)
+    auto values = this->cache_v.getItem(slices2); // (bsz, cache_len+seqlen, n_heads, head_dim)
 
     xq = xq.transpose(1, 2); // (bsz, n_heads, seqlen, head_dim)
     keys = keys.transpose(1, 2); // (bsz, n_heads, cache_len+seqlen, head_dim)
@@ -186,12 +187,17 @@ std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen, int start_
 }
 
 template <typename dtype>
-Tensor<dtype> Transformer<dtype>::forward(const Tensor<int>& tokens, int start_pos) const {
+Tensor<dtype> Transformer<dtype>::forward(const Tensor<int>& tokens, int start_pos, ActivationBuffer<dtype>& activation_buffer) const {
     auto bsz = tokens.shape()[0];
     auto seqlen = tokens.shape()[1];
-    auto h = this->tok_embeddings.forward(tokens);
+    std::vector<std::vector<int>> slicess = {{0, bsz}, {0,seqlen}, {0,this->tok_embeddings.embedding_dim}};
+    
+    auto x = activation_buffer.x.getItem(slicess);
+    auto h = this->tok_embeddings.forward(tokens, x);
+
     auto freqs = this->freqs.slice(start_pos, start_pos+seqlen, 0);
     auto mask = this->get_mask(seqlen, start_pos);
+
     for (int i = 0; i < this->n_layers; i++) {
         auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(this->layers[i]);
         h = layer->forward(h, start_pos, freqs, mask);

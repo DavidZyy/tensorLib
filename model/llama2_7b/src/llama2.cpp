@@ -4,6 +4,7 @@
 #include <ostream>
 #include <vector>
 #include <chrono>
+#include "llama2.hpp"
 
 // if do not write below, will get error undefined reference to Llama2's methods
 template class Llama2<float>;
@@ -32,7 +33,7 @@ void Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    logits = model.forward(prompt_tokens_tensor, total_len); // shape = (bsz, seq_len, vocab_size)
+    logits = this->model.forward(prompt_tokens_tensor, total_len, this->activation_buffer); // shape = (bsz, seq_len, vocab_size)
     total_len += prompt_len;
     slices = {{}, {logits.shape_[1]-1, logits.shape_[1]}, {}};
     logits = logits.getItem(slices); // (bsz, vocab_size), get the last token's logits
@@ -51,7 +52,7 @@ void Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
 
     int generate_cnt = 0;
     for (int i = 0; i < generate_len; i++) {
-        logits = model.forward(next_token, total_len);
+        logits = this->model.forward(next_token, total_len, this->activation_buffer);
         total_len += 1;
         next_token = logits.argmax(-1);
         next_token_int = next_token.getData({});

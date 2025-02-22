@@ -15,9 +15,7 @@
 #include "device/Device.hpp"
 #include "ops/matmul.hpp"
 
-// Explicit instantiation for int
-// Explicit instantiation for float
-// Explicit instantiation for int8_t
+// Explicit instantiation
 template class Tensor<int>;
 template class Tensor<float>;
 template class Tensor<half>;
@@ -54,80 +52,6 @@ Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::string& device_t
         }
 }
 
-// template <typename dtype>
-// Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<dtype[]>& data, const std::string& device_type)
-//     : ndim(shape.size()), shape_(shape), offset_(0), device_type(device_type) {
-//         // Calculate the total number of elements in the tensor
-//         num_elements = 1;
-//         for (int dim : shape) {
-//             num_elements *= dim;
-//         }
-// 
-//         // Allocate memory for data, offset, and stride arrays
-//         stride_ = std::vector<int>(ndim);
-// 
-//         // Initialize offset and stride arrays
-//         if (ndim > 0) {
-//             stride_[ndim - 1] = 1;
-//             for (int i = ndim - 2; i >= 0; --i) {
-//                 stride_[i] = stride_[i + 1] * shape_[i + 1];
-//             }
-//         }
-// 
-//         
-//         if (device_type == "cpu") {
-//             this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(num_elements));
-//         } else if (device_type == "cuda") {
-//             this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(num_elements));
-//         } else {
-//             throw std::invalid_argument("Invalid device name");
-//         }
-// }
-
-/**
- * use std::move semantic to construct a Tensor with given shape, stride, offset, maybe faster ? 
- * @tparam dtype 
- */
-// template <typename dtype>
-// Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, const std::shared_ptr<dtype[]>& data, const std::string& device_type):
-// ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), device_type(device_type) {
-//     this-> num_elements = 1;
-//     for (int dim : shape) {
-//         this->num_elements *= dim;
-//     }
-// 
-//     if (device_type == "cpu") {
-//         this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(num_elements));
-//     } else if (device_type == "cuda") {
-//         this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(num_elements));
-//     } else {
-//         throw std::invalid_argument("Invalid device name");
-//     }
-// }
-
-/**
- * use std::move semantic to construct a Tensor with given shape, stride, offset, maybe faster ?
- * NOTE: this constructor is used in tensor_bindings.convert_to_tensor(), the data pointer data_ptr should on device you pass, and freed by this
- * tensor, or it may cause error!
- * @tparam dtype 
- */
-// template <typename dtype>
-// Tensor<dtype>::Tensor(const std::vector<int>&& shape, const std::vector<int> &&stride, const int &offset, dtype* data_ptr, const std::string& device_type):
-// ndim(shape.size()), shape_(std::move(shape)), stride_(std::move(stride)), offset_(offset), device_type(device_type) {
-//     this-> num_elements = 1;
-//     for (int dim : shape) {
-//         this->num_elements *= dim;
-//     }
-// 
-//     if (device_type == "cpu") {
-//         this->device = std::shared_ptr<CPU<dtype>>(new CPU<dtype>(data_ptr));
-//     } else if (device_type == "cuda") {
-//         this->device = std::shared_ptr<CUDA<dtype>>(new CUDA<dtype>(data_ptr));
-//     } else {
-//         throw std::invalid_argument("Invalid device name");
-//     }
-// }
-
 template <typename dtype>
 Tensor<dtype>::Tensor(const std::vector<int>& shape, const std::shared_ptr<Device<dtype>>& device, const std::string& device_type) 
 : ndim(shape.size()), shape_(shape), offset_(0), device(device), device_type(device_type)
@@ -163,22 +87,7 @@ Tensor<dtype>::~Tensor() {
 
 }
 
-// // Accessor implementation (non-const version)
-// template <typename dtype>
-// dtype& Tensor<dtype>::operator()(const std::vector<int>& indices) {
-//     // Calculate linear index from multi-dimensional indices
-//     size_t linear_index = calculateLinearIndex(indices);
-//     
-//     return data_[linear_index];
-// }
-// 
-// template <typename dtype>
-// const dtype& Tensor<dtype>::operator()(const std::vector<int>& indices) const {
-//     // Calculate linear index from multi-dimensional indices
-//     size_t linear_index = calculateLinearIndex(indices);
-//     
-//     return data_[linear_index];
-// }
+/************************************************************************************************************************************************************/
 
 template <typename dtype>
 void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int> indices) const {
