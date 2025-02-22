@@ -41,17 +41,9 @@ Linear<dtype>::Linear(int in_features, int out_features, Tensor<dtype> &&weight,
  * so the elements in the same column of weight is continuous, which benifit the memory access.
  */
 template <typename dtype>
-Tensor<dtype> Linear<dtype>::forward(const Tensor<dtype> &input) const {
-  // auto start_time = std::chrono::high_resolution_clock::now();
+Tensor<dtype> Linear<dtype>::forward(const Tensor<dtype> &input, std::optional<Tensor<dtype>> result_opt) const {
 
-  auto result = input.matmul(weight.transpose(0, 1));
-  // auto result = input.matmul(weight);
-
-  // auto end_time = std::chrono::high_resolution_clock::now();
-  // auto duration_seconds =
-  // std::chrono::duration_cast<std::chrono::duration<double>>(end_time -
-  // start_time).count(); std::cout << "Linear Execution time: " <<
-  // duration_seconds << " seconds" << std::endl;
+  auto result = input.matmul(weight.transpose(0, 1), result_opt);
 
   return result;
 }

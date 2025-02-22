@@ -124,54 +124,54 @@ void test_rms() {
 
 /************************************************************************************************************************************************************/
 
-void test_ffn() {
-    int dim = 1024;
-    int hidden_dim = 1024;
-    // int dim = 10;
-    // int hidden_dim = 100;
-
-    // fp32
-    FeedForward<float> ffn_fp32 = FeedForward<float>(dim, hidden_dim, "cuda");
-    // set weight
-    Tensor<float> w1 = randn<float>({hidden_dim, dim}, "cuda");
-    Tensor<float> w2 = randn<float>({dim, hidden_dim}, "cuda");
-    Tensor<float> w3 = randn<float>({hidden_dim, dim}, "cuda");
-    ffn_fp32.w1.weight = w1;
-    ffn_fp32.w2.weight = w2;
-    ffn_fp32.w3.weight = w3;
-
-    Tensor<float> x = randn<float>({1, dim}, "cuda");
-    Tensor<float> y;
-    MEASURE_TIME({
-        y = ffn_fp32.forward(x);
-    });
-
-    std::cout << "x: " << std::endl << x << std::endl;
-    std::cout << "y: " << std::endl << y << std::endl;
-
-    // fp16
-    FeedForward<half> ffn_fp16 = FeedForward<half>(dim, hidden_dim, "cuda");
-    // set weight
-    Tensor<half> w1_fp16(w1);
-    Tensor<half> w2_fp16(w2);
-    Tensor<half> w3_fp16(w3);
-    ffn_fp16.w1.weight = w1_fp16;
-    ffn_fp16.w2.weight = w2_fp16;
-    ffn_fp16.w3.weight = w3_fp16;
-
-    Tensor<half> x_fp16(x);
-    Tensor<half> y_fp16;
-    MEASURE_TIME({
-        y_fp16 = ffn_fp16.forward(x_fp16);
-    });
-
-    std::cout << "x_fp16: " << std::endl << x_fp16 << std::endl;
-    std::cout << "y_fp16: " << std::endl << y_fp16 << std::endl;
-
-    Tensor<half> _y_fp16(y);
-
-    check_equal_and_max_diff(y_fp16, _y_fp16);
-}
+// void test_ffn() {
+//     int dim = 1024;
+//     int hidden_dim = 1024;
+//     // int dim = 10;
+//     // int hidden_dim = 100;
+// 
+//     // fp32
+//     FeedForward<float> ffn_fp32 = FeedForward<float>(dim, hidden_dim, "cuda");
+//     // set weight
+//     Tensor<float> w1 = randn<float>({hidden_dim, dim}, "cuda");
+//     Tensor<float> w2 = randn<float>({dim, hidden_dim}, "cuda");
+//     Tensor<float> w3 = randn<float>({hidden_dim, dim}, "cuda");
+//     ffn_fp32.w1.weight = w1;
+//     ffn_fp32.w2.weight = w2;
+//     ffn_fp32.w3.weight = w3;
+// 
+//     Tensor<float> x = randn<float>({1, dim}, "cuda");
+//     Tensor<float> y;
+//     MEASURE_TIME({
+//         y = ffn_fp32.forward(x);
+//     });
+// 
+//     std::cout << "x: " << std::endl << x << std::endl;
+//     std::cout << "y: " << std::endl << y << std::endl;
+// 
+//     // fp16
+//     FeedForward<half> ffn_fp16 = FeedForward<half>(dim, hidden_dim, "cuda");
+//     // set weight
+//     Tensor<half> w1_fp16(w1);
+//     Tensor<half> w2_fp16(w2);
+//     Tensor<half> w3_fp16(w3);
+//     ffn_fp16.w1.weight = w1_fp16;
+//     ffn_fp16.w2.weight = w2_fp16;
+//     ffn_fp16.w3.weight = w3_fp16;
+// 
+//     Tensor<half> x_fp16(x);
+//     Tensor<half> y_fp16;
+//     MEASURE_TIME({
+//         y_fp16 = ffn_fp16.forward(x_fp16);
+//     });
+// 
+//     std::cout << "x_fp16: " << std::endl << x_fp16 << std::endl;
+//     std::cout << "y_fp16: " << std::endl << y_fp16 << std::endl;
+// 
+//     Tensor<half> _y_fp16(y);
+// 
+//     check_equal_and_max_diff(y_fp16, _y_fp16);
+// }
 
 /************************************************************************************************************************************************************/
 

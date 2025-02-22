@@ -16,7 +16,7 @@ template struct matmul<int>;
  */
 
 template <typename dtype>
-Tensor<dtype> matmul<dtype>::call(const Tensor<dtype> &self, const Tensor<dtype> &other) {
+Tensor<dtype> matmul<dtype>::call(const Tensor<dtype> &self, const Tensor<dtype> &other, std::optional<Tensor<dtype>> result_opt) {
     if (self.device_type != other.device_type) {
         throw std::invalid_argument("Tensors must be on the same device.");
     }
@@ -204,7 +204,7 @@ Tensor<dtype> matmul<dtype>::call(const Tensor<dtype> &self, const Tensor<dtype>
 // }
 
 template <typename dtype>
-Tensor<dtype> matmul<dtype>::call2(const Tensor<dtype> &self, const Tensor<dtype> &other) {
+Tensor<dtype> matmul<dtype>::call2(const Tensor<dtype> &self, const Tensor<dtype> &other, std::optional<Tensor<dtype>> result_opt) {
     // LOG_INFO("self shape: ", self.shape_, " other shape: ", other.shape_);
     if (self.device_type != other.device_type) {
         throw std::invalid_argument("Tensors must be on the same device.");
@@ -273,7 +273,18 @@ Tensor<dtype> matmul<dtype>::call2(const Tensor<dtype> &self, const Tensor<dtype
     output_shape.push_back(N);
 
     // now execute batched matmul
-    Tensor<dtype> C(output_shape, self.device_type); // forget pass in device_type will get bug !!
+    // Tensor<dtype> C(output_shape, self.device_type); // forget pass in device_type will get bug !!
+
+    Tensor<dtype> C;
+    if (result_opt.has_value()) {
+        C = result_opt.value();
+        if (C.shape() != output_shape) {
+            throw std::invalid_argument("result shape does not match new_shape");
+        }
+    } else {
+        C = Tensor<dtype>(output_shape, self.device_type); // forget pass in device_type will get bug !!
+    }
+
 
     // split batched gemm to single gemms
     // getItem of A and B and C, which will hold the same memory with them, and then do gemm 

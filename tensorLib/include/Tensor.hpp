@@ -87,7 +87,7 @@ public:
     // }
 
     // Matrix multiplication method
-    Tensor<dtype> matmul(const Tensor<dtype>& other) const;
+    Tensor<dtype> matmul(const Tensor<dtype>& other, std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
 
     Tensor<dtype> view(const std::vector<int>& shape) const;
 
@@ -167,7 +167,7 @@ public:
 
     // used for quantize
     // int group_size;  // seem as one group now for simple
-    float scale;
+    // float scale;
 
     // the offset of data_, used for slice method to share the same memory area of data_.
     int offset_;
@@ -421,7 +421,8 @@ bool Tensor<dtype>::is_contiguous(const Tensor<dtype>& t) const {
  * input's shape is [B, T, n_heads, head_dim]
  */
 template <typename dtype>
-Tensor<dtype> apply_rotary_emb(Tensor<dtype> &input, int start_pos) {
+Tensor<dtype> apply_rotary_emb(Tensor<dtype> &input, int start_pos, std::optional<Tensor<dtype>> result_opt = std::nullopt) {
+// Tensor<dtype> apply_rotary_emb(Tensor<dtype> &input, int start_pos, std::optional<Tensor<dtype>> result_opt) {
     if (input.shape().size() != 4) {
         throw std::invalid_argument("Invalid shape.");
     }
@@ -433,24 +434,24 @@ Tensor<dtype> apply_rotary_emb(Tensor<dtype> &input, int start_pos) {
 
     input = input.contiguous();
 
-    Tensor<dtype> result(input.shape(), input.device_type);
+    // Tensor<dtype> result(input.shape(), input.device_type);
 
-    // int H = B*T*n_heads;
-    // int W = head_dim;
-    // input.device->apply_rotary_emb(
-    //     input.device->getDataPtr(),
-    //     result.device->getDataPtr(),
-    //     start_pos,
-    //     H,
-    //     W
-    // );
+    Tensor<dtype> result;
+    if (result_opt.has_value()) {
+        result = result_opt.value(); // Use the passed-in result
+        // check if result shape equals to new_shape
+        // if (result.shape() != input.shape()) {
+            // throw file and line number info
+            // throw std::invalid_argument("result shape does not match new_shape");
+        // }
+    } else {
+        result = Tensor<dtype>(input.shape(), input.device_type); // Create a new result if not passed
+    }
 
     input.device->apply_rotary_emb(
         input.device->getDataPtr(),
         result.device->getDataPtr(),
         start_pos,
-        // H,
-        // W
         B,
         T,
         n_heads,

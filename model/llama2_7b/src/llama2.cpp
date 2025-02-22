@@ -33,7 +33,12 @@ void Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    logits = this->model.forward(prompt_tokens_tensor, total_len, this->activation_buffer); // shape = (bsz, seq_len, vocab_size)
+    auto bsz = prompt_tokens_tensor.shape()[0];
+    auto seqlen = prompt_tokens_tensor.shape()[1];
+
+    ActivationBuffer<dtype> activation_buffer0(bsz, seqlen, this->model.params.dim, this->model.params.hidden_dim, this->device_type);
+
+    logits = this->model.forward(prompt_tokens_tensor, total_len, activation_buffer0); // shape = (bsz, seq_len, vocab_size)
     total_len += prompt_len;
     slices = {{}, {logits.shape_[1]-1, logits.shape_[1]}, {}};
     logits = logits.getItem(slices); // (bsz, vocab_size), get the last token's logits
@@ -50,9 +55,11 @@ void Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
 
     start_time = std::chrono::high_resolution_clock::now();
 
+    ActivationBuffer<dtype> activation_buffer1(bsz, 1, this->model.params.dim, this->model.params.hidden_dim, this->device_type);
+
     int generate_cnt = 0;
     for (int i = 0; i < generate_len; i++) {
-        logits = this->model.forward(next_token, total_len, this->activation_buffer);
+        logits = this->model.forward(next_token, total_len, activation_buffer1);
         total_len += 1;
         next_token = logits.argmax(-1);
         next_token_int = next_token.getData({});

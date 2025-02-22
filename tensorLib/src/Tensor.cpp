@@ -149,9 +149,9 @@ void Tensor<dtype>::printTensor(std::ostream& os, size_t depth, std::vector<int>
 }
 
 template <typename dtype>
-Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other) const {
+Tensor<dtype> Tensor<dtype>::matmul(const Tensor<dtype>& other, std::optional<Tensor<dtype>> result_opt) const {
     // return ops::matmul<dtype>::call(*this, other);
-    return ops::matmul<dtype>::call2(*this, other);
+    return ops::matmul<dtype>::call2(*this, other, result_opt);
 }
 
 /**

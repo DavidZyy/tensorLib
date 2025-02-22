@@ -13,6 +13,7 @@ public:
   virtual ~Module() = default;
   // virtual Tensor<dtype> forward(const Tensor<dtype>& intput) const = 0; //
   // pure virtual func
+  // virtual Tensor<dtype> forward(const Tensor<dtype> &intput, std::optional<Tensor<dtype>> result_opt = std::nullopt)
   virtual Tensor<dtype> forward(const Tensor<dtype> &intput)
       const; // not pure, for overloading forward(that have different numbers or
              // types of parameters)

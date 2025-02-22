@@ -8,6 +8,7 @@
 #include "nn/container.hpp"
 #include <optional>
 #include <string>
+#include "ActivationBuffer.hpp"
 
 class ModelArgs {
 public:
@@ -28,7 +29,8 @@ public:
     Attention() = default;
     Attention(ModelArgs args, std::string device_type = "cpu");
 
-    Tensor<dtype> forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask); // not const, cache will be modified
+    // Tensor<dtype> forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask); // not const, cache will be modified
+    Tensor<dtype> forward(ActivationBuffer<dtype>& activation_buffer, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask); // not const, cache will be modified
 // private:
     // int n_kv_heads; // assum n_kn_heads == n_heads now for simplicity
     int n_heads;
@@ -45,7 +47,8 @@ public:
     FeedForward() = default;
     FeedForward(int dim, int hidden_dim, std::string device_type = "cpu"); // no need multiple_of here, use llama2.c way.
 
-    Tensor<dtype> forward(const Tensor<dtype>& x) const override;
+    // Tensor<dtype> forward(const Tensor<dtype>& x) const override;
+    Tensor<dtype> forward(ActivationBuffer<dtype>& activation_buffer) const;
 // private:
     int dim, hidden_dim;
     nn::Linear<dtype> w1, w2, w3;
@@ -57,7 +60,8 @@ public:
     TransformerBlock() = default;
     TransformerBlock(int layer_id, ModelArgs args, std::string device_type = "cpu");
 
-    Tensor<dtype> forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask); //(not const, Attention.cache will be modified) cannot use override here, because the function signature(parameters) is different with the base module
+    // Tensor<dtype> forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask); //(not const, Attention.cache will be modified) cannot use override here, because the function signature(parameters) is different with the base module
+    Tensor<dtype> forward(ActivationBuffer<dtype>& activation_buffer, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask); //(not const, Attention.cache will be modified) cannot use override here, because the function signature(parameters) is different with the base module
 // private:
     int n_heads;
     int dim;

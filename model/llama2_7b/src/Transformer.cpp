@@ -24,20 +24,28 @@ Attention<dtype>::Attention(ModelArgs args, std::string device_type) : nn::Modul
 }
 
 template <typename dtype>
-Tensor<dtype> Attention<dtype>::forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask) {
-    auto bsz = x.shape()[0];
-    auto seqlen = x.shape()[1];
+// Tensor<dtype> Attention<dtype>::forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask) {
+Tensor<dtype> Attention<dtype>::forward(ActivationBuffer<dtype>& activation_buffer, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask) {
+    auto x = activation_buffer.x_norm;
 
-    auto xq = this->wq.forward(x);
-    auto xk = this->wk.forward(x); // can we use kv cache to accept the result directly, saving the following step that copy result to cache?
-    auto xv = this->wv.forward(x);
+    auto bsz = activation_buffer.bsz;
+    auto seqlen = activation_buffer.seq_len;
+
+    // use kv cache to accept the result directly, saving the steps that copy result to kvcache.
+    auto xq = this->wq.forward(x, activation_buffer.xq);
+    auto xk = this->wk.forward(x, activation_buffer.xk);
+    auto xv = this->wv.forward(x, activation_buffer.xv);
 
     xq = xq.view({bsz, seqlen, n_heads, head_dim});
     xk = xk.view({bsz, seqlen, n_heads, head_dim});
     xv = xv.view({bsz, seqlen, n_heads, head_dim});
 
-    xq = apply_rotary_emb(xq, start_pos);
-    xk = apply_rotary_emb(xk, start_pos);
+    // xq = apply_rotary_emb(xq, start_pos, std::optional<Tensor<dtype>>(activation_buffer.xq)); // shape do not match
+    // xk = apply_rotary_emb(xk, start_pos, std::optional<Tensor<dtype>>(activation_buffer.xk));
+    // xq = apply_rotary_emb(xq, start_pos);
+    // xk = apply_rotary_emb(xk, start_pos);
+    xq = apply_rotary_emb(xq, start_pos, std::optional<Tensor<dtype>>(xq));
+    xk = apply_rotary_emb(xk, start_pos, std::optional<Tensor<dtype>>(xk));
 
     // put the computed k, v into kv_cache
     std::vector<std::vector<int>> slices  = {{0, bsz}, {start_pos, start_pos+seqlen}, {}, {}};
@@ -71,14 +79,28 @@ FeedForward<dtype>::FeedForward(int dim, int hidden_dim, std::string device_type
     this->w3 = nn::Linear<dtype>(dim, hidden_dim, device_type);
 }
 
+// template <typename dtype>
+// Tensor<dtype> FeedForward<dtype>::forward(const Tensor<dtype>& x) const {
+//     // x: (bsz, seqlen, dim)
+//     auto x1 = this->w1.forward(x); // (bsz, seqlen, hidden_dim)
+//     x1 = x1.silu();
+//     auto x3 = this->w3.forward(x); // (bsz, seqlen, hidden_dim)
+//     auto x2 = x1 * x3;
+//     auto result = this->w2.forward(x2); // (bsz, seqlen, dim)
+//     return result;
+// }
+
 template <typename dtype>
-Tensor<dtype> FeedForward<dtype>::forward(const Tensor<dtype>& x) const {
+Tensor<dtype> FeedForward<dtype>::forward(ActivationBuffer<dtype>& activation_buffer) const {
     // x: (bsz, seqlen, dim)
-    auto x1 = this->w1.forward(x); // (bsz, seqlen, hidden_dim)
+    // auto x1 = this->w1.forward(x); // (bsz, seqlen, hidden_dim)
+    auto x1 = this->w1.forward(activation_buffer.x_norm, activation_buffer.x1);
     x1 = x1.silu();
-    auto x3 = this->w3.forward(x); // (bsz, seqlen, hidden_dim)
+    // auto x3 = this->w3.forward(x); // (bsz, seqlen, hidden_dim)
+    auto x3 = this->w3.forward(activation_buffer.x_norm, activation_buffer.x3);
     auto x2 = x1 * x3;
-    auto result = this->w2.forward(x2); // (bsz, seqlen, dim)
+    // auto result = this->w2.forward(x2); // (bsz, seqlen, dim)
+    auto result = this->w2.forward(x2, activation_buffer.x); // (bsz, seqlen, dim)
     return result;
 }
 
@@ -96,11 +118,20 @@ TransformerBlock<dtype>::TransformerBlock(int layer_id, ModelArgs args, std::str
 }
 
 template <typename dtype>
-Tensor<dtype> TransformerBlock<dtype>::forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask) {
-    auto temp1 = this->attention_norm.forward(x);
-    auto h = x + this->attention.forward(temp1, start_pos, freqs, mask);
-    auto temp2 = this->ffn_norm.forward(h);
-    auto out = h + this->feed_forward.forward(temp2);
+// Tensor<dtype> TransformerBlock<dtype>::forward(const Tensor<dtype>& x, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask) {
+Tensor<dtype> TransformerBlock<dtype>::forward(ActivationBuffer<dtype>& activation_buffer, int start_pos, const Tensor<dtype>& freqs, std::optional<Tensor<dtype>>& mask) {
+
+    // auto temp1 = this->attention_norm.forward(x, x_norm);
+    this->attention_norm.forward(activation_buffer.x, activation_buffer.x_norm);
+
+    // auto h = x + this->attention.forward(x_norm, start_pos, freqs, mask);
+    auto h = activation_buffer.x + this->attention.forward(activation_buffer, start_pos, freqs, mask);
+
+    this->ffn_norm.forward(h, activation_buffer.x_norm);
+
+    // auto out = h + this->feed_forward.forward(activation_buffer.x_norm);
+    auto out = h + this->feed_forward.forward(activation_buffer);
+
     return out;
 }
 
@@ -190,21 +221,27 @@ template <typename dtype>
 Tensor<dtype> Transformer<dtype>::forward(const Tensor<int>& tokens, int start_pos, ActivationBuffer<dtype>& activation_buffer) const {
     auto bsz = tokens.shape()[0];
     auto seqlen = tokens.shape()[1];
+
     std::vector<std::vector<int>> slicess = {{0, bsz}, {0,seqlen}, {0,this->tok_embeddings.embedding_dim}};
+
+    activation_buffer.bsz = bsz;
+    activation_buffer.seq_len = seqlen;
+    activation_buffer.dim = this->tok_embeddings.embedding_dim;
     
-    auto x = activation_buffer.x.getItem(slicess);
-    auto h = this->tok_embeddings.forward(tokens, x);
+    // auto x = activation_buffer.x.getItem(slicess);
+    this->tok_embeddings.forward(tokens, activation_buffer.x);
 
     auto freqs = this->freqs.slice(start_pos, start_pos+seqlen, 0);
     auto mask = this->get_mask(seqlen, start_pos);
 
+    Tensor<dtype> h;
     for (int i = 0; i < this->n_layers; i++) {
         auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(this->layers[i]);
-        h = layer->forward(h, start_pos, freqs, mask);
-        // std::cout << "layer " << i << " done" << std::endl;
-        // std::cout << h << std::endl;
+        h = layer->forward(activation_buffer, start_pos, freqs, mask);
+        activation_buffer.x.setItem(slicess, h);
         // LOG_INFO("\n");
     }
+
     h = this->norm.forward(h);
     auto result = this->output.forward(h);
     // LOG_INFO("\n\n");

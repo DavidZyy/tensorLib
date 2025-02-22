@@ -34,7 +34,7 @@ Tensor<dtype> RMSNorm<dtype>::_norm(Tensor<dtype> x) const {
 }
 
 template <typename dtype>
-Tensor<dtype> RMSNorm<dtype>::forward_plain(const Tensor<dtype>& x) const {
+Tensor<dtype> RMSNorm<dtype>::forward_plain(const Tensor<dtype>& x, std::optional<Tensor<dtype>> result_opt) const {
     // std::cout << x << std::endl;
     // std::cout << weight << std::endl;
     // x : (bsz, seqlen, dim)
@@ -60,13 +60,26 @@ Tensor<dtype> RMSNorm<dtype>::forward_plain(const Tensor<dtype>& x) const {
  * @tparam dtype 
  */
 template<typename dtype>
-Tensor<dtype> RMSNorm<dtype>::forward_fused_cuda(const Tensor<dtype>& x) const {
-    assert(this->device_type == "cuda");
-    assert(x.is_contiguous(x));
-    assert(weight.is_contiguous(weight));
-    assert(dim == x.shape()[x.ndim - 1]);
+Tensor<dtype> RMSNorm<dtype>::forward_fused_cuda(const Tensor<dtype>& x, std::optional<Tensor<dtype>> result_opt) const {
+    // assert(this->device_type == "cuda");
+    // assert(x.is_contiguous(x));
+    // assert(weight.is_contiguous(weight));
+    // assert(dim == x.shape()[x.ndim - 1]);
 
-    Tensor<dtype> result(x.shape(), this->device_type);
+    // Tensor<dtype> result(x.shape(), this->device_type);
+
+    // Use the passed-in result if provided, otherwise create a new one
+    Tensor<dtype> result;
+
+    if (result_opt.has_value()) {
+        result = result_opt.value(); // Use the passed-in result
+        // check if result shape equals to new_shape
+        if (result.shape() != x.shape()) {
+          throw std::invalid_argument("result shape does not match new_shape");
+        }
+    } else {
+      result = Tensor<dtype>(x.shape(), this->device_type); // Create a new result if not passed
+    }
     
     // use the device of x, seems not elegant
     auto cuda_device = std::dynamic_pointer_cast<CUDA<dtype>>(x.device);
@@ -83,12 +96,12 @@ Tensor<dtype> RMSNorm<dtype>::forward_fused_cuda(const Tensor<dtype>& x) const {
 /*******************************************************************************************************************/
 
 template <typename dtype>
-Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x) const {
+Tensor<dtype> RMSNorm<dtype>::forward(const Tensor<dtype>& x, std::optional<Tensor<dtype>> result_opt) const {
     if (this->device_type == "cuda") {
-        return this->forward_fused_cuda(x);
+        return this->forward_fused_cuda(x, result_opt);
         // return this->forward_plain(x);
     } else {
-        return this->forward_plain(x);
+        return this->forward_plain(x, result_opt);
     }
 }
 

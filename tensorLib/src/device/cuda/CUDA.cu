@@ -487,39 +487,6 @@ template <typename dtype> void CUDA<dtype>::pow(dtype* result, dtype value, size
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// template <typename dtype>
-// __global__ void apply_rotary_emb_kernel(const dtype* input, dtype* result, int start_pos, int H, int W) {
-//     int i = blockIdx.x * blockDim.x + threadIdx.x;  // Row index
-//     int j = (blockIdx.y * blockDim.y + threadIdx.y) * 2;  // Column index (step by 2 for paired elements)
-// 
-//     if (i < H && j < W) {
-//         int offset = i * W;
-//         dtype theta = start_pos * 1.0f / pow(10000.0f, static_cast<dtype>(j) / static_cast<dtype>(W));
-//         dtype cos_theta = cosf(theta); // only accept float for now
-//         dtype sin_theta = sinf(theta);
-// 
-//         dtype v0 = input[offset + j];
-//         dtype v1 = input[offset + j + 1];
-// 
-//         dtype rotary_emb_real = v0 * cos_theta - v1 * sin_theta;
-//         dtype rotary_emb_imag = v0 * sin_theta + v1 * cos_theta;
-// 
-//         result[offset + j] = rotary_emb_real;
-//         result[offset + j + 1] = rotary_emb_imag;
-//     }
-// }
-// 
-// template <typename dtype>
-// void CUDA<dtype>::apply_rotary_emb(const dtype* input, dtype* result, int start_pos, int H, int W) const {
-//     dim3 threadsPerBlock(16, 16);  // Define block size (16x16 is a typical choice, can be adjusted)
-//     dim3 numBlocks((H + threadsPerBlock.x - 1) / threadsPerBlock.x,
-//                    (W / 2 + threadsPerBlock.y - 1) / threadsPerBlock.y);  // Divide by 2 for W because j increments by 2
-// 
-//     apply_rotary_emb_kernel<<<numBlocks, threadsPerBlock>>>(input, result, start_pos, H, W);
-//     CUDA_CHECK(cudaGetLastError());
-//     // CUDA_CHECK(cudaDeviceSynchronize());
-// }
-
 template <typename dtype>
 __global__ void apply_rotary_emb_kernel(const dtype* input, dtype* result, int start_pos, int B, int T, int n_heads, int head_dim) {
     int b = blockIdx.x;
@@ -530,16 +497,6 @@ __global__ void apply_rotary_emb_kernel(const dtype* input, dtype* result, int s
     int offset = b * T * n_heads * head_dim + t * n_heads * head_dim + h * head_dim + d;
 
     float theta = (start_pos + t) * 1.0f / pow(10000.0f, static_cast<float>(d) / static_cast<float>(head_dim));
-    // dtype theta = (start_pos + t) * 1.0f / pow(10000.0f, static_cast<dtype>(d) / static_cast<dtype>(head_dim));
-    // dtype theta;
-    // if constexpr (std::is_same_v<dtype, half>) {
-    //     theta = (start_pos + t) * 1.0f / pow(10000.0f, __half2float(static_cast<float>(d)) / __half2float(static_cast<float>(head_dim)));
-    // } else {
-    //     theta = (start_pos + t) * 1.0f / pow(10000.0f, static_cast<dtype>(d) / static_cast<dtype>(head_dim));
-    // }
-
-    // dtype cos_theta = cosf(theta); // only accept float for now
-    // dtype sin_theta = sinf(theta);
 
     dtype cos_theta = static_cast<dtype>(cos(theta));
     dtype sin_theta = static_cast<dtype>(sin(theta));
