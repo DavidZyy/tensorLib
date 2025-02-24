@@ -47,12 +47,11 @@ __global__ void binaryKernel(dtype* result, const dtype* src1, const dtype* src2
     }
 }
 
-template <typename dtype>
-template <dtype (*op)(dtype, dtype)>
-void CUDA<dtype>::applyBinaryOperation(dtype* result,  const dtype* other, size_t num_elements) const {
+template <typename dtype, dtype (*op)(dtype, dtype)>
+void applyBinaryOperation(dtype* result,  const dtype* lhs, const dtype* rhs, size_t num_elements) {
     int blockSize = 256;  // Number of threads per block (adjust based on optimization needs)
     int gridSize = (num_elements + blockSize - 1) / blockSize;  // Number of blocks
-    binaryKernel<dtype, op><<<gridSize, blockSize>>>(result, this->data_, other, num_elements);
+    binaryKernel<dtype, op><<<gridSize, blockSize>>>(result, lhs, rhs, num_elements);
     CUDA_CHECK(cudaGetLastError());
     // CUDA_CHECK(cudaDeviceSynchronize());
 }
@@ -65,12 +64,11 @@ __global__ void binaryScalarKernel(dtype* result, const dtype* src1, dtype value
     }
 }
 
-template <typename dtype>
-template <dtype (*op)(dtype, dtype)>
-void CUDA<dtype>::applyBinaryScalarOperation(dtype* result,  dtype value, size_t num_elements) const {
+template <typename dtype, dtype (*op)(dtype, dtype)>
+void applyBinaryScalarOperation(dtype* result,  dtype* input, dtype value, size_t num_elements) {
     int blockSize = 256;  // Number of threads per block (adjust based on optimization needs)
     int gridSize = (num_elements + blockSize - 1) / blockSize;  // Number of blocks
-    binaryScalarKernel<dtype, op><<<gridSize, blockSize>>>(result, this->data_, value, num_elements);
+    binaryScalarKernel<dtype, op><<<gridSize, blockSize>>>(result, input, value, num_elements);
     CUDA_CHECK(cudaGetLastError());
     // CUDA_CHECK(cudaDeviceSynchronize());
 }

@@ -219,10 +219,9 @@ public:
     Tensor<dtype> applyBinaryOperation(const Tensor<dtype>& other) const;
     template <void (Device<dtype>::*func)(dtype*, dtype, size_t) const >
     Tensor<dtype> applyBinaryScalarOperation(dtype scalar) const;
-    template <void (Device<dtype>::*func)(dtype*, size_t, size_t) const>
-    Tensor<dtype> reduceOperation(std::optional<int> axis, bool keepdims) const;
-    template <void (Device<dtype>::*func)(int*, size_t, size_t) const>
-    Tensor<int> reduceOperationArg(std::optional<int> axis, bool keepdims) const;
+
+    template<typename Rtype, void (Device<dtype>::*func)(Rtype*, size_t, size_t) const>
+    Tensor<Rtype> reduceOperation(std::optional<int> axis, bool keepdims) const;
 
     /**
      * fuse getIndicesFromLinearIndex and calculateLinearIndex

@@ -3,4 +3,9 @@
 
 namespace ops {
 
+template <typename dtype>
+struct reduce {
+
+};
+
 }

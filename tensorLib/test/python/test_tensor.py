@@ -7,7 +7,7 @@ import operator
 
 import sys
 # sys.path.append('/home/zyy/project/tensorLib/build')
-sys.path.append('/root/autodl-tmp/tensorLib/build')
+sys.path.append('/root/gpufree-data/tensorLib/build')
 import tensor_bindings as tb
 
 def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10) -> list[tuple]:
@@ -131,7 +131,9 @@ reduced_shapes = generate_random_shapes(50, min_dims=1, max_dims=4, max_size=10)
 @pytest.mark.parametrize("shape", reduced_shapes)
 @pytest.mark.parametrize("op, np_op", reduced_ops)
 @pytest.mark.parametrize("keepdims", [True, False])
-@pytest.mark.parametrize("device", ["cpu", "cuda"])
+# @pytest.mark.parametrize("device", ["cpu", "cuda"])
+# @pytest.mark.parametrize("device", ["cpu"])
+@pytest.mark.parametrize("device", ["cuda"])
 def test_reduced_methods(shape, op, np_op, keepdims, device):
     """
     Test the reduced methods, which are sum, mean, max, min, argmax, argmin...

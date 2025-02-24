@@ -134,25 +134,25 @@ target_include_directories(llama2 PUBLIC
 )
 target_link_libraries(llama2 PRIVATE tensorLib)
 ################################## tensor_bindings module ##########################################################
-# # Set the PYBIND11_FINDPYTHON option to ON
-# set(PYBIND11_FINDPYTHON ON)
-# 
-# # pybind11
-# find_package(pybind11 REQUIRED)
-# include_directories(${pybind11_INCLUDE_DIRS})
-# 
-# find_package(Python3 REQUIRED)
-# include_directories(${Python3_INCLUDE_DIRS})
-# 
-# # Add source files
-# add_library(tensor_bindings MODULE tensorLib/test/python/tensor_bindings.cpp)
-# 
-# # Set the output name without the 'lib' prefix
-# set_target_properties(tensor_bindings
-#     PROPERTIES
-#     PREFIX ""
-# )
-# 
-# # Link with pybind11
-# target_link_libraries(tensor_bindings PRIVATE pybind11::module tensorLib)
-# pybind11_strip(tensor_bindings)
+# Set the PYBIND11_FINDPYTHON option to ON
+set(PYBIND11_FINDPYTHON ON)
+
+# pybind11
+find_package(pybind11 REQUIRED)
+include_directories(${pybind11_INCLUDE_DIRS})
+
+find_package(Python3 REQUIRED)
+include_directories(${Python3_INCLUDE_DIRS})
+
+# Add source files
+add_library(tensor_bindings MODULE tensorLib/test/python/tensor_bindings.cpp)
+
+# Set the output name without the 'lib' prefix
+set_target_properties(tensor_bindings
+    PROPERTIES
+    PREFIX ""
+)
+
+# Link with pybind11
+target_link_libraries(tensor_bindings PRIVATE pybind11::module tensorLib)
+pybind11_strip(tensor_bindings)

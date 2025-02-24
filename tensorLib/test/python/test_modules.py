@@ -10,7 +10,7 @@ import sys
 # sys.path.append('/raid/home/zhuyangyang/tensorLib/build')
 # sys.path.append('../../build')
 # sys.path.append('/home/zyy/project/tensorLib/build')
-sys.path.append('/root/autodl-tmp/tensorLib/build')
+sys.path.append('/root/gpufree-data/tensorLib/build')
 import tensor_bindings as tb
 import time
 

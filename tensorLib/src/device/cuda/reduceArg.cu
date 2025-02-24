@@ -148,13 +148,11 @@ void reduceArg_v1(int* result, const dtype* data, size_t reduce_size, size_t num
 template <typename dtype>
 template <bool (*comp)(dtype, dtype)>
 void CUDA<dtype>::reduceOperationArg(int* result, size_t reduce_size, size_t num_elements) const {
-    // reduceArg_v0<dtype, comp>(result, this->data_, reduce_size, num_elements);
-    reduceArg_v1<dtype, comp>(result, this->data_, reduce_size, num_elements);
-    // if (reduce_size >= THREADS_PER_BLOCK) {
-    //     reduceArg_v1<dtype, comp>(result, this->data_, reduce_size, num_elements);
-    // } else {
-    //     reduceArg_v0<dtype, comp>(result, this->data_, reduce_size, num_elements);
-    // }
+    if (reduce_size >= THREADS_PER_BLOCK) {
+        reduceArg_v1<dtype, comp>(result, this->data_, reduce_size, num_elements);
+    } else {
+        reduceArg_v0<dtype, comp>(result, this->data_, reduce_size, num_elements);
+    }
 }
 
 /************************************************************************************************************************************************************/

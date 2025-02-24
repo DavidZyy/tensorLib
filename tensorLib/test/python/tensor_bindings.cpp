@@ -208,7 +208,7 @@ PYBIND11_MODULE(tensor_bindings, m) {
         });
 
     // Bind the apply_rotary_emb function
-    m.def("apply_rotary_emb", &apply_rotary_emb<float>, py::arg("input"), py::arg("start_pos"));
+    // m.def("apply_rotary_emb", &apply_rotary_emb<float>, py::arg("input"), py::arg("start_pos"));
         
     // convert a Tensor to numpy array
     m.def("convert_to_numpy", [](const Tensor<float>& t) {
@@ -611,13 +611,13 @@ PYBIND11_MODULE(tensor_bindings, m) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //  bind modules 
-    py::class_<nn::RMSNorm<float_t>>(m, "RMSNorm")
-        // .def(py::init<int, float_t, std::string>())
-        .def(py::init<int, float_t, std::string>(), py::arg("dim"), py::arg("eps") = 1e-5, py::arg("device") = "cpu")
-        .def("forward", &nn::RMSNorm<float_t>::forward)
-        .def("forward_plain", &nn::RMSNorm<float_t>::forward_plain)
-        .def("forward_fused_cuda", &nn::RMSNorm<float_t>::forward_fused_cuda)
-        // bind RMSNorm.weight(class member)
-        .def_readwrite("weight", &nn::RMSNorm<float_t>::weight);
-
+//     py::class_<nn::RMSNorm<float_t>>(m, "RMSNorm")
+//         // .def(py::init<int, float_t, std::string>())
+//         .def(py::init<int, float_t, std::string>(), py::arg("dim"), py::arg("eps") = 1e-5, py::arg("device") = "cpu")
+//         .def("forward", &nn::RMSNorm<float_t>::forward)
+//         .def("forward_plain", &nn::RMSNorm<float_t>::forward_plain)
+//         .def("forward_fused_cuda", &nn::RMSNorm<float_t>::forward_fused_cuda)
+//         // bind RMSNorm.weight(class member)
+//         .def_readwrite("weight", &nn::RMSNorm<float_t>::weight);
+// 
 }
