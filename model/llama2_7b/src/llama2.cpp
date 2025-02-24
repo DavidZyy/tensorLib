@@ -36,7 +36,7 @@ void Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
     auto bsz = prompt_tokens_tensor.shape()[0];
     auto seqlen = prompt_tokens_tensor.shape()[1];
 
-    ActivationBuffer<dtype> activation_buffer0(bsz, seqlen, this->model.params.dim, this->model.params.hidden_dim, this->device_type);
+    ActivationBuffer<dtype> activation_buffer0(bsz, seqlen, this->model.params.dim, this->model.params.hidden_dim, this->model.params.n_heads, this->model.params.max_seq_len, this->device_type);
 
     logits = this->model.forward(prompt_tokens_tensor, total_len, activation_buffer0); // shape = (bsz, seq_len, vocab_size)
     total_len += prompt_len;
@@ -55,7 +55,7 @@ void Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
 
     start_time = std::chrono::high_resolution_clock::now();
 
-    ActivationBuffer<dtype> activation_buffer1(bsz, 1, this->model.params.dim, this->model.params.hidden_dim, this->device_type);
+    ActivationBuffer<dtype> activation_buffer1(bsz, 1, this->model.params.dim, this->model.params.hidden_dim, this->model.params.n_heads, this->model.params.max_seq_len, this->device_type);
 
     int generate_cnt = 0;
     for (int i = 0; i < generate_len; i++) {

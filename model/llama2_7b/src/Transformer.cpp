@@ -60,9 +60,19 @@ Tensor<dtype> Attention<dtype>::forward(ActivationBuffer<dtype>& activation_buff
     xq = xq.transpose(1, 2); // (bsz, n_heads, seqlen, head_dim)
     keys = keys.transpose(1, 2); // (bsz, n_heads, cache_len+seqlen, head_dim)
     values = values.transpose(1, 2); // (bsz, n_heads, cache_len+seqlen, head_dim)
-    auto scores = xq.matmul(keys.transpose(2, 3)) / sqrt(head_dim); // (bsz, n_heads, seqlen, cache_len+seqlen)
-    // std::cout << "scores: " << scores << std::endl;
-    // std::cout << "mask: " << mask.value() << std::endl;
+
+
+    std::vector<std::vector<int>> scores_size_slices  = {{0, (bsz * n_heads * seqlen * (start_pos+seqlen))}};
+    std::vector<int> scores_shape  = {bsz, n_heads, seqlen, start_pos+seqlen};
+    auto scores_buffer = activation_buffer.scores.getItem(scores_size_slices); // get a contiguous buffer for matmul
+    scores_buffer = scores_buffer.view(scores_shape);
+
+    xq.matmul(keys.transpose(2, 3), scores_buffer); // (bsz, n_heads, seqlen, cache_len+seqlen)
+    auto scores = scores_buffer / sqrt(head_dim);
+
+    // auto scores = xq.matmul(keys.transpose(2, 3)); // (bsz, n_heads, seqlen, cache_len+seqlen)
+    // scores = scores / sqrt(head_dim);
+
     if (mask.has_value()) {
         scores = scores + mask.value();
     }
