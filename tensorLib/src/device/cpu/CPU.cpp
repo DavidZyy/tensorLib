@@ -1,5 +1,5 @@
 #include "device/Device.hpp"
-#include "device/CPU.hpp"
+#include "device/cpu/CPU.hpp"
 #include "omp.h"
 #include <cmath>
 #include <cstddef>
@@ -387,6 +387,13 @@ template <typename dtype> static inline bool argminFunc(dtype a, dtype b) { retu
 template <typename dtype> void CPU<dtype>::max(dtype* result, size_t reduce_size, size_t num_elements)    const { reduceOperation<maxFunc<dtype>>(result, reduce_size, num_elements); }
 template <typename dtype> void CPU<dtype>::min(dtype* result, size_t reduce_size, size_t num_elements)    const { reduceOperation<minFunc<dtype>>(result, reduce_size, num_elements); }
 template <typename dtype> void CPU<dtype>::sum(dtype* result, size_t reduce_size, size_t num_elements)    const { reduceOperation<sumFunc<dtype>>(result, reduce_size, num_elements); }
+template <typename dtype> void CPU<dtype>::mean(dtype* result, size_t reduce_size, size_t num_elements)    const { 
+    reduceOperation<sumFunc<dtype>>(result, reduce_size, num_elements); 
+    #pragma omp parallel for
+    for (int i = 0; i < num_elements / reduce_size; i++) {
+        result[i] /= static_cast<dtype>(reduce_size);
+    }
+}
 template <typename dtype> void CPU<dtype>::argmax(int* result, size_t reduce_size, size_t num_elements) const { reduceOperationArg<argmaxFunc<dtype>>(result, reduce_size, num_elements); }
 template <typename dtype> void CPU<dtype>::argmin(int* result, size_t reduce_size, size_t num_elements) const { reduceOperationArg<argminFunc<dtype>>(result, reduce_size, num_elements); }
 

@@ -1,4 +1,5 @@
-#include "device/CUDA.hpp"
+#include "device/cuda/CUDA.cuh"
+#include "device/cuda/binary.cuh"
 #include <iostream>
 
 template class CUDA<int8_t>;
@@ -52,4 +53,7 @@ template <typename dtype> void CUDA<dtype>::min(dtype* result, size_t reduce_siz
 template <typename dtype> void CUDA<dtype>::sum(dtype* result, size_t reduce_size, size_t num_elements) const { 
     reduceOperation<sumFunc<dtype>>(result, reduce_size, num_elements); 
 }
-
+template <typename dtype> void CUDA<dtype>::mean(dtype* result, size_t reduce_size, size_t num_elements) const { 
+    reduceOperation<sumFunc<dtype>>(result, reduce_size, num_elements); 
+    applyBinaryScalarOperation<divFunc<dtype>>(result, reduce_size, num_elements/reduce_size);
+}

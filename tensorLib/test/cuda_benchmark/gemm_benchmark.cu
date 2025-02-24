@@ -1,5 +1,5 @@
 #include "Tensor.hpp"
-#include "device/CUDA.hpp"
+#include "device/cuda/CUDA.cuh"
 #include "test.hpp"
 
 #define M (4096)

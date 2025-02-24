@@ -73,6 +73,7 @@ public:
     virtual void max(dtype* result, size_t reduce_size, size_t num_elements)  const = 0;
     virtual void min(dtype* result, size_t reduce_size, size_t num_elements)  const = 0;
     virtual void sum(dtype* result, size_t reduce_size, size_t num_elements)  const = 0;
+    virtual void mean(dtype* result, size_t reduce_size, size_t num_elements)  const = 0;
     virtual void argmax(int* result, size_t reduce_size, size_t num_elements) const = 0;
     virtual void argmin(int* result, size_t reduce_size, size_t num_elements) const = 0;
 

@@ -2,7 +2,7 @@
 // [1] git@github.com:Bruce-Lee-LY/cuda_hgemv.git
 // [2] git@github.com:wangsiping97/FastGEMV.git
 // in decode stage of transformer, the operation is gemv, which is a matrix-vector multiplication
-#include "device/CUDA.hpp"
+#include "device/cuda/CUDA.cuh"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>

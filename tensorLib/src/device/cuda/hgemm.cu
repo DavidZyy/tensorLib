@@ -2,14 +2,14 @@
 // reference:
 // [1]: https://github.com/Bruce-Lee-LY/cuda_hgemm/tree/master
 
-#include "device/CUDA.hpp"
+#include "device/cuda/CUDA.cuh"
 #include <cstddef>
 #include <cstdint>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include <iostream>
 #include "util.hpp"
-#include "device/ptx.hpp"
+#include "device/cuda/ptx.hpp"
 
 #define MMA_M 16
 #define MMA_N 8

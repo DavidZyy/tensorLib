@@ -1,7 +1,7 @@
 // reference: https://github.com/nicolaswilde/cuda-sgemm
 #include "device/Device.hpp"
-#include "device/CPU.hpp"
-#include "device/CUDA.hpp"
+#include "device/cpu/CPU.hpp"
+#include "device/cuda/CUDA.cuh"
 #include <ctime>
 #include <iostream>
 

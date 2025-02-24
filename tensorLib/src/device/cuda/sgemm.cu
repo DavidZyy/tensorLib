@@ -1,5 +1,5 @@
 // this file provides single precision matrix multiplication kernels(Sgemm).
-#include "device/CUDA.hpp"
+#include "device/cuda/CUDA.cuh"
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include <iostream>

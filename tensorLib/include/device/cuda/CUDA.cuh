@@ -1,25 +1,20 @@
 #pragma once
 
-#include "Device.hpp"
-#include <cmath>
+#include "device/Device.hpp"
 #include <cstddef>
-#include <stdexcept>
 #include <vector>
+#include <cuda_runtime.h>
+#include <stdexcept>
+#include <cublas_v2.h>
+#include <iostream>
 
 template <typename dtype>
-class CPU : public Device<dtype> {
+class CUDA : public Device<dtype> {
 public:
-    // Default constructor
-    CPU() : Device<dtype>(0), data_(nullptr) {}
-    CPU(size_t size, dtype *ptr) : Device<dtype>(size), data_(ptr) {}
-    CPU(size_t size) : Device<dtype>(size) { 
-        data_ = new dtype[size]; 
-    }
-
-    ~CPU() override { 
-        if (data_ != nullptr)
-            delete[] data_; 
-    }
+    CUDA() : Device<dtype>(0), data_(nullptr) {}
+    CUDA(size_t size, dtype* ptr) : Device<dtype>(size), data_(ptr) {}
+    CUDA(size_t size);
+    ~CUDA() override;
 
     // batched matmul
     void matmul(const dtype* lhs, const dtype* rhs, dtype* result, 
@@ -30,8 +25,9 @@ public:
         const std::vector<int>& result_shape,
         size_t result_elements,
         size_t K) override;
-
+ 
     void matmul2d(const dtype* A, const dtype* B, dtype* C, size_t M, size_t N, size_t K) override;
+    // void matmul2d_Cublas(const dtype* lhs, const dtype* rhs, dtype* result, size_t M, size_t N, size_t K);
 
     dtype* getDataPtr() override { return data_; }
     void full (size_t num_elements, dtype fill_value) override;
@@ -58,7 +54,7 @@ public:
         const std::vector<int>& stride,
         size_t offset,
         size_t num_elements) override;
-    
+
     // unary operations
     void neg(dtype* result, size_t num_elements)   override;
     void sin(dtype* result, size_t num_elements)   override;
@@ -83,16 +79,12 @@ public:
     void pow(dtype* result, dtype scalar, size_t num_elements) const override;
 
     // reduction methods
-    void max(dtype* result, size_t reduce_size, size_t num_elements)    const override;
-    void min(dtype* result, size_t reduce_size, size_t num_elements)    const override;
-    void sum(dtype* result, size_t reduce_size, size_t num_elements)    const override;
+    void max(dtype* result, size_t reduce_size, size_t num_elements)  const override;
+    void min(dtype* result, size_t reduce_size, size_t num_elements)  const override;
+    void sum(dtype* result, size_t reduce_size, size_t num_elements)  const override;
+    void mean(dtype* result, size_t reduce_size, size_t num_elements)  const override;
     void argmax(int* result, size_t reduce_size, size_t num_elements) const override;
     void argmin(int* result, size_t reduce_size, size_t num_elements) const override;
-
-    // quantization methods
-    // void quantize0(dtype* result, size_t num_elements, dtype scale, int zero_point) const override; // use 0 as zero point
-    // void quantize1(dtype* result, size_t num_elements, dtype scale, int zero_point) const override; // calculate new zero point
-    // void dequantize(dtype* result, size_t num_elements, dtype scale, int zero_point) const override;
 
     // special methods
     // void apply_rotary_emb(
@@ -101,7 +93,7 @@ public:
     //     int start_pos,
     //     int H,
     //     int W) const override;
-
+    
     void apply_rotary_emb(
         const dtype* input,
         dtype* result,
@@ -110,6 +102,9 @@ public:
         int T,
         int n_heads,
         int head_dim) const override;
+
+    // fused cuda operations
+    void rms_norm(dtype *output, dtype *input, dtype *weight, float epsilon, int hidden_size, int num_tokens);
 
     template <typename OtherType>
     // void type_cast(dtype* result, OtherType src, size_t num_elements) const; // can not use const, for result is data_ to be changed
@@ -124,7 +119,7 @@ public:
     template <dtype (*op)(dtype, dtype)>
     void applyBinaryOperation(dtype* result, const dtype* other, size_t num_elements) const;
     template <dtype (*op)(dtype, dtype)>
-    void applyBinaryScalarOperation(dtype* result, dtype value, size_t num_elements) const;
+    void applyBinaryScalarOperation(dtype* result,  dtype value, size_t num_elements) const;
 
     template <dtype (*op)(dtype, dtype)>
     void reduceOperation(dtype* result, size_t reduce_size, size_t num_elements) const;
@@ -132,14 +127,76 @@ public:
     void reduceOperationArg(int* result, size_t reduce_size, size_t num_elements) const;
 };
 
-inline size_t convertIdx(size_t linear_index, const std::vector<int>& shape, const std::vector<int>& stride, size_t offset) {
-    size_t linear_index_new = 0;
+#define CUDA_CHECK(call)                                                    \
+{                                                                           \
+    const cudaError_t error = call;                                         \
+    if (error != cudaSuccess)                                               \
+    {                                                                       \
+        std::cerr << "Error: " << __FILE__ << ":" << __LINE__ << ", ";      \
+        std::cerr << "code: " << error << ", reason: " << cudaGetErrorString(error) << std::endl; \
+        exit(1);                                                            \
+    }                                                                       \
+}
 
-    for (int i = shape.size() - 1; i >= 0; --i) {
-        int cur_dim_id = linear_index % shape[i];
-        linear_index /= shape[i];
-        linear_index_new += cur_dim_id * stride[i];
+#define CUBLAS_CHECK(call)                                                  \
+{                                                                           \
+    const cublasStatus_t status = call;                                     \
+    if (status != CUBLAS_STATUS_SUCCESS)                                    \
+    {                                                                       \
+        std::cerr << "CUBLAS Error: " << __FILE__ << ":" << __LINE__ << ", "; \
+        std::cerr << "status: " << cublasGetErrorString(status) << std::endl; \
+        exit(1);                                                            \
+    }                                                                       \
+}
+
+inline std::string cublasGetErrorString(cublasStatus_t status) {
+    switch (status) {
+        case CUBLAS_STATUS_SUCCESS:          return "CUBLAS_STATUS_SUCCESS";
+        case CUBLAS_STATUS_NOT_INITIALIZED:  return "CUBLAS_STATUS_NOT_INITIALIZED";
+        case CUBLAS_STATUS_ALLOC_FAILED:     return "CUBLAS_STATUS_ALLOC_FAILED";
+        case CUBLAS_STATUS_INVALID_VALUE:    return "CUBLAS_STATUS_INVALID_VALUE";
+        case CUBLAS_STATUS_ARCH_MISMATCH:    return "CUBLAS_STATUS_ARCH_MISMATCH";
+        case CUBLAS_STATUS_MAPPING_ERROR:    return "CUBLAS_STATUS_MAPPING_ERROR";
+        case CUBLAS_STATUS_EXECUTION_FAILED: return "CUBLAS_STATUS_EXECUTION_FAILED";
+        case CUBLAS_STATUS_INTERNAL_ERROR:   return "CUBLAS_STATUS_INTERNAL_ERROR";
+        case CUBLAS_STATUS_NOT_SUPPORTED:    return "CUBLAS_STATUS_NOT_SUPPORTED";
+        case CUBLAS_STATUS_LICENSE_ERROR:    return "CUBLAS_STATUS_LICENSE_ERROR";
+        default:                             return "Unknown cuBLAS error";
     }
+}
 
+// copy from CMU10-414 homework project
+#define MAX_VEC_SIZE 8
+struct CudaVec {
+  uint32_t size;
+  int32_t data[MAX_VEC_SIZE];
+};
+
+static CudaVec VecToCuda(const std::vector<int>& x) {
+  CudaVec shape;
+  if (x.size() > MAX_VEC_SIZE) throw std::runtime_error("Exceeded CUDA supported max dimesions");
+  shape.size = x.size();
+  for (size_t i = 0; i < x.size(); i++) {
+    shape.data[i] = x[i];
+  }
+  return shape;
+}
+
+__device__ inline size_t convertIdx(
+    size_t linear_index, 
+    CudaVec shape,
+    CudaVec stride, 
+    size_t offset) 
+{
+    int dim_size = shape.size;
+    size_t linear_index_new = 0;
+    
+    for (int i = dim_size - 1; i >= 0; --i) {
+        int cur_dim_id = linear_index % shape.data[i];
+        linear_index /= shape.data[i];
+        linear_index_new += cur_dim_id * stride.data[i];
+    }
+    
     return linear_index_new + offset;
 }
+

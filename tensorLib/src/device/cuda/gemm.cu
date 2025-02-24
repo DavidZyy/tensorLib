@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2025
  * this file provides gemm kernels which support dtype (both half and float)
  */
-#include "device/CUDA.hpp"
+#include "device/cuda/CUDA.cuh"
 #include <iostream>
 
 template class CUDA<int8_t>;

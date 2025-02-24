@@ -1,4 +1,4 @@
-#include "device/CUDA.hpp"
+#include "device/cuda/CUDA.cuh"
 #include <cassert>
 #include <cstddef>
 #include <cstdio>

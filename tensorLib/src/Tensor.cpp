@@ -10,8 +10,8 @@
 #include "iostream"
 #include "math.h"
 #include "omp.h"
-#include "device/CPU.hpp"
-#include "device/CUDA.hpp"
+#include "device/cpu/CPU.hpp"
+#include "device/cuda/CUDA.cuh"
 #include "device/Device.hpp"
 #include "ops/matmul.hpp"
 
@@ -537,25 +537,9 @@ Tensor<dtype> Tensor<dtype>::reduceOperation(std::optional<int> axis, bool keepd
 template<typename dtype> Tensor<dtype> Tensor<dtype>::max (std::optional<int> axis, bool keepdims) const { return reduceOperation<&Device<dtype>::max>(axis, keepdims); }
 template<typename dtype> Tensor<dtype> Tensor<dtype>::min (std::optional<int> axis, bool keepdims) const { return reduceOperation<&Device<dtype>::min>(axis, keepdims); }
 template<typename dtype> Tensor<dtype> Tensor<dtype>::sum (std::optional<int> axis, bool keepdims) const { return reduceOperation<&Device<dtype>::sum>(axis, keepdims); }
-template<typename dtype> Tensor<dtype> Tensor<dtype>::mean(std::optional<int> axis, bool keepdims) const {
-    int reduce_size;
-    if (axis.has_value()) {
-        reduce_size = this->shape()[handle_axis(axis.value())];
-    } else {
-        reduce_size = this->num_elements;
-    }
+template<typename dtype> Tensor<dtype> Tensor<dtype>::mean (std::optional<int> axis, bool keepdims) const { return reduceOperation<&Device<dtype>::mean>(axis, keepdims); }
 
-    auto result1 = this->sum(axis, keepdims);
-    Tensor<dtype> result2;
-    if constexpr (std::is_same_v<dtype, half>) {
-        // result2 = result1 / static_cast<half>(static_cast<float>(reduce_size)); 
-        result2 = result1 / __float2half(static_cast<float>(reduce_size)); 
-    } else {
-        result2 = result1 / static_cast<dtype>(reduce_size);
-    }
-
-    return result2;
-}
+////////////////////////////////////////////////////// reduceArg operations ///////////////////////////////////////////////////////////////////////////////
 
 /**
  * almost the same as reduceOperation, unless the return type is int, not dtype

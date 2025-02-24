@@ -10,8 +10,8 @@
 #include <pybind11/operators.h>
 #include "device/Device.hpp"
 #include "Tensor.hpp"
-#include "device/CUDA.hpp"
-#include "device/CPU.hpp"
+#include "device/cuda/CUDA.cuh"
+#include "device/cpu/CPU.hpp"
 #include <sstream>
 #include "nn/rmsNorm.hpp"
 #include <cuda_fp16.h>  // For CUDA half-precision support
