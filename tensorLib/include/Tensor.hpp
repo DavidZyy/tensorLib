@@ -141,11 +141,15 @@ public:
     Tensor<dtype> operator-(const Tensor<dtype>& other) const;
     Tensor<dtype> operator*(const Tensor<dtype>& other) const;
     Tensor<dtype> operator/(const Tensor<dtype>& other) const;
+    Tensor<dtype> EwiseAdd(const Tensor<dtype>& other, std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
     Tensor<dtype> operator+(dtype scalar) const; // could support Tensor + 1(not a lvalue), (dtype& scalar) can not support this
     Tensor<dtype> operator-(dtype scalar) const;
     Tensor<dtype> operator*(dtype scalar) const;
     Tensor<dtype> operator/(dtype scalar) const;
     Tensor<dtype> pow(dtype scalar) const;
+    Tensor<dtype> ScalarDiv(dtype scalar, std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
+    Tensor<dtype> ScalarAdd(dtype scalar, std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
+
 
     // reduce methods(reduce 1 dimension each function call), like sum, max
     Tensor<dtype> max (std::optional<int> axis = {}, bool keepdims = false) const;
@@ -216,9 +220,9 @@ public:
     template <void (Device<dtype>::*func)(dtype*, size_t)>
     Tensor<dtype> applyUnaryOperation() const;
     template <void (Device<dtype>::*func)(dtype*, dtype*, size_t) const >
-    Tensor<dtype> applyBinaryOperation(const Tensor<dtype>& other) const;
+    Tensor<dtype> applyBinaryOperation(const Tensor<dtype>& other, std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
     template <void (Device<dtype>::*func)(dtype*, dtype, size_t) const >
-    Tensor<dtype> applyBinaryScalarOperation(dtype scalar) const;
+    Tensor<dtype> applyBinaryScalarOperation(dtype scalar, std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
 
     template<typename Rtype, void (Device<dtype>::*func)(Rtype*, size_t, size_t) const>
     Tensor<Rtype> reduceOperation(std::optional<int> axis, bool keepdims) const;

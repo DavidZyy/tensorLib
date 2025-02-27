@@ -85,6 +85,7 @@ public:
     void mean(dtype* result, size_t reduce_size, size_t num_elements)  const override;
     void argmax(int* result, size_t reduce_size, size_t num_elements) const override;
     void argmin(int* result, size_t reduce_size, size_t num_elements) const override;
+    void softmax(dtype* output, size_t rows, size_t cols) const override;
 
     // special methods
     // void apply_rotary_emb(

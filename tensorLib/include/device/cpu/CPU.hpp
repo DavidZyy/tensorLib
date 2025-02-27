@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <stdexcept>
 #include <vector>
+#include <cuda_fp16.h>
 
 template <typename dtype>
 class CPU : public Device<dtype> {
@@ -89,6 +90,7 @@ public:
     void mean(dtype* result, size_t reduce_size, size_t num_elements)    const override;
     void argmax(int* result, size_t reduce_size, size_t num_elements) const override;
     void argmin(int* result, size_t reduce_size, size_t num_elements) const override;
+    void softmax(dtype* output, size_t rows, size_t cols) const override;
 
     // quantization methods
     // void quantize0(dtype* result, size_t num_elements, dtype scale, int zero_point) const override; // use 0 as zero point

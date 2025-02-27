@@ -76,6 +76,7 @@ public:
     virtual void mean(dtype* result, size_t reduce_size, size_t num_elements)  const = 0;
     virtual void argmax(int* result, size_t reduce_size, size_t num_elements) const = 0;
     virtual void argmin(int* result, size_t reduce_size, size_t num_elements) const = 0;
+    virtual void softmax(dtype* output, size_t rows, size_t cols) const = 0;
 
     // quantization methods
     // virtual void quantize0(dtype* result, size_t num_elements, dtype scale, int zero_point) const = 0;

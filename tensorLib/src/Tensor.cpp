@@ -459,132 +459,69 @@ Tensor<dtype> Tensor<dtype>::transpose(int dim0, int dim1) const {
     return result;
 }
 
-////////////////////////////////////////////////////// reduce operations ///////////////////////////////////////////////////////////////////////////////
-template <typename dtype>
-int Tensor<dtype>::handle_axis(int axis) const {
-    int dims = static_cast<int>(this->shape().size()); // size is unsigned, so use int
-    if (axis >= dims) {
-        throw std::invalid_argument("The axis must be less than the shape size.");
-    } else if (axis < -dims) {
-        throw std::invalid_argument("The axis must be greater than or equal to -shape size.");
-    }
-
-    if (axis < 0) {
-        axis += this->shape().size();
-    }
-    return axis;
-}
-
-/**
- * permute the axis to the last dimension first, then return a view of the tensor which is contiguous.
- * @tparam dtype 
- */
-template<typename dtype>
-Tensor<dtype> Tensor<dtype>::get_reduce_view(int axis) const {
-    std::vector<int> new_axes;
-    for (int i=0; i < this->shape().size(); i++) {
-        if (i != axis) {
-            new_axes.push_back(i);
-        }
-    }
-    new_axes.push_back(axis);
-
-    auto view = this->permute(new_axes);
-    view = view.contiguous();
-    return view;
-}
-
-template<typename dtype>
-std::vector<int> Tensor<dtype>::get_reduce_shape(int axis, bool keepdims) const {
-    std::vector<int> new_shape = this->shape();
-    if (keepdims) {
-        new_shape[axis] = 1;
-    } else {
-        new_shape.erase(new_shape.begin() + axis);
-    }
-    
-    return new_shape;
-}
-
-template<typename dtype>
-template<typename Rtype, void (Device<dtype>::*func)(Rtype*, size_t, size_t) const>
-Tensor<Rtype> Tensor<dtype>::reduceOperation(std::optional<int> axis, bool keepdims) const {
-    Tensor<dtype> view;
-    std::vector<int> new_shape;
-    int reduce_size;
-
-    if (axis.has_value()) {
-        int axis_v = handle_axis(axis.value());
-        view = get_reduce_view(axis_v); // Permute to move the reduction axis to the last dimension
-        new_shape = get_reduce_shape(axis_v, keepdims);
-        reduce_size = this->shape()[axis_v];
-    } else {
-        // Reduce all dimensions
-        view = *this;
-        if (keepdims)
-            new_shape = std::vector<int>(this->shape().size(), 1);
-        reduce_size = this->num_elements;
-    }
-
-    Tensor<Rtype> result(new_shape, this->device_type);
-
-    // Call the device function with the appropriate pointer, reduce size, and total elements
-    (view.device.get()->*func)(result.device->getDataPtr(), reduce_size, this->num_elements);
-
-    return result;
-}
-
-template<typename dtype> 
-Tensor<dtype> Tensor<dtype>::max(std::optional<int> axis, bool keepdims) const { 
-    return reduceOperation<dtype, &Device<dtype>::max>(axis, keepdims); 
-}
-
-template<typename dtype> 
-Tensor<dtype> Tensor<dtype>::min(std::optional<int> axis, bool keepdims) const { 
-    return reduceOperation<dtype, &Device<dtype>::min>(axis, keepdims); 
-}
-
-template<typename dtype> 
-Tensor<dtype> Tensor<dtype>::sum(std::optional<int> axis, bool keepdims) const { 
-    return reduceOperation<dtype, &Device<dtype>::sum>(axis, keepdims); 
-}
-
-template<typename dtype> 
-Tensor<dtype> Tensor<dtype>::mean(std::optional<int> axis, bool keepdims) const { 
-    return reduceOperation<dtype, &Device<dtype>::mean>(axis, keepdims); 
-}
-
-template<typename dtype> 
-Tensor<int> Tensor<dtype>::argmax(std::optional<int> axis, bool keepdims) const { 
-    return reduceOperation<int, &Device<dtype>::argmax>(axis, keepdims); 
-}
-
-template<typename dtype> 
-Tensor<int> Tensor<dtype>::argmin(std::optional<int> axis, bool keepdims) const { 
-    return reduceOperation<int, &Device<dtype>::argmin>(axis, keepdims); 
-}
-
 ////////////////////////////////////////////////////// softmax operations ///////////////////////////////////////////////////////////////////////////////
+// template<typename dtype>
+// Tensor<dtype> Tensor<dtype>::softmax(int dim) const {
+//     // if device_type == "cuda", we can use fused softmax, which is faster. 
+//     // or if device_type = "cpu", we can use the following code to calculate softmax.
+// 
+//     auto max_val = this->max(dim, true);
+//     max_val = max_val.broadcast_to(this->shape());
+// 
+//     auto exp_val = (*this - max_val).exp();
+// 
+//     auto sum_val = exp_val.sum(dim, true);
+//     sum_val = sum_val.broadcast_to(this->shape());
+// 
+//     return exp_val / sum_val;
+// }
+
+// buffer A -->(contiguous after put dim last) buffer B -->(softmax) buffer A -->(contiguous after put dim back) buffer B
+// convert the dim to last dimension, then calculate the softmax, and then convert it back.
+/**
+for example len(shape) = 4, dim = 1, the axes conversions are:
+
+axies: 0 1 2 3  -->  0 2 3 1  -->  0 3 1 2
+idx:   0 1 2 3  -->  0 1 2 3  -->  0 1 2 3
+ */
+// template<typename dtype>
+// Tensor<dtype> Tensor<dtype>::softmax(int dim) const {
+//     Tensor<dtype> result(this->shape_, this->device_type);
+// 
+//     int cols = this->shape_[this->ndim-1];
+//     int rows = this->num_elements / cols;
+// 
+//     this->device->softmax(result.device->getDataPtr(), rows, cols);
+// 
+//     return result;
+// }
+
 template<typename dtype>
 Tensor<dtype> Tensor<dtype>::softmax(int dim) const {
-    // if device_type == "cuda", we can use fused softmax, which is faster. 
-    // or if device_type = "cpu", we can use the following code to calculate softmax.
+    std::vector<int> axis0, axis1;
+    for (int i=0; i < this->ndim; i++)
+        if (i != dim) axis0.push_back(i);
+    axis0.push_back(dim);
 
-    auto max_val = this->max(dim, true);
-    max_val = max_val.broadcast_to(this->shape());
+    for (int i=0; i < this->ndim; i++) {
+        if (i < dim) axis1.push_back(i);
+        else if (i == dim) axis1.push_back(this->ndim - 1);
+        else axis1.push_back(i - 1);
+    }
 
-    auto exp_val = (*this - max_val).exp();
+    Tensor<dtype> a = this->permute(axis0);
+    a = a.contiguous();
 
-    auto sum_val = exp_val.sum(dim, true);
-    sum_val = sum_val.broadcast_to(this->shape());
+    Tensor<dtype> result(a.shape_, a.device_type);
+    int cols = a.shape_[a.ndim-1];
+    int rows = a.num_elements / cols;
+    a.device->softmax(result.device->getDataPtr(), rows, cols);
 
-    // std::cout << *this << std::endl;
-    // std::cout << max_val << std::endl;
-    // std::cout << exp_val << std::endl;
-    // std::cout << sum_val << std::endl;
-    return exp_val / sum_val;
+    Tensor<dtype> b = result.permute(axis1);
+    b = b.contiguous();
+
+    return b;
 }
-
 ////////////////////////////////////////////////////// binary operations ///////////////////////////////////////////////////////////////////////////////
 /**
  * used for implicit broadcasting 
@@ -635,7 +572,7 @@ std::vector<int> Tensor<dtype>::get_broadcast_shape(std::vector<int>& shape_a, s
  */
 template <typename dtype>
 template <void (Device<dtype>::*func)(dtype*, dtype*, size_t) const>
-Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other) const {
+Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other, std::optional<Tensor<dtype>> result_opt) const {
     if (this->device_type != other.device_type) {
         throw std::invalid_argument("The device type of the two tensors must be the same.");
     }
@@ -668,7 +605,18 @@ Tensor<dtype> Tensor<dtype>::applyBinaryOperation(const Tensor<dtype>& other) co
     a = a.contiguous();
     b = b.contiguous();
 
-    Tensor<dtype> result(this->shape(), this->device_type);
+    // Tensor<dtype> result(this->shape(), this->device_type);
+    Tensor<dtype> result;
+    if (result_opt.has_value()) {
+        result = result_opt.value();
+        if (result.shape() != this->shape()) {
+            throw std::invalid_argument("The shape of the result must be the same as the shape of the tensor.");
+        }
+    } else {
+        result = Tensor<dtype>(this->shape(), this->device_type);
+    }
+
+
     // (this->device.get()->*func)(result.device->getDataPtr(), other.device->getDataPtr(), result.num_elements); // error!!
     (a.device.get()->*func)(result.device->getDataPtr(), b.device->getDataPtr(), result.num_elements);
     return result;
@@ -679,15 +627,26 @@ template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(const Tensor<dt
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dtype>& other) const { return applyBinaryOperation<&Device<dtype>::mul>(other); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(const Tensor<dtype>& other) const { return applyBinaryOperation<&Device<dtype>::div>(other); }
 
+template <typename dtype> Tensor<dtype> Tensor<dtype>::EwiseAdd(const Tensor<dtype>& other, std::optional<Tensor<dtype>> result_opt) const { return applyBinaryOperation<&Device<dtype>::add>(other, result_opt); }
 /**
  * if this is a broadcasted tensor, need to use contiguous() firtst, or the num_elements is not the actual elem size of the tensor' device data_.
  * @tparam dtype 
  */
 template <typename dtype>
 template <void (Device<dtype>::*func)(dtype*, dtype, size_t) const>
-Tensor<dtype> Tensor<dtype>::applyBinaryScalarOperation(dtype scalar) const {
-    // Tensor<dtype> result = this->contiguous();
-    Tensor<dtype> result(this->shape(), this->device_type);
+Tensor<dtype> Tensor<dtype>::applyBinaryScalarOperation(dtype scalar, std::optional<Tensor<dtype>> result_opt) const {
+
+    // Tensor<dtype> result(this->shape(), this->device_type);
+    Tensor<dtype> result;
+    if (result_opt.has_value()) {
+        result = result_opt.value();
+        if (result.shape() != this->shape()) {
+            throw std::invalid_argument("The shape of the result must be the same as the shape of the tensor.");
+        }
+    } else {
+        result = Tensor<dtype>(this->shape(), this->device_type);
+    }
+
     Tensor<dtype> this_contiguous = this->contiguous();//if do not contiguous broadcast may get error, for it does not have num_elements elems actually.
     (this_contiguous.device.get()->*func)(result.device->getDataPtr(), scalar, result.num_elements);
     return result;
@@ -698,6 +657,11 @@ template <typename dtype> Tensor<dtype> Tensor<dtype>::operator-(dtype scalar) c
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(dtype scalar) const { return applyBinaryScalarOperation<&Device<dtype>::mul>(scalar); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(dtype scalar) const { return applyBinaryScalarOperation<&Device<dtype>::div>(scalar); }
 template <typename dtype> Tensor<dtype> Tensor<dtype>::pow(dtype scalar) const { return applyBinaryScalarOperation<&Device<dtype>::pow>(scalar); }
+
+template <typename dtype> Tensor<dtype> Tensor<dtype>::ScalarDiv(dtype scalar, std::optional<Tensor<dtype>> result_opt) const { return applyBinaryScalarOperation<&Device<dtype>::div>(scalar, result_opt); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::ScalarAdd(dtype scalar, std::optional<Tensor<dtype>> result_opt) const { return applyBinaryScalarOperation<&Device<dtype>::add>(scalar, result_opt); }
+
+/******************************************************************************************************************************/
 
 /** can be called in gdb, operator << can not be called... */
 void print_tensor_float(const Tensor<float>& tensor) {

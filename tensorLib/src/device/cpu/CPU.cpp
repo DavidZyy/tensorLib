@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <stdexcept>
 #include <random>
-#include <cuda_fp16.h>
 
 template class CPU<int8_t>;
 template class CPU<half>;

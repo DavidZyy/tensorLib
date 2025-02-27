@@ -2,6 +2,7 @@
 // [1] git@github.com:Bruce-Lee-LY/cuda_hgemv.git
 // [2] git@github.com:wangsiping97/FastGEMV.git
 // in decode stage of transformer, the operation is gemv, which is a matrix-vector multiplication
+
 #include "device/cuda/CUDA.cuh"
 #include <cassert>
 #include <cstddef>
@@ -9,6 +10,7 @@
 #include <cstdio>
 #include <iostream>
 #include "util.hpp"
+#include "device/cuda/warp.cuh"
 
 template class CUDA<int8_t>;
 template class CUDA<half>;
@@ -357,20 +359,20 @@ template void gemv_v5<float>(const float* A, const float* B, float* C, size_t N,
 template void gemv_v5<int>(const int* A, const int* B, int* C, size_t N, size_t K);
 
 /************************************************************************************************************************************************************/
-__device__ __forceinline__ float warpReduceSum(float sum,
-                                               unsigned int threadNum) {
-  if (threadNum >= 32)
-    sum += __shfl_down_sync(0xffffffff, sum, 16);  // 0-16, 1-17, 2-18, etc.
-  if (threadNum >= 16)
-    sum += __shfl_down_sync(0xffffffff, sum, 8);  // 0-8, 1-9, 2-10, etc.
-  if (threadNum >= 8)
-    sum += __shfl_down_sync(0xffffffff, sum, 4);  // 0-4, 1-5, 2-6, etc.
-  if (threadNum >= 4)
-    sum += __shfl_down_sync(0xffffffff, sum, 2);  // 0-2, 1-3, 4-6, 5-7, etc.
-  if (threadNum >= 2)
-    sum += __shfl_down_sync(0xffffffff, sum, 1);  // 0-1, 2-3, 4-5, etc.
-  return sum;
-}
+// __device__ __forceinline__ float warpReduceSum(float sum,
+//                                                unsigned int threadNum) {
+//   if (threadNum >= 32)
+//     sum += __shfl_down_sync(0xffffffff, sum, 16);  // 0-16, 1-17, 2-18, etc.
+//   if (threadNum >= 16)
+//     sum += __shfl_down_sync(0xffffffff, sum, 8);  // 0-8, 1-9, 2-10, etc.
+//   if (threadNum >= 8)
+//     sum += __shfl_down_sync(0xffffffff, sum, 4);  // 0-4, 1-5, 2-6, etc.
+//   if (threadNum >= 4)
+//     sum += __shfl_down_sync(0xffffffff, sum, 2);  // 0-2, 1-3, 4-6, 5-7, etc.
+//   if (threadNum >= 2)
+//     sum += __shfl_down_sync(0xffffffff, sum, 1);  // 0-1, 2-3, 4-5, etc.
+//   return sum;
+// }
 
 /************************************************************************************************************************************************************/
 // reference: git@github.com:wangsiping97/FastGEMV.git
@@ -405,7 +407,7 @@ if constexpr (std::is_same_v<dtype, half>) {
         sum += __half2float(a3.y) * __half2float(b3.y);
     }
 
-    sum = warpReduceSum(sum, blockDim.x);
+    sum = warpReduceSum<float>(sum);
 
     if (blockDim.x <= WARP_SIZE) {
         if (tid == 0) {
@@ -498,7 +500,7 @@ if constexpr (std::is_same_v<dtype, half>) {
         sum += __half2float(a3.y) * __half2float(b3.y);
     }
 
-    sum = warpReduceSum(sum, blockDim.x);
+    sum = warpReduceSum<float>(sum);
 
     if (blockDim.x <= WARP_SIZE) {
         if (tid == 0) {
@@ -575,7 +577,7 @@ if constexpr (std::is_same_v<dtype, half>) {
         sum += __half2float(a3.y) * __half2float(b3.y);
     }
 
-    sum = warpReduceSum(sum, blockDim.x);
+    sum = warpReduceSum<float>(sum);
 
     if (blockDim.x <= WARP_SIZE) {
         if (tid == 0) {
@@ -606,7 +608,7 @@ if constexpr (std::is_same_v<dtype, half>) {
     }
 
     if (warpId == 0) {
-        sum = warpReduceSum(sum, blockDim.x / WARP_SIZE);
+        sum = warpReduceSum<float>(sum);
     }
 
     if (tid == 0) {

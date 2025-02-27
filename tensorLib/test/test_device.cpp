@@ -1,4 +1,4 @@
-#include "CUDA.cuh"
+#include "device/cuda/CUDA.cuh"
 #include "Tensor.hpp"
 #include <cstring>
 #include <cuda_runtime_api.h>

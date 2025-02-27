@@ -47,7 +47,7 @@ void Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
 
     auto end_time = std::chrono::high_resolution_clock::now();
     elapsed_time = end_time - start_time;
-    std::cout << "(prefill speed: " << prompt_len / elapsed_time.count() << " tok/s)" << std::endl;
+    std::cout << "(prompt length: " << prompt_len << " tok, time: " << elapsed_time.count() <<" s, prefill speed: " << prompt_len / elapsed_time.count() << " tok/s)" << std::endl;
 
     std::cout << this->tokenizer.decode(-1, next_token_int) << std::flush; // use flush to output immediately, not cache in buffer
 
@@ -76,7 +76,8 @@ void Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
 
     end_time = std::chrono::high_resolution_clock::now();
     elapsed_time = end_time - start_time;
-    std::cout << "(decode speed: " << generate_cnt / elapsed_time.count() << " tok/s)" << std::endl;
+    std::cout << "(generate length: " << generate_cnt << " tok, time: " << elapsed_time.count() <<" s, decode speed: " << generate_cnt / elapsed_time.count() << " tok/s)" << std::endl;
+    // std::cout << "(decode speed: " << generate_cnt / elapsed_time.count() << " tok/s)" << std::endl;
 }
 
 template <typename dtype>

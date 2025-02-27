@@ -166,29 +166,3 @@ void CUDA<dtype>::argmin(int* result, size_t reduce_size, size_t num_elements) c
     reduceOperationArg<argminFunc<dtype>>(result, reduce_size, num_elements); 
 }
 
-// template <typename dtype, bool (*comp)(dtype, dtype)>
-// __global__ void reduceArgKernel(int* result, const dtype* data, size_t reduce_size, size_t num_elements) {
-//     size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-//     if (i < num_elements / reduce_size) {
-//         dtype best_value = data[i * reduce_size];
-//         int best_idx = 0;
-//         for (int j = 1; j < reduce_size; j++) {
-//             if (comp(data[i * reduce_size + j], best_value)) {
-//                 best_value = data[i * reduce_size + j];
-//                 best_idx = j;
-//             }
-//         }
-//         result[i] = best_idx;
-//     }
-// }
-// 
-// template <typename dtype>
-// template <bool (*comp)(dtype, dtype)>
-// void CUDA<dtype>::reduceOperationArg(int* result, size_t reduce_size, size_t num_elements) const {
-//     int blockSize = 256;  // Number of threads per block (adjust based on optimization needs)
-//     int gridSize = (num_elements / reduce_size + blockSize - 1) / blockSize;  // Number of blocks
-// 
-//     reduceArgKernel<dtype, comp><<<gridSize, blockSize>>>(result, this->data_, reduce_size, num_elements);
-//     CUDA_CHECK(cudaGetLastError());
-//     // CUDA_CHECK(cudaDeviceSynchronize());
-// }

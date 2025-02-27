@@ -61,21 +61,23 @@ Tensor<dtype> Attention<dtype>::forward(ActivationBuffer<dtype>& activation_buff
     keys = keys.transpose(1, 2); // (bsz, n_heads, cache_len+seqlen, head_dim)
     values = values.transpose(1, 2); // (bsz, n_heads, cache_len+seqlen, head_dim)
 
-
     std::vector<std::vector<int>> scores_size_slices  = {{0, (bsz * n_heads * seqlen * (start_pos+seqlen))}};
     std::vector<int> scores_shape  = {bsz, n_heads, seqlen, start_pos+seqlen};
     auto scores_buffer = activation_buffer.scores.getItem(scores_size_slices); // get a contiguous buffer for matmul
     scores_buffer = scores_buffer.view(scores_shape);
 
     xq.matmul(keys.transpose(2, 3), scores_buffer); // (bsz, n_heads, seqlen, cache_len+seqlen)
-    auto scores = scores_buffer / sqrt(head_dim);
+    // auto scores = scores_buffer / sqrt(head_dim);
+    auto scores = scores_buffer.ScalarDiv(sqrt(head_dim), scores_buffer);
 
     // auto scores = xq.matmul(keys.transpose(2, 3)); // (bsz, n_heads, seqlen, cache_len+seqlen)
     // scores = scores / sqrt(head_dim);
 
     if (mask.has_value()) {
-        scores = scores + mask.value();
+        // scores = scores + mask.value();
+        scores = scores_buffer.EwiseAdd(mask.value(), scores_buffer);
     }
+
     scores = scores.softmax(3); // (bsz, n_heads, seqlen, cache_len+seqlen)
     auto output = scores.matmul(values); // (bsz, n_heads, seqlen, head_dim)
     output = output.transpose(1, 2).contiguous().view({bsz, seqlen, n_heads * head_dim}); // (bsz, seqlen, dim)

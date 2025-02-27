@@ -4,10 +4,12 @@ import pytest
 import numpy as np
 import random
 import operator
+import torch
+import torch.nn.functional as F
 
 import sys
-# sys.path.append('/home/zyy/project/tensorLib/build')
 sys.path.append('/root/gpufree-data/tensorLib/build')
+# sys.path.append('../../../build')
 import tensor_bindings as tb
 
 def generate_random_shapes(n_shapes, min_dims=0, max_dims=4, max_size=10) -> list[tuple]:
@@ -364,5 +366,27 @@ def test_permute(device):
     assert np_result.size == tensor_result_np.size
     np.testing.assert_allclose(np_result, tensor_result_np, atol=1e-5, rtol=1e-5)
 
+def test_reduce_max():
+    arr = np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]]).astype(np.float32) 
+    arr_t = tb.convert_to_tensor(arr, "cuda")
+    x0 = arr.max(axis=0, keepdims=True)
+    x1 = arr_t.max(0, True)
+    pass
+
+def test_permute2():
+    arr = np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]]).astype(np.float32) 
+    arr_t = tb.convert_to_tensor(arr, "cuda")
+    x0 = np.transpose(arr, (1, 2, 0))
+    x1 = arr_t.permute((1, 2, 0))
+    pass
+
+
 def test_softmax():
+    arr = np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]]).astype(np.float32)
+
+    arr_torch = torch.tensor(arr)
+    x0 = F.softmax(arr_torch.float(), dim=0)
+
+    arr_t = tb.convert_to_tensor(arr, "cuda")
+    x1 = arr_t.softmax(0)
     pass
