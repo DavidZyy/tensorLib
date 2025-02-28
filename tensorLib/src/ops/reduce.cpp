@@ -93,7 +93,7 @@ std::vector<int> Tensor<dtype>::get_reduce_shape(int axis, bool keepdims) const 
 
 template<typename dtype>
 template<typename Rtype, void (Device<dtype>::*func)(Rtype*, size_t, size_t) const>
-Tensor<Rtype> Tensor<dtype>::reduceOperation(std::optional<int> axis, bool keepdims) const {
+Tensor<Rtype> Tensor<dtype>::reduceOperation(std::optional<int> axis, bool keepdims, std::optional<Tensor<Rtype>> result_opt) const {
     Tensor<dtype> view;
     std::vector<int> new_shape;
     int reduce_size;
@@ -111,7 +111,16 @@ Tensor<Rtype> Tensor<dtype>::reduceOperation(std::optional<int> axis, bool keepd
         reduce_size = this->num_elements;
     }
 
-    Tensor<Rtype> result(new_shape, this->device_type);
+    // Tensor<Rtype> result(new_shape, this->device_type);
+    Tensor<Rtype> result;
+    if (result_opt.has_value()) {
+        result = result_opt.value();
+        if (result.shape() != new_shape) {
+            throw std::invalid_argument("The result tensor shape must be the same as the new shape.");
+        }
+    } else {
+        result = Tensor<Rtype>(new_shape, this->device_type);
+    }
 
     // Call the device function with the appropriate pointer, reduce size, and total elements
     (view.device.get()->*func)(result.device->getDataPtr(), reduce_size, this->num_elements);
@@ -140,8 +149,8 @@ Tensor<dtype> Tensor<dtype>::mean(std::optional<int> axis, bool keepdims) const 
 }
 
 template<typename dtype> 
-Tensor<int> Tensor<dtype>::argmax(std::optional<int> axis, bool keepdims) const { 
-    return reduceOperation<int, &Device<dtype>::argmax>(axis, keepdims);
+Tensor<int> Tensor<dtype>::argmax(std::optional<int> axis, bool keepdims, std::optional<Tensor<int>> result_opt) const { 
+    return reduceOperation<int, &Device<dtype>::argmax>(axis, keepdims, result_opt);
 }
 
 template<typename dtype> 

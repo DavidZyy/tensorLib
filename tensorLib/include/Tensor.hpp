@@ -114,7 +114,7 @@ public:
 
     // return a new tensor with the same shape and data, 
     // but with a different memory layout which is contiguous.
-    Tensor<dtype> contiguous() const;
+    Tensor<dtype> contiguous(std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
 
     // get or set a sub-tensor of this tensor. The implementation here refers to the homework project of CMU10_414.
     Tensor<dtype> getItem(std::vector<std::vector<int>>& slices) const;
@@ -132,7 +132,7 @@ public:
     Tensor<dtype> log() const;
     Tensor<dtype> abs() const;
     Tensor<dtype> tanh() const;
-    Tensor<dtype> silu() const;
+    Tensor<dtype> silu(std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
     Tensor<dtype> sqrt() const;
     Tensor<dtype> rsqrt() const;
 
@@ -142,6 +142,7 @@ public:
     Tensor<dtype> operator*(const Tensor<dtype>& other) const;
     Tensor<dtype> operator/(const Tensor<dtype>& other) const;
     Tensor<dtype> EwiseAdd(const Tensor<dtype>& other, std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
+    Tensor<dtype> EwiseMul(const Tensor<dtype>& other, std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
     Tensor<dtype> operator+(dtype scalar) const; // could support Tensor + 1(not a lvalue), (dtype& scalar) can not support this
     Tensor<dtype> operator-(dtype scalar) const;
     Tensor<dtype> operator*(dtype scalar) const;
@@ -156,10 +157,10 @@ public:
     Tensor<dtype> min (std::optional<int> axis = {}, bool keepdims = false) const;
     Tensor<dtype> sum (std::optional<int> axis = {}, bool keepdims = false) const;
     Tensor<dtype> mean(std::optional<int> axis = {}, bool keepdims = false) const;
-    Tensor<int> argmax(std::optional<int> axis = {}, bool keepdim = false) const;
+    Tensor<int> argmax(std::optional<int> axis = {}, bool keepdim = false, std::optional<Tensor<int>> result_opt = std::nullopt) const;
     Tensor<int> argmin(std::optional<int> axis = {}, bool keepdim = false) const;
 
-    Tensor<dtype> softmax(int dim) const;
+    Tensor<dtype> softmax(int dim, std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
 
     // Tensor<dtype> apply_rotary_emb(Tensor<dtype> &input, Tensor<dtype> &freqs, int start_pos);
 
@@ -218,14 +219,14 @@ public:
     std::vector<int> get_broadcast_shape(std::vector<int>& shape_a, std::vector<int>& shape_b) const; // without const, will cause error.
 
     template <void (Device<dtype>::*func)(dtype*, size_t)>
-    Tensor<dtype> applyUnaryOperation() const;
+    Tensor<dtype> applyUnaryOperation(std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
     template <void (Device<dtype>::*func)(dtype*, dtype*, size_t) const >
     Tensor<dtype> applyBinaryOperation(const Tensor<dtype>& other, std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
     template <void (Device<dtype>::*func)(dtype*, dtype, size_t) const >
     Tensor<dtype> applyBinaryScalarOperation(dtype scalar, std::optional<Tensor<dtype>> result_opt = std::nullopt) const;
 
     template<typename Rtype, void (Device<dtype>::*func)(Rtype*, size_t, size_t) const>
-    Tensor<Rtype> reduceOperation(std::optional<int> axis, bool keepdims) const;
+    Tensor<Rtype> reduceOperation(std::optional<int> axis, bool keepdims, std::optional<Tensor<Rtype>> result_opt = std::nullopt) const;
 
     /**
      * fuse getIndicesFromLinearIndex and calculateLinearIndex

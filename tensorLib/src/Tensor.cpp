@@ -244,13 +244,24 @@ Tensor<dtype> Tensor<dtype>::select(int dim, int index) const {
     return getItem(slices);
 }
 
+// add a flag to choose whether make it row contiguous or column contiguous,
+// default is row contiguous.
 template <typename dtype>
-Tensor<dtype> Tensor<dtype>::contiguous() const {
+Tensor<dtype> Tensor<dtype>::contiguous(std::optional<Tensor<dtype>> result_opt) const {
     if (is_contiguous(*this)) {
         return *this;
     }
 
-    Tensor<dtype> result(this->shape(), this->device_type);
+    // Tensor<dtype> result(this->shape(), this->device_type);
+    Tensor<dtype> result;
+    if (result_opt.has_value()) {
+        result = result_opt.value();
+        if (result.shape() != this->shape()) {
+            throw std::invalid_argument("result shape does not match new_shape");
+        }
+    } else {
+        result = Tensor<dtype> (this->shape(), this->device_type);
+    }
 
     this->device->contiguous(
         result.device->getDataPtr(), 
@@ -414,8 +425,18 @@ Tensor<dtype> Tensor<dtype>::broadcast_to(const std::vector<int>& new_shape) con
 ////////////////////////////////////////////////////// unary operations ///////////////////////////////////////////////////////////////////////////////
 template <typename dtype>
 template <void (Device<dtype>::*func)(dtype*, size_t)>
-Tensor<dtype> Tensor<dtype>::applyUnaryOperation() const {
-    Tensor<dtype> result(this->shape_, this->device_type);
+Tensor<dtype> Tensor<dtype>::applyUnaryOperation(std::optional<Tensor<dtype>> result_opt) const {
+    // Tensor<dtype> result(this->shape_, this->device_type);
+    Tensor<dtype> result;
+    if (result_opt.has_value()) {
+        result = result_opt.value();
+        if (result.shape() != this->shape()) {
+            throw std::invalid_argument("The shape of the result must be the same as the shape of the tensor.");
+        }
+    } else {
+        result = Tensor<dtype>(this->shape(), this->device_type);
+    }
+
     (this->device.get()->*func)(result.device->getDataPtr(), result.num_elements);
     return result;
 }
@@ -427,7 +448,7 @@ template <typename dtype> inline Tensor<dtype> Tensor<dtype>::exp() const { retu
 template <typename dtype> inline Tensor<dtype> Tensor<dtype>::log() const { return applyUnaryOperation<&Device<dtype>::log>(); }
 template <typename dtype> inline Tensor<dtype> Tensor<dtype>::abs() const { return applyUnaryOperation<&Device<dtype>::abs>(); }
 template <typename dtype> inline Tensor<dtype> Tensor<dtype>::tanh() const { return applyUnaryOperation<&Device<dtype>::tanh>(); }
-template <typename dtype> inline Tensor<dtype> Tensor<dtype>::silu() const { return applyUnaryOperation<&Device<dtype>::silu>(); }
+template <typename dtype> inline Tensor<dtype> Tensor<dtype>::silu(std::optional<Tensor<dtype>> result_opt) const { return applyUnaryOperation<&Device<dtype>::silu>(result_opt); }
 template <typename dtype> inline Tensor<dtype> Tensor<dtype>::sqrt() const { return applyUnaryOperation<&Device<dtype>::sqrt>(); }
 template <typename dtype> inline Tensor<dtype> Tensor<dtype>::rsqrt() const { return applyUnaryOperation<&Device<dtype>::rsqrt>(); }
 
@@ -460,67 +481,58 @@ Tensor<dtype> Tensor<dtype>::transpose(int dim0, int dim1) const {
 }
 
 ////////////////////////////////////////////////////// softmax operations ///////////////////////////////////////////////////////////////////////////////
+// support not last dimension softmax
 // template<typename dtype>
-// Tensor<dtype> Tensor<dtype>::softmax(int dim) const {
-//     // if device_type == "cuda", we can use fused softmax, which is faster. 
-//     // or if device_type = "cpu", we can use the following code to calculate softmax.
+// Tensor<dtype> Tensor<dtype>::softmax(int dim, std::optional<Tensor<dtype>> result_opt) const {
+//     std::vector<int> axis0, axis1;
+//     for (int i=0; i < this->ndim; i++)
+//         if (i != dim) axis0.push_back(i);
+//     axis0.push_back(dim);
 // 
-//     auto max_val = this->max(dim, true);
-//     max_val = max_val.broadcast_to(this->shape());
+//     for (int i=0; i < this->ndim; i++) {
+//         if (i < dim) axis1.push_back(i);
+//         else if (i == dim) axis1.push_back(this->ndim - 1);
+//         else axis1.push_back(i - 1);
+//     }
 // 
-//     auto exp_val = (*this - max_val).exp();
+//     Tensor<dtype> a = this->permute(axis0);
+//     a = a.contiguous();
 // 
-//     auto sum_val = exp_val.sum(dim, true);
-//     sum_val = sum_val.broadcast_to(this->shape());
+//     Tensor<dtype> result(a.shape_, a.device_type);
+//     int cols = a.shape_[a.ndim-1];
+//     int rows = a.num_elements / cols;
+//     a.device->softmax(result.device->getDataPtr(), rows, cols);
 // 
-//     return exp_val / sum_val;
-// }
-
-// buffer A -->(contiguous after put dim last) buffer B -->(softmax) buffer A -->(contiguous after put dim back) buffer B
-// convert the dim to last dimension, then calculate the softmax, and then convert it back.
-/**
-for example len(shape) = 4, dim = 1, the axes conversions are:
-
-axies: 0 1 2 3  -->  0 2 3 1  -->  0 3 1 2
-idx:   0 1 2 3  -->  0 1 2 3  -->  0 1 2 3
- */
-// template<typename dtype>
-// Tensor<dtype> Tensor<dtype>::softmax(int dim) const {
-//     Tensor<dtype> result(this->shape_, this->device_type);
+//     Tensor<dtype> b = result.permute(axis1);
+//     b = b.contiguous();
 // 
-//     int cols = this->shape_[this->ndim-1];
-//     int rows = this->num_elements / cols;
-// 
-//     this->device->softmax(result.device->getDataPtr(), rows, cols);
-// 
-//     return result;
+//     return b;
 // }
 
 template<typename dtype>
-Tensor<dtype> Tensor<dtype>::softmax(int dim) const {
-    std::vector<int> axis0, axis1;
-    for (int i=0; i < this->ndim; i++)
-        if (i != dim) axis0.push_back(i);
-    axis0.push_back(dim);
-
-    for (int i=0; i < this->ndim; i++) {
-        if (i < dim) axis1.push_back(i);
-        else if (i == dim) axis1.push_back(this->ndim - 1);
-        else axis1.push_back(i - 1);
+Tensor<dtype> Tensor<dtype>::softmax(int dim, std::optional<Tensor<dtype>> result_opt) const {
+    if (!is_contiguous(*this)) {
+        throw std::invalid_argument("This tensor is not contiguous.");
+    }
+    if (dim != this->ndim - 1) {
+        throw std::invalid_argument("The dimension to be softmaxed must be the last dimension.");
     }
 
-    Tensor<dtype> a = this->permute(axis0);
-    a = a.contiguous();
+    // Tensor<dtype> result(this->shape(), this->device_type);
+    Tensor<dtype> result;
+    if (result_opt.has_value()) {
+        result = result_opt.value();
+        if (result.shape() != this->shape()) {
+            throw std::invalid_argument("The shape of the result must be the same as the shape of the tensor.");
+        }
+    } else {
+        result = Tensor<dtype>(this->shape(), this->device_type);
+    }
 
-    Tensor<dtype> result(a.shape_, a.device_type);
-    int cols = a.shape_[a.ndim-1];
-    int rows = a.num_elements / cols;
-    a.device->softmax(result.device->getDataPtr(), rows, cols);
-
-    Tensor<dtype> b = result.permute(axis1);
-    b = b.contiguous();
-
-    return b;
+    int cols = this->shape_[this->ndim-1];
+    int rows = this->num_elements / cols;
+    this->device->softmax(result.device->getDataPtr(), rows, cols);
+    return result;
 }
 ////////////////////////////////////////////////////// binary operations ///////////////////////////////////////////////////////////////////////////////
 /**
@@ -628,6 +640,7 @@ template <typename dtype> Tensor<dtype> Tensor<dtype>::operator*(const Tensor<dt
 template <typename dtype> Tensor<dtype> Tensor<dtype>::operator/(const Tensor<dtype>& other) const { return applyBinaryOperation<&Device<dtype>::div>(other); }
 
 template <typename dtype> Tensor<dtype> Tensor<dtype>::EwiseAdd(const Tensor<dtype>& other, std::optional<Tensor<dtype>> result_opt) const { return applyBinaryOperation<&Device<dtype>::add>(other, result_opt); }
+template <typename dtype> Tensor<dtype> Tensor<dtype>::EwiseMul(const Tensor<dtype>& other, std::optional<Tensor<dtype>> result_opt) const { return applyBinaryOperation<&Device<dtype>::mul>(other, result_opt); }
 /**
  * if this is a broadcasted tensor, need to use contiguous() firtst, or the num_elements is not the actual elem size of the tensor' device data_.
  * @tparam dtype 

@@ -57,16 +57,39 @@ Tensor<dtype> Attention<dtype>::forward(ActivationBuffer<dtype>& activation_buff
     auto keys = this->cache_k.getItem(slices2); // (bsz, cache_len+seqlen, n_heads, head_dim)
     auto values = this->cache_v.getItem(slices2); // (bsz, cache_len+seqlen, n_heads, head_dim)
 
-    xq = xq.transpose(1, 2); // (bsz, n_heads, seqlen, head_dim)
+    xq = xq.transpose(1, 2).contiguous(activation_buffer.xq_c); // (bsz, n_heads, seqlen, head_dim)
     keys = keys.transpose(1, 2); // (bsz, n_heads, cache_len+seqlen, head_dim)
     values = values.transpose(1, 2); // (bsz, n_heads, cache_len+seqlen, head_dim)
+
+    // make keys and values are col major
+/****************************************************************/
+    std::vector<std::vector<int>> kv_size_slices  = {{0, (bsz * n_heads * (start_pos+seqlen) * head_dim)}};
+
+    // std::vector<int> key_shape  = {bsz, n_heads, head_dim, start_pos+seqlen};
+    std::vector<int> key_shape  = {bsz, n_heads, start_pos+seqlen, head_dim}; // make it col major (I know it is dirty here ...)
+    auto keys_buffer = activation_buffer.keys_c.getItem(kv_size_slices);
+    keys_buffer = keys_buffer.view(key_shape);
+    keys = keys.contiguous(keys_buffer); // make it col major contiguous
+    keys = keys.transpose(2, 3);;
+
+    values = values.transpose(2, 3);
+    std::vector<int> value_shape  = {bsz, n_heads, head_dim, start_pos+seqlen};
+    auto values_buffer = activation_buffer.values_c.getItem(kv_size_slices);
+    values_buffer = values_buffer.view(value_shape);
+    values = values.contiguous(values_buffer); // (bsz, n_heads, cache_len+seqlen, head_dim)
+    values = values.transpose(2, 3);
+/***********************************************************************/
 
     std::vector<std::vector<int>> scores_size_slices  = {{0, (bsz * n_heads * seqlen * (start_pos+seqlen))}};
     std::vector<int> scores_shape  = {bsz, n_heads, seqlen, start_pos+seqlen};
     auto scores_buffer = activation_buffer.scores.getItem(scores_size_slices); // get a contiguous buffer for matmul
     scores_buffer = scores_buffer.view(scores_shape);
 
-    xq.matmul(keys.transpose(2, 3), scores_buffer); // (bsz, n_heads, seqlen, cache_len+seqlen)
+    auto scores_buffer_2 = activation_buffer.scores2.getItem(scores_size_slices); // get a contiguous buffer for matmul
+    scores_buffer_2 = scores_buffer_2.view(scores_shape);
+
+    // xq.matmul(keys.transpose(2, 3), scores_buffer); // (bsz, n_heads, seqlen, cache_len+seqlen)
+    xq.matmul(keys, scores_buffer); // (bsz, n_heads, seqlen, cache_len+seqlen)
     // auto scores = scores_buffer / sqrt(head_dim);
     auto scores = scores_buffer.ScalarDiv(sqrt(head_dim), scores_buffer);
 
@@ -78,10 +101,14 @@ Tensor<dtype> Attention<dtype>::forward(ActivationBuffer<dtype>& activation_buff
         scores = scores_buffer.EwiseAdd(mask.value(), scores_buffer);
     }
 
-    scores = scores.softmax(3); // (bsz, n_heads, seqlen, cache_len+seqlen)
-    auto output = scores.matmul(values); // (bsz, n_heads, seqlen, head_dim)
-    output = output.transpose(1, 2).contiguous().view({bsz, seqlen, n_heads * head_dim}); // (bsz, seqlen, dim)
-    return this->wo.forward(output); // (bsz, seqlen, dim)
+    // scores = scores.softmax(3); // (bsz, n_heads, seqlen, cache_len+seqlen)
+    scores = scores.softmax(3, scores_buffer_2); // (bsz, n_heads, seqlen, cache_len+seqlen)
+    // auto output = scores.matmul(values); // (bsz, n_heads, seqlen, head_dim)
+    auto output = scores.matmul(values, activation_buffer.s_v); // (bsz, n_heads, seqlen, head_dim)
+    // output = output.transpose(1, 2).contiguous().view({bsz, seqlen, n_heads * head_dim}); // (bsz, seqlen, dim)
+    output = output.transpose(1, 2).contiguous(activation_buffer.o_c).view({bsz, seqlen, n_heads * head_dim}); // (bsz, seqlen, dim)
+    // return this->wo.forward(output); // (bsz, seqlen, dim)
+    return this->wo.forward(output, activation_buffer.x_norm); // (bsz, seqlen, dim)
 }
 
 template <typename dtype>
@@ -107,10 +134,11 @@ Tensor<dtype> FeedForward<dtype>::forward(ActivationBuffer<dtype>& activation_bu
     // x: (bsz, seqlen, dim)
     // auto x1 = this->w1.forward(x); // (bsz, seqlen, hidden_dim)
     auto x1 = this->w1.forward(activation_buffer.x_norm, activation_buffer.x1);
-    x1 = x1.silu();
+    x1 = x1.silu(activation_buffer.x1);
     // auto x3 = this->w3.forward(x); // (bsz, seqlen, hidden_dim)
     auto x3 = this->w3.forward(activation_buffer.x_norm, activation_buffer.x3);
-    auto x2 = x1 * x3;
+    // auto x2 = x1 * x3;
+    auto x2 = x1.EwiseMul(x3, activation_buffer.x2);
     // auto result = this->w2.forward(x2); // (bsz, seqlen, dim)
     auto result = this->w2.forward(x2, activation_buffer.x); // (bsz, seqlen, dim)
     return result;
@@ -137,12 +165,14 @@ Tensor<dtype> TransformerBlock<dtype>::forward(ActivationBuffer<dtype>& activati
     this->attention_norm.forward(activation_buffer.x, activation_buffer.x_norm);
 
     // auto h = x + this->attention.forward(x_norm, start_pos, freqs, mask);
-    auto h = activation_buffer.x + this->attention.forward(activation_buffer, start_pos, freqs, mask);
+    // auto h = activation_buffer.x + this->attention.forward(activation_buffer, start_pos, freqs, mask);
+    auto h = activation_buffer.x.EwiseAdd( this->attention.forward(activation_buffer, start_pos, freqs, mask), activation_buffer.x_residual);
 
     this->ffn_norm.forward(h, activation_buffer.x_norm);
 
     // auto out = h + this->feed_forward.forward(activation_buffer.x_norm);
-    auto out = h + this->feed_forward.forward(activation_buffer);
+    // auto out = h + this->feed_forward.forward(activation_buffer);
+    auto out = h.EwiseAdd(this->feed_forward.forward(activation_buffer), activation_buffer.x_residual);
 
     return out;
 }
@@ -200,32 +230,33 @@ start_pos == cache_len
  */
 template <typename dtype>
 // std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen, int start_pos) const {
-std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen, int start_pos) const {
+std::optional<Tensor<dtype>> Transformer<dtype>::get_mask(int seqlen, int start_pos, Tensor<dtype>& mask) const {
     if (seqlen <= 1) return {};
 
-    Tensor<dtype> mask = Tensor<dtype>({seqlen, seqlen + start_pos}, this->device_type);
-    for (int i = 0; i < seqlen; i++) {
-        for (int j = 0; j < seqlen + start_pos; j++) {
-            // if (j > start_pos + i) { // set diagonal to zero
-            //     mask.setData({i, j}, -INFINITY);
-            // } else {
-            //     mask.setData({i, j}, 0);
-            // }
-            if (j > start_pos + i) { // Set upper triangular part to -INFINITY
-                if constexpr (std::is_same<dtype, __half>::value) {
-                    mask.setData({i, j}, __float2half(-INFINITY)); // Convert -INFINITY to __half
-                } else {
-                    mask.setData({i, j}, -INFINITY); // Use directly for float/double
-                }
-            } else { // Set lower triangular part to 0
-                if constexpr (std::is_same<dtype, __half>::value) {
-                    mask.setData({i, j}, __float2half(0.0f)); // Convert 0 to __half
-                } else {
-                    mask.setData({i, j}, 0); // Use directly for int/float/double
+    // Tensor<dtype> mask = Tensor<dtype>({seqlen, seqlen + start_pos}, this->device_type);
+    // mask.setItem({{}, {}},0);
+    for (int m = 0; m < mask.shape()[0]; m++) {
+        for (int n = 0; n < mask.shape()[1]; n++) {
+            for (int i = 0; i < seqlen; i++) {
+                for (int j = 0; j < seqlen + start_pos; j++) {
+                    if (j > start_pos + i) { // Set upper triangular part to -INFINITY
+                        if constexpr (std::is_same<dtype, __half>::value) {
+                            mask.setData({m, n, i, j}, __float2half(-INFINITY)); // Convert -INFINITY to __half
+                        } else {
+                            mask.setData({m, n, i, j}, -INFINITY); // Use directly for float/double
+                        }
+                    } else { // Set lower triangular part to 0
+                        if constexpr (std::is_same<dtype, __half>::value) {
+                            mask.setData({m, n, i, j}, __float2half(0.0f)); // Convert 0 to __half
+                        } else {
+                            mask.setData({m, n, i, j}, 0); // Use directly for int/float/double
+                        }
+                    }
                 }
             }
         }
     }
+
     return mask;
 }
 
@@ -233,6 +264,7 @@ template <typename dtype>
 Tensor<dtype> Transformer<dtype>::forward(const Tensor<int>& tokens, int start_pos, ActivationBuffer<dtype>& activation_buffer) const {
     auto bsz = tokens.shape()[0];
     auto seqlen = tokens.shape()[1];
+    auto n_heads = this->params.n_heads;
 
     std::vector<std::vector<int>> slicess = {{0, bsz}, {0,seqlen}, {0,this->tok_embeddings.embedding_dim}};
 
@@ -244,18 +276,24 @@ Tensor<dtype> Transformer<dtype>::forward(const Tensor<int>& tokens, int start_p
     this->tok_embeddings.forward(tokens, activation_buffer.x);
 
     auto freqs = this->freqs.slice(start_pos, start_pos+seqlen, 0);
-    auto mask = this->get_mask(seqlen, start_pos);
+
+    std::vector<std::vector<int>> mask_size_slices = {{0, (bsz * n_heads * seqlen * (start_pos+seqlen))}};
+    std::vector<int> mask_shape = {bsz, n_heads, seqlen, start_pos+seqlen};
+    auto mask_buffer = activation_buffer.mask.getItem(mask_size_slices);
+    mask_buffer = mask_buffer.view(mask_shape);
+    // auto mask = this->get_mask(seqlen, start_pos);
+    auto mask = this->get_mask(seqlen, start_pos, mask_buffer);
 
     Tensor<dtype> h;
     for (int i = 0; i < this->n_layers; i++) {
         auto layer = std::dynamic_pointer_cast<TransformerBlock<dtype>>(this->layers[i]);
-        h = layer->forward(activation_buffer, start_pos, freqs, mask);
+        h = layer->forward(activation_buffer, start_pos, freqs, mask); // (bsz, seq_len, dim)
         activation_buffer.x.setItem(slicess, h);
         // LOG_INFO("\n");
     }
 
-    h = this->norm.forward(h);
-    auto result = this->output.forward(h);
+    h = this->norm.forward(h, activation_buffer.x_norm);
+    auto result = this->output.forward(h, activation_buffer.logical); // (bsz, seq_len, vocab_size)
     // LOG_INFO("\n\n");
     return result;
 }

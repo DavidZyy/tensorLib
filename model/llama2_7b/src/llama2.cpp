@@ -18,8 +18,9 @@ void Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
     int generate_len = 256; // the length of generation tokens (decode stage generates)
 
     Tensor<int> prompt_tokens_tensor({1, prompt_len}, this->device_type);  // shape: (bsz, seq_len)
-    Tensor<int> next_token; // shape: (1, 1)
+    Tensor<int> next_token({1, 1}, this->device_type); // shape: (1, 1)
     Tensor<dtype> logits;
+
     std::chrono::duration<double> elapsed_time;
     int next_token_int;
     std::vector<std::vector<int>> slices;
@@ -36,13 +37,23 @@ void Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
     auto bsz = prompt_tokens_tensor.shape()[0];
     auto seqlen = prompt_tokens_tensor.shape()[1];
 
-    ActivationBuffer<dtype> activation_buffer0(bsz, seqlen, this->model.params.dim, this->model.params.hidden_dim, this->model.params.n_heads, this->model.params.max_seq_len, this->device_type);
+    ActivationBuffer<dtype> activation_buffer0(
+        bsz, 
+        seqlen, 
+        this->model.params.dim, 
+        this->model.params.hidden_dim, 
+        this->model.params.n_heads, 
+        this->model.params.max_seq_len, 
+        this->model.params.vocab_size, 
+        this->device_type
+    );
 
     logits = this->model.forward(prompt_tokens_tensor, total_len, activation_buffer0); // shape = (bsz, seq_len, vocab_size)
     total_len += prompt_len;
     slices = {{}, {logits.shape_[1]-1, logits.shape_[1]}, {}};
     logits = logits.getItem(slices); // (bsz, vocab_size), get the last token's logits
-    next_token = logits.argmax(-1);
+    logits = logits.contiguous(activation_buffer0.logical_v);
+    logits.argmax(-1, false, next_token);
     next_token_int = next_token.getData({});
 
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -55,13 +66,22 @@ void Llama2<dtype>::generate(std::vector<int> prompt_tokens) {
 
     start_time = std::chrono::high_resolution_clock::now();
 
-    ActivationBuffer<dtype> activation_buffer1(bsz, 1, this->model.params.dim, this->model.params.hidden_dim, this->model.params.n_heads, this->model.params.max_seq_len, this->device_type);
+    ActivationBuffer<dtype> activation_buffer1(
+        bsz, 
+        1, 
+        this->model.params.dim, 
+        this->model.params.hidden_dim, 
+        this->model.params.n_heads, 
+        this->model.params.max_seq_len, 
+        this->model.params.vocab_size, 
+        this->device_type
+    );
 
     int generate_cnt = 0;
     for (int i = 0; i < generate_len; i++) {
         logits = this->model.forward(next_token, total_len, activation_buffer1);
         total_len += 1;
-        next_token = logits.argmax(-1);
+        logits.argmax(-1, false, next_token);
         next_token_int = next_token.getData({});
 
         generate_cnt++;
