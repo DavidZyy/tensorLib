@@ -121,17 +121,17 @@ void Llama2<dtype>::chat() {
     int pos = 0;
     int steps = 256;
 
-    // char user_prompt[512];
+    char user_prompt[512];
     // char user_prompt[] = "用中文讲一个故事";
     // char user_prompt[] = "tell me a story";
-    char user_prompt[] = "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature. \
-     If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.";
+    // char user_prompt[] = "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature. \
+    //  If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.";
     char rendered_prompt[1152];
     char user_template[] = "[INST] %s [/INST]";
-    // while (true) {
+    while (true) {
         // user input prompt
         std::cout<< "> ";
-        // read_stdin(user_prompt, sizeof(user_prompt));
+        read_stdin(user_prompt, sizeof(user_prompt));
         sprintf(rendered_prompt, user_template, user_prompt);
     
         // convert char* to std::string
@@ -141,5 +141,5 @@ void Llama2<dtype>::chat() {
         std::vector<int> prompt_tokens = this->tokenizer.encode(prompts, true, false);
         // auto generation_tokens = generate(prompt_tokens);
         generate(prompt_tokens);
-    // }
+    }
 }
